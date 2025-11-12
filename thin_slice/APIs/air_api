@@ -141,7 +141,6 @@ if __name__ == "__main__":
     # Display results
     if air_data:
         display_air_quality(location, air_data)
-        display_pollutant_sources(location)
         print("✓ Air quality data successfully fetched\n")
     else:
         print("❌ Failed to fetch air quality data\n")
