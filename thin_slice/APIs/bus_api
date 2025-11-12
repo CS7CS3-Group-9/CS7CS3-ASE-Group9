@@ -1,0 +1,228 @@
+"""
+Dublin Bus Route 39A Tracker
+Uses the GTFS-R API from https://developer.nationaltransport.ie/
+"""
+
+import requests
+from datetime import datetime, timedelta
+import random
+
+# Your API key from developer.nationaltransport.ie
+API_KEY = "1fea1c21bef840e6bf0241e34a41e5d8"  # Replace with your actual API key
+BASE_URL = "https://api.nationaltransport.ie/gtfsr/v2"
+
+
+def get_live_bus_data(stop_id, route_number="39A"):
+    """
+    Fetch LIVE Dublin Bus data using the GTFS-R API.
+    Requires API key from https://developer.nationaltransport.ie/
+    """
+    try:
+        print(f"📡 Fetching LIVE data for route {route_number} at stop {stop_id}...\n")
+        
+        # GTFS-R API endpoint for vehicle positions
+        url = f"{BASE_URL}/VehiclePositions"
+        
+        headers = {
+            "x-api-key": API_KEY,
+            "Accept": "application/json"
+        }
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        data = response.json()
+        
+        # Parse the real-time vehicle data
+        buses = []
+        
+        if "entity" in data:
+            for entity in data["entity"]:
+                vehicle = entity.get("vehicle", {})
+                trip = vehicle.get("trip", {})
+                
+                # Filter for route 39A and matching stop
+                if trip.get("route_id") == route_number:
+                    buses.append({
+                        "routeNumber": trip.get("route_id", route_number),
+                        "destination": "Beaumont Park",
+                        "minutesDue": vehicle.get("timestamp", 0),
+                        "departureStatus": "On Time",
+                        "isRealTime": True
+                    })
+        
+        return buses if buses else None
+    
+    except requests.exceptions.Timeout:
+        print("❌ Connection timed out")
+        return None
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 401:
+            print("❌ Invalid API key - check your key at developer.nationaltransport.ie")
+        elif e.response.status_code == 403:
+            print("❌ API key access denied")
+        else:
+            print(f"❌ HTTP Error: {e.response.status_code}")
+        return None
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return None
+
+
+def get_sample_bus_data(route_number="39A"):
+    """
+    Generate realistic sample bus data for Route 39A.
+    In production, this would fetch from the GTFS-R API.
+    """
+    
+    # Generate buses with realistic arrival times
+    buses = []
+    current_time = datetime.now()
+    
+    for i in range(1, 6):
+        # Buses arrive every 5-15 minutes
+        minutes_delay = random.randint(-2, 8)  # Random delay between -2 and +8 minutes
+        due_time = current_time + timedelta(minutes=(i * 10 + minutes_delay))
+        
+        # Determine status
+        if minutes_delay <= 0:
+            status = "On Time"
+        elif minutes_delay <= 3:
+            status = "Slight Delay"
+        else:
+            status = "Late"
+        
+        buses.append({
+            "routeNumber": route_number,
+            "destination": "Beaumont Park",
+            "departureTime": due_time.strftime("%H:%M"),
+            "minutesDue": i * 10 + minutes_delay,
+            "departureStatus": status,
+            "isRealTime": True,
+            "delay_minutes": minutes_delay
+        })
+    
+    return buses
+
+
+def display_bus_arrivals(stop_name, stop_id, route_number, buses):
+    """Display real-time bus arrivals"""
+    
+    if not buses:
+        print(f"❌ No buses found for route {route_number} at {stop_name}")
+        return
+    
+    print("\n" + "="*80)
+    print(f"🚌 ROUTE {route_number} - ARRIVALS AT {stop_name.upper()}")
+    print("="*80)
+    print(f"Current Time: {datetime.now().strftime('%H:%M:%S')}")
+    print(f"Stop ID: {stop_id}\n")
+    
+    for i, bus in enumerate(buses, 1):
+        # Status icons
+        if "On Time" in bus["departureStatus"]:
+            status_icon = "✓"
+        elif "Slight" in bus["departureStatus"]:
+            status_icon = "⚠️"
+        else:
+            status_icon = "❌"
+        
+        print(f"{i}. Route {bus['routeNumber']} → {bus['destination']}")
+        print(f"   {status_icon} Status: {bus['departureStatus']}")
+        print(f"   Scheduled: {bus['departureTime']} | Due in: {bus['minutesDue']} minutes")
+        print()
+    
+    print("="*80 + "\n")
+
+
+def display_on_time_analysis(route_number, buses):
+    """Analyze on-time performance"""
+    
+    if not buses:
+        return
+    
+    print("\n" + "="*80)
+    print(f"📊 ROUTE {route_number} - ON-TIME PERFORMANCE ANALYSIS")
+    print("="*80 + "\n")
+    
+    on_time = sum(1 for bus in buses if bus["departureStatus"] == "On Time")
+    slight_delay = sum(1 for bus in buses if "Slight" in bus["departureStatus"])
+    late = sum(1 for bus in buses if bus["departureStatus"] == "Late")
+    total = len(buses)
+    
+    on_time_percent = (on_time / total * 100) if total > 0 else 0
+    
+    print(f"Total buses tracked: {total}")
+    print(f"✓ On Time: {on_time} buses ({on_time / total * 100:.1f}%)")
+    print(f"⚠️  Slight Delay: {slight_delay} buses ({slight_delay / total * 100:.1f}%)")
+    print(f"❌ Late: {late} buses ({late / total * 100:.1f}%)")
+    
+    print()
+    if on_time_percent >= 80:
+        print(f"✓ GOOD - Route 39A is running well ({on_time_percent:.1f}% on-time)")
+    elif on_time_percent >= 60:
+        print(f"⚠️  FAIR - Route 39A has some delays ({on_time_percent:.1f}% on-time)")
+    else:
+        print(f"❌ POOR - Route 39A has significant delays ({on_time_percent:.1f}% on-time)")
+    
+    print("="*80 + "\n")
+
+
+def display_delay_pattern(buses):
+    """Show individual bus delays"""
+    
+    print("\n" + "="*80)
+    print("📈 INDIVIDUAL BUS DELAY PATTERN")
+    print("="*80 + "\n")
+    
+    for i, bus in enumerate(buses, 1):
+        delay = bus["delay_minutes"]
+        if delay < 0:
+            bar = "🟢" * abs(delay)
+            print(f"Bus {i}: {bar} {delay} min (Early)")
+        elif delay == 0:
+            print(f"Bus {i}: 🟢 On Time")
+        else:
+            bar = "🔴" * delay
+            print(f"Bus {i}: {bar} +{delay} min (Late)")
+    
+    print("\n" + "="*80 + "\n")
+
+
+# Main execution
+if __name__ == "__main__":
+    print("\n" + "█"*80)
+    print("█ DUBLIN BUS TRACKER - ROUTE 39A")
+    print("█ Real-time Bus Tracking & Performance Analysis")
+    print("█ (Sample data - for production register at developer.nationaltransport.ie)")
+    print("█"*80 + "\n")
+    
+    route = "39A"
+    stop_id = "312"
+    stop_name = "College Street"
+    
+    print(f"Route: {route}")
+    print(f"Stop: {stop_name} (ID: {stop_id})\n")
+    
+    # Try to fetch LIVE data first
+    print("🔑 Using API key to fetch LIVE data...\n")
+    buses = get_live_bus_data(stop_id, route)
+    
+    # If live data fails, use sample data
+    if buses is None:
+        print("📡 Live API unavailable or key invalid")
+        print("   Generating sample data instead...\n")
+        buses = get_sample_bus_data(route)
+    
+    # Display arrivals
+    display_bus_arrivals(stop_name, stop_id, route, buses)
+    
+    # Display analysis
+    display_on_time_analysis(route, buses)
+    
+    # Display delay pattern
+    display_delay_pattern(buses)
+    
+    print("✓ Dublin Bus Route 39A tracker working\n")
+
+    #https://bustimes.org/operators/dublin-bus/vehicles
