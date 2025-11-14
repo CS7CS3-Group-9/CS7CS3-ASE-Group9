@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Route Finder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 1.5em;
+            max-width: 900px;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.5em;
+            margin: 0.3em 0;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 0.6em 1em;
+            margin-right: 0.5em;
+            cursor: pointer;
+        }
+
+        #output {
+            margin-top: 1em;
+            padding: 1em;
+            background: #f6f8fa;
+            border-radius: 8px;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background: #fff;
+            margin: 5% auto;
+            padding: 1em;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+        }
+
+        .history-item {
+            border-bottom: 1px solid #eee;
+            padding: 0.6em 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1em;
+        }
+
+        .small {
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>🗺️ Route Finder</h2>
+
+    <label><b>Origin:</b></label>
+    <input id="origin" placeholder="Enter origin (address or lat,lng)" />
+
+    <label><b>Destination:</b></label>
+    <input id="destination" placeholder="Enter destination (address or lat,lng)" />
+
+    <div>
+        <button id="get-route-btn">Get Route</button>
+        <button id="view-history-btn">View History</button>
+    </div>
+
+    <div id="output"></div>
+
+    <!-- Modal -->
+    <div id="history-modal" class="modal" aria-hidden="true">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3>Previous Routes</h3>
+                <div><button id="close-history">Close</button></div>
+            </div>
+            <div id="history-list">
+                <!-- items inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function postRoute(origin, destination) {
+            const res = await fetch('/get_route', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ origin, destination })
+            });
+            return res;
+        }
+
+        async function getRouteFromForm() {
+            const origin = document.getElementById('origin').value.trim();
+            const destination = document.getElementById('destination').value.trim();
+            if (!origin || !destination) { alert('Enter origin & destination'); return; }
+
+            document.getElementById('output').innerHTML = 'Loading...';
+            try {
+                const res = await postRoute(origin, destination);
+                if (!res.ok) {
+                    const err = await res.json();
+                    document.getElementById('output').innerHTML = `<b>Error:</b> ${err.error || res.statusText}`;
+                    return;
+                }
+                const data = await res.json();
+                document.getElementById('output').innerHTML = `
+          <p><b>Distance:</b> ${Number(data.distance_m).toLocaleString()} meters</p>
+          <p><b>Duration:</b> ${data.duration}</p>
+          <p><a href="${data.map_url}" target="_blank">View Map</a></p>
+        `;
+            } catch (e) {
+                document.getElementById('output').innerHTML = 'Error: ' + e;
+            }
+        }
+
+        document.getElementById('get-route-btn').addEventListener('click', getRouteFromForm);
+
+        // ------- History modal logic -------
+        const modal = document.getElementById('history-modal');
+        const historyList = document.getElementById('history-list');
+
+        document.getElementById('view-history-btn').addEventListener('click', async () => {
+            historyList.innerHTML = 'Loading...';
+            modal.style.display = 'block';
+            try {
+                const res = await fetch('/history');
+                if (!res.ok) { historyList.innerHTML = 'Failed to load history.'; return; }
+                const items = await res.json();
+                if (!items || items.length === 0) { historyList.innerHTML = '<p class="small">No history found.</p>'; return; }
+                historyList.innerHTML = '';
+                items.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'history-item';
+                    const left = document.createElement('div');
+                    left.innerHTML = `<div><b>${item.origin_input}</b> → <b>${item.destination_input}</b></div>
+                            <div class="small">${item.timestamp || ''} • ${item.distance_m ? (Number(item.distance_m).toLocaleString() + ' m') : ''}</div>`;
+                    const right = document.createElement('div');
+                    const loadBtn = document.createElement('button');
+                    loadBtn.textContent = 'Load';
+                    loadBtn.onclick = async () => {
+                        // Pre-fill fields and run route
+                        document.getElementById('origin').value = item.origin_input;
+                        document.getElementById('destination').value = item.destination_input;
+                        modal.style.display = 'none';
+                        await getRouteFromForm();
+                    };
+                    right.appendChild(loadBtn);
+                    div.appendChild(left);
+                    div.appendChild(right);
+                    historyList.appendChild(div);
+                });
+            } catch (e) {
+                historyList.innerHTML = 'Error: ' + e;
+            }
+        });
+
+        document.getElementById('close-history').addEventListener('click', () => { modal.style.display = 'none'; });
+
+        // Close modal on outside click
+        window.addEventListener('click', (ev) => {
+            if (ev.target === modal) modal.style.display = 'none';
+        });
+    </script>
+</body>
+
+</html>
