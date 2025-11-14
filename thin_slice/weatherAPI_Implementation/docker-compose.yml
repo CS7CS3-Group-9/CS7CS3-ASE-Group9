@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  flask-app:
+    build: ./app
+    ports:
+      - "5000:5000"
+    environment:
+      - REDIS_HOST=redis
+      - MQTT_BROKER=mosquitto
+    depends_on:
+      - redis
+      - mosquitto
+    volumes:
+      - ./app:/app
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
