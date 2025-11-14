@@ -1,0 +1,13 @@
+This is an example of how to implement pytest for a simple program
+All tests must start with test_
+
+==VSCODE==
+Open test file
+Then press CTRL+SHIFT+p
+And search Python: COnfigure tests
+Select this then select pytest and then . Root Directory
+Navigate to the beaker in the left hand side of the window and the tests should be displayed there you may need to refresh
+
+==Terminal==
+Naviagte to folder with test file
+Run pytest (file name) -v

@@ -1,0 +1,5 @@
+flask==3.1.2
+requests==2.32.5
+folium==0.20.0
+polyline==2.0.3
+firebase-admin==7.1.0
