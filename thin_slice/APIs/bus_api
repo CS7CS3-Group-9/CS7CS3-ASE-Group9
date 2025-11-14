@@ -1,19 +1,17 @@
 """
 Dublin Bus Route 39A Tracker
 Uses the GTFS-R API from https://developer.nationaltransport.ie/
-#https://bustimes.org/operators/dublin-bus/vehicles
 """
 
 import requests
 from datetime import datetime
-import random, csv, time
+import csv, time
 
-# Your API key from developer.nationaltransport.ie
-API_KEY = "1fea1c21bef840e6bf0241e34a41e5d8"  # Replace with your actual API key
+API_KEY = "1fea1c21bef840e6bf0241e34a41e5d8"  # Replace with your key
 BASE_URL = "https://api.nationaltransport.ie/gtfsr/v2"
 
 # -------------------------------------------------------
-# 1. Look up correct GTFS route_id for route_short_name
+# 1. Get route_id from route_short_name
 # -------------------------------------------------------
 def get_route_id_from_short_name(short_name, routes_file="routes.txt"):
     with open(routes_file, "r", encoding="utf-8") as f:
@@ -24,18 +22,42 @@ def get_route_id_from_short_name(short_name, routes_file="routes.txt"):
     return None
 
 # -------------------------------------------------------
-# 2. Only return *real live buses* based on trip_updates
+# 2. Load routes and parse start/end
 # -------------------------------------------------------
-def get_realtime_active_trips(route_id):
+def load_routes(routes_file="routes.txt"):
+    routes = {}
+    with open(routes_file, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            route_id = row["route_id"]
+            long_name = row.get("route_long_name", "")
+            if " - " in long_name:
+                start, end = map(str.strip, long_name.split(" - ", 1))
+            else:
+                start, end = long_name, long_name
+            routes[route_id] = {
+                "short_name": row.get("route_short_name", ""),
+                "start": start,
+                "end": end
+            }
+    return routes
+
+# -------------------------------------------------------
+# 3. Fetch live buses
+# -------------------------------------------------------
+def get_realtime_active_trips(route_id, routes_dict):
     url = f"{BASE_URL}/TripUpdates?format=json"
     headers = {"x-api-key": API_KEY, "Accept": "application/json"}
-
     response = requests.get(url, headers=headers, timeout=10)
     response.raise_for_status()
     data = response.json()
 
     now = int(time.time())
     active = []
+
+    route_info = routes_dict.get(route_id, {})
+    start = route_info.get("start", "Unknown")
+    end = route_info.get("end", "Unknown")
 
     for entity in data.get("entity", []):
         trip_update = entity.get("trip_update", {})
@@ -48,43 +70,20 @@ def get_realtime_active_trips(route_id):
         if not stop_updates:
             continue
 
-        # Find the nearest future stop with real-time info
-        future_stops = []
-        for u in stop_updates:
-            arrival_time = u.get("arrival", {}).get("time")
-            departure_time = u.get("departure", {}).get("time")
-            if arrival_time or departure_time:
-                future_stops.append(u)
+        next_stop = stop_updates[0]
 
-        if not future_stops:
-            continue
-
-        next_stop = future_stops[0]
-
-        # Choose arrival or departure timestamp
-        rt_time = (
-            next_stop.get("arrival", {}).get("time")
-            or next_stop.get("departure", {}).get("time")
-        )
-
+        rt_time = next_stop.get("arrival", {}).get("time") or next_stop.get("departure", {}).get("time")
         if isinstance(rt_time, str):
             try:
                 rt_time = int(rt_time)
             except ValueError:
                 continue
-
         if rt_time is None:
             continue
 
-        # Calculate delay (may be None → treat as on-time)
-        delay = (
-            next_stop.get("arrival", {}).get("delay")
-            or next_stop.get("departure", {}).get("delay")
-            or 0
-        )
+        delay = next_stop.get("arrival", {}).get("delay") or next_stop.get("departure", {}).get("delay") or 0
         minutes_due = max(0, (rt_time - now) // 60)
 
-        # Determine status
         if delay <= 60:
             status = "On Time"
         elif delay <= 180:
@@ -92,9 +91,18 @@ def get_realtime_active_trips(route_id):
         else:
             status = "Late"
 
+        # Determine destination using direction_id
+        direction_id = trip.get("direction_id")
+        if direction_id == 0:
+            destination = f"{start} → {end}"
+        elif direction_id == 1:
+            destination = f"{end} → {start}"
+        else:
+            destination = "Unknown"
+
         active.append({
             "route": route_id,
-            "destination": trip.get("trip_headsign", "Unknown"),
+            "destination": destination,
             "rt_time": rt_time,
             "minutes_due": int(minutes_due),
             "delay": delay,
@@ -104,7 +112,7 @@ def get_realtime_active_trips(route_id):
     return active
 
 # -------------------------------------------------------
-# 3. Display arrivals
+# 4. Display bus arrivals
 # -------------------------------------------------------
 def display_bus_arrivals(route_short, buses):
     print("\n" + "=" * 80)
@@ -118,21 +126,17 @@ def display_bus_arrivals(route_short, buses):
 
     for i, b in enumerate(buses, start=1):
         icon = "✓" if b["status"] == "On Time" else ("⚠️" if "Slight" in b["status"] else "❌")
-        print(f"{i}.{route_short}  → {b['destination']}")
+        print(f"{i}.{route_short} → {b['destination']}")
         print(f"   Status: {icon} {b['status']}")
         print(f"   Due in: {b['minutes_due']} min")
-        print(f"   Delay: {b['delay']} seconds")
-        print()
+        print(f"   Delay: {b['delay']} seconds\n")
 
     print("=" * 80 + "\n")
 
 # -------------------------------------------------------
-# 4. On-time performance analysis
+# 5. On-time performance analysis
 # -------------------------------------------------------
 def display_on_time_analysis(route_short, buses):
-    """
-    Display % of buses running on time, with simple summary.
-    """
     if not buses:
         print("❌ No buses to analyze")
         return
@@ -155,7 +159,7 @@ def display_on_time_analysis(route_short, buses):
     if on_time_pct >= 80:
         print(f"✓ GOOD - Route {route_short} is running well ({on_time_pct:.1f}% on-time)")
     elif on_time_pct >= 60:
-        print(f"⚠️  FAIR - Route {route_short} has some delays ({on_time_pct:.1f}% on-time)")
+        print(f"⚠️ FAIR - Route {route_short} has some delays ({on_time_pct:.1f}% on-time)")
     else:
         print(f"❌ POOR - Route {route_short} has significant delays ({on_time_pct:.1f}% on-time)")
 
@@ -165,7 +169,7 @@ def display_on_time_analysis(route_short, buses):
 # MAIN
 # -------------------------------------------------------
 if __name__ == "__main__":
-    route_short = "G2"
+    route_short = "39A"
 
     print("\n🔍 Loading route_id from routes.txt...\n")
     route_id = get_route_id_from_short_name(route_short)
@@ -175,11 +179,14 @@ if __name__ == "__main__":
         exit()
 
     print(f"✓ Route {route_short} maps to GTFS route_id: {route_id}\n")
+
+    print("🔍 Loading routes and parsing directions...\n")
+    routes_dict = load_routes("routes.txt")
+
     print("📡 Fetching real-time bus updates...\n")
 
     try:
-        buses = get_realtime_active_trips(route_id)
-        # Sort by soonest arrival
+        buses = get_realtime_active_trips(route_id, routes_dict)
         buses.sort(key=lambda x: x["minutes_due"])
         display_bus_arrivals(route_short, buses)
         display_on_time_analysis(route_short, buses)
