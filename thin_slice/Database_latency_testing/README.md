@@ -1,4 +1,4 @@
-### Simple script to query database and record latency, printing average and maximum lateny=cy
+### Simple script to query database and record latency, printing average and maximum latency
 
 ### Steps to run app
 1. Run `python3 -m venv venv`
