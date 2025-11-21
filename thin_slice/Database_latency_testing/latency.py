@@ -1,6 +1,7 @@
 import time
 import os
 
+
 from firebase_admin import firestore, credentials, initialize_app
 
 
@@ -43,4 +44,5 @@ class LatencyTesting:
 if __name__ == "__main__":
     tester = LatencyTesting()
     tester.test_firestore_latency(100)
+
 

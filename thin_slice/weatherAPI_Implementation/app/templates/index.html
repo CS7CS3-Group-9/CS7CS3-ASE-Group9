@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Management PoC</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚦 Urban Traffic Management System</h1>
+            <p class="subtitle">Proof of Concept - Integration Demo</p>
+        </header>
+
+        <div class="weather-card">
+            <h2>☁️ Current Weather Data</h2>
+            <div class="weather-info">
+                <p><strong>City:</strong> {{ weather.city }}</p>
+                <p><strong>Temperature:</strong> {{ weather.temperature }}°C</p>
+                <p><strong>Condition:</strong> {{ weather.condition }}</p>
+                <p class="timestamp">Last updated: {{ weather.timestamp[:19] }}</p>
+                
+                {% if weather.from_cache %}
+                <p class="cache-badge">📦 Served from Cache</p>
+                {% else %}
+                <p class="api-badge">🌐 Fresh API Data</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="status-section">
+            <h3>System Component Status</h3>
+            <div class="status-grid">
+                <div class="status-item {% if status.redis %}active{% else %}inactive{% endif %}">
+                    <span class="icon">💾</span>
+                    <span>Redis Cache</span>
+                    <span class="status-indicator">{{ '✓ Active' if status.redis else '✗ Offline' }}</span>
+                </div>
+                
+                <div class="status-item {% if status.mqtt %}active{% else %}inactive{% endif %}">
+                    <span class="icon">📢</span>
+                    <span>MQTT Broker</span>
+                    <span class="status-indicator">{{ '✓ Active' if status.mqtt else '✗ Offline' }}</span>
+                </div>
+                
+                <div class="status-item {% if status.firebase %}active{% else %}inactive{% endif %}">
+                    <span class="icon">🔥</span>
+                    <span>Firebase DB</span>
+                    <span class="status-indicator">{{ '✓ Active' if status.firebase else '✗ Offline' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="integration-flow">
+            <h3>Integration Flow Demonstrated</h3>
+            <ol>
+                <li>Check Redis cache for recent data (60s TTL)</li>
+                <li>If cache miss, fetch from external weather API</li>
+                <li>Cache new data in Redis</li>
+                <li>Store historical data in Firebase Firestore</li>
+                <li>Publish MQTT alerts for extreme temperatures</li>
+                <li>Render data using Jinja2 templates</li>
+            </ol>
+        </div>
+
+        <div class="api-section">
+            <h3>REST API Endpoint</h3>
+            <p>Access raw data: <code><a href="/api/weather">/api/weather</a></code></p>
+            <p>Health check: <code><a href="/health">/health</a></code></p>
+        </div>
+
+        <button onclick="location.reload()" class="refresh-btn">🔄 Refresh Data</button>
+    </div>
+</body>
+</html>

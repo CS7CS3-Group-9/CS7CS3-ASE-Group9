@@ -1,19 +1,32 @@
+# Web Framework (Flask Core)
 Flask==3.1.2
-gunicorn==23.0.0
+Werkzeug==3.1.3
 Jinja2==3.1.6
-firebase-admin==7.1.0
-google-cloud-firestore==2.21.0
-google-cloud-storage==3.5.0
-paho-mqtt==2.1.0
-redis==7.0.1
-cryptography==46.0.3
+itsdangerous==2.2.0
+gunicorn==23.0.0
+
+# Authentication & Security
 Flask-Login==0.6.3
 Flask-WTF==1.2.1
 bleach==6.3.0
+cryptography==46.0.3
 python-dotenv==1.2.1
+
+# Google Cloud & Firebase
+firebase-admin==7.1.0
+google-cloud-firestore==2.21.0
+google-cloud-storage==3.5.0
+
+# Networking / External Services
 requests==2.32.5
+paho-mqtt==2.1.0
+redis==7.0.1
+
+# Testing Frameworks
 pytest==9.0.0
 pytest-flask==1.3.0
 pytest-cov==7.0.0
-Werkzeug==3.1.3
-itsdangerous==2.2.0
+
+# Security Scanning / CI Tools
+bandit==1.8.6
+pip-audit==2.9.0
