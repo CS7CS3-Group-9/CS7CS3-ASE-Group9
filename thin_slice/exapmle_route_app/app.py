@@ -9,16 +9,12 @@ from firebase_admin import credentials, firestore
 
 # ---- CONFIG ----
 API_KEY = os.environ.get("GOOGLE_API_KEY", "YOUR_API_KEY_HERE")
-SERVICE_ACCOUNT_PATH = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "serviceAccountKey.json")
 FIRESTORE_COLLECTION = "routes"
 # ----------------
 
 app = Flask(__name__)
 
-# Initialize Firebase Admin / Firestore
-if not firebase_admin._apps:
-    cred = credentials.Certificate(SERVICE_ACCOUNT_PATH)
-    firebase_admin.initialize_app(cred)
+firebase_admin.initialize_app()
 db = firestore.client()
 
 
