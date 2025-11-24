@@ -13,20 +13,19 @@ def find_closest_station(your_latitude, your_longitude):
     stations_with_distance = []
     for station in stations:
         distance = calculate_distance(
-            your_latitude,
-            your_longitude,
-            station["latitude"],
-            station["longitude"]
+            your_latitude, your_longitude, station["latitude"], station["longitude"]
         )
-        stations_with_distance.append({
-            "name": station["name"],
-            "latitude": station["latitude"],
-            "longitude": station["longitude"],
-            "free_bikes": station["free_bikes"],
-            "empty_slots": station["empty_slots"],
-            "total_spaces": station["extra"]["slots"],
-            "distance_km": distance
-        })
+        stations_with_distance.append(
+            {
+                "name": station["name"],
+                "latitude": station["latitude"],
+                "longitude": station["longitude"],
+                "free_bikes": station["free_bikes"],
+                "empty_slots": station["empty_slots"],
+                "total_spaces": station["extra"]["slots"],
+                "distance_km": distance,
+            }
+        )
 
     stations_with_distance.sort(key=lambda x: x["distance_km"])
     return stations_with_distance[0]
@@ -40,10 +39,11 @@ def display_closest_station(station, your_location):
     print("\n" + "=" * 60)
     print("📍 CLOSEST BIKE STATION TO YOU")
     print("=" * 60)
-    print(f"Your Location: {your_location['city']}, "
-          f"{your_location['country']}")
-    print(f"Your GPS: {your_location['latitude']: .4f}, "
-          f"{your_location['longitude']: .4f}")
+    print(f"Your Location: {your_location['city']}, " f"{your_location['country']}")
+    print(
+        f"Your GPS: {your_location['latitude']: .4f}, "
+        f"{your_location['longitude']: .4f}"
+    )
     print("-" * 60)
     print(f"🚲 Station: {station['name']}")
     print(f"📏 Distance: {station['distance_km']: .2f} km")
@@ -53,8 +53,9 @@ def display_closest_station(station, your_location):
     print(f"🅿️  Total Spaces: {station['total_spaces']}")
 
     availability = (
-        station['free_bikes'] / station['total_spaces'] * 100
-        if station['total_spaces'] > 0 else 0
+        station["free_bikes"] / station["total_spaces"] * 100
+        if station["total_spaces"] > 0
+        else 0
     )
     print(f"📊 Availability: {availability: .1f}%")
     print("=" * 60 + "\n")
@@ -70,27 +71,28 @@ def list_nearby_stations(your_latitude, your_longitude, radius_km=1.0):
     nearby = []
     for station in stations:
         distance = calculate_distance(
-            your_latitude,
-            your_longitude,
-            station["latitude"],
-            station["longitude"]
+            your_latitude, your_longitude, station["latitude"], station["longitude"]
         )
         if distance <= radius_km:
-            nearby.append({
-                "name": station["name"],
-                "distance_km": distance,
-                "free_bikes": station["free_bikes"],
-                "total_spaces": station["extra"]["slots"]
-            })
+            nearby.append(
+                {
+                    "name": station["name"],
+                    "distance_km": distance,
+                    "free_bikes": station["free_bikes"],
+                    "total_spaces": station["extra"]["slots"],
+                }
+            )
 
     nearby.sort(key=lambda x: x["distance_km"])
     print(f"\n📍 STATIONS WITHIN {radius_km} KM OF YOU\n")
     print(f"Found {len(nearby)} stations: \n")
 
     for i, station in enumerate(nearby, 1):
-        print(f"{i}. {station['name']: <45} | "
-              f"{station['distance_km']: .2f} km | "
-              f"Bikes: {station['free_bikes']: >2}")
+        print(
+            f"{i}. {station['name']: <45} | "
+            f"{station['distance_km']: .2f} km | "
+            f"Bikes: {station['free_bikes']: >2}"
+        )
 
     print()
     return nearby
@@ -122,7 +124,7 @@ def get_current_location():
         "latitude": data["lat"],
         "longitude": data["lon"],
         "city": data["city"],
-        "country": data["country"]
+        "country": data["country"],
     }
 
 
@@ -134,9 +136,10 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     delta_lat = math.radians(lat2 - lat1)
     delta_lon = math.radians(lon2 - lon1)
 
-    a = (math.sin(delta_lat / 2) ** 2
-         + math.cos(lat1_rad) * math.cos(lat2_rad)
-         * math.sin(delta_lon / 2) ** 2)
+    a = (
+        math.sin(delta_lat / 2) ** 2
+        + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon / 2) ** 2
+    )
     c = 2 * math.asin(math.sqrt(a))
     return R * c
 
@@ -182,9 +185,8 @@ def display_station_info(station):
     print(f"🚴 Bikes Available: {station['free_bikes']}")
     print(f"📭 Empty Spaces: {station['empty_slots']}")
 
-    total_spaces = station['extra']['slots']
-    availability = (station['free_bikes'] / total_spaces * 100
-                    if total_spaces > 0 else 0)
+    total_spaces = station["extra"]["slots"]
+    availability = station["free_bikes"] / total_spaces * 100 if total_spaces > 0 else 0
     print(f"📊 Availability: {availability: .1f}%")
     print("=" * 60 + "\n")
 
@@ -195,7 +197,7 @@ def display_station_info(station):
         "empty_spaces": station["empty_slots"],
         "availability_percent": round(availability, 1),
         "latitude": station["latitude"],
-        "longitude": station["longitude"]
+        "longitude": station["longitude"],
     }
 
 
@@ -208,21 +210,19 @@ if __name__ == "__main__":
 
     print("🌍 Getting your current location...\n")
     your_location = get_current_location()
-    print(f"📍 You are in: {your_location['city']}, "
-          f"{your_location['country']}")
-    print(f"   GPS: {your_location['latitude']: .4f}, "
-          f"{your_location['longitude']: .4f}\n")
+    print(f"📍 You are in: {your_location['city']}, " f"{your_location['country']}")
+    print(
+        f"   GPS: {your_location['latitude']: .4f}, "
+        f"{your_location['longitude']: .4f}\n"
+    )
 
     print("🔍 Finding closest bike station...\n")
     closest = find_closest_station(
-        your_location["latitude"],
-        your_location["longitude"]
+        your_location["latitude"], your_location["longitude"]
     )
     display_closest_station(closest, your_location)
 
     print("📍 Stations within 1km of you:\n")
     list_nearby_stations(
-        your_location["latitude"],
-        your_location["longitude"],
-        radius_km=5
+        your_location["latitude"], your_location["longitude"], radius_km=5
     )

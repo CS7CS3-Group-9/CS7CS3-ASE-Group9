@@ -81,10 +81,9 @@ def get_realtime_active_trips(route_id, routes_dict):
 
         next_stop = stop_updates[0]
 
-        rt_time = (
-            next_stop.get("arrival", {}).get("time")
-            or next_stop.get("departure", {}).get("time")
-        )
+        rt_time = next_stop.get("arrival", {}).get("time") or next_stop.get(
+            "departure", {}
+        ).get("time")
 
         if isinstance(rt_time, str):
             try:

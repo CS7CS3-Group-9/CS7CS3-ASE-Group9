@@ -1,5 +1,6 @@
 from flask import Flask, redirect, request
 
+
 def test_http_redirect_to_https():
     app = Flask(__name__)
 

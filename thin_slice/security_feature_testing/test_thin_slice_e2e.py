@@ -4,6 +4,7 @@ from flask import Flask, jsonify
 import requests
 import redis
 
+
 def create_app():
     app = Flask(__name__)
     app.secret_key = "testing"
@@ -28,6 +29,7 @@ def create_app():
 
     return app
 
+
 def test_thin_slice_e2e_flow(monkeypatch):
     app = create_app()
 
@@ -46,6 +48,7 @@ def test_thin_slice_e2e_flow(monkeypatch):
 
     # Mock Redis
     fake_redis = {}
+
     class FakeRedis:
         def get(self, k):
             value = fake_redis.get(k)
