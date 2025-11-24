@@ -3,12 +3,15 @@ Dublin Bus Route 39A Tracker
 Uses the GTFS-R API from https://developer.nationaltransport.ie/
 """
 
-import requests
+import csv
+import time
 from datetime import datetime
-import csv, time
+
+import requests
 
 API_KEY = "1fea1c21bef840e6bf0241e34a41e5d8"  # Replace with your key
 BASE_URL = "https://api.nationaltransport.ie/gtfsr/v2"
+
 
 # -------------------------------------------------------
 # 1. Get route_id from route_short_name
@@ -21,6 +24,7 @@ def get_route_id_from_short_name(short_name, routes_file="routes.txt"):
                 return row["route_id"]
     return None
 
+
 # -------------------------------------------------------
 # 2. Load routes and parse start/end
 # -------------------------------------------------------
@@ -31,16 +35,20 @@ def load_routes(routes_file="routes.txt"):
         for row in reader:
             route_id = row["route_id"]
             long_name = row.get("route_long_name", "")
+
             if " - " in long_name:
                 start, end = map(str.strip, long_name.split(" - ", 1))
             else:
                 start, end = long_name, long_name
+
             routes[route_id] = {
                 "short_name": row.get("route_short_name", ""),
                 "start": start,
-                "end": end
+                "end": end,
             }
+
     return routes
+
 
 # -------------------------------------------------------
 # 3. Fetch live buses
@@ -48,6 +56,7 @@ def load_routes(routes_file="routes.txt"):
 def get_realtime_active_trips(route_id, routes_dict):
     url = f"{BASE_URL}/TripUpdates?format=json"
     headers = {"x-api-key": API_KEY, "Accept": "application/json"}
+
     response = requests.get(url, headers=headers, timeout=10)
     response.raise_for_status()
     data = response.json()
@@ -72,16 +81,25 @@ def get_realtime_active_trips(route_id, routes_dict):
 
         next_stop = stop_updates[0]
 
-        rt_time = next_stop.get("arrival", {}).get("time") or next_stop.get("departure", {}).get("time")
+        rt_time = next_stop.get("arrival", {}).get("time") or next_stop.get(
+            "departure", {}
+        ).get("time")
+
         if isinstance(rt_time, str):
             try:
                 rt_time = int(rt_time)
             except ValueError:
                 continue
+
         if rt_time is None:
             continue
 
-        delay = next_stop.get("arrival", {}).get("delay") or next_stop.get("departure", {}).get("delay") or 0
+        delay = (
+            next_stop.get("arrival", {}).get("delay")
+            or next_stop.get("departure", {}).get("delay")
+            or 0
+        )
+
         minutes_due = max(0, (rt_time - now) // 60)
 
         if delay <= 60:
@@ -91,7 +109,6 @@ def get_realtime_active_trips(route_id, routes_dict):
         else:
             status = "Late"
 
-        # Determine destination using direction_id
         direction_id = trip.get("direction_id")
         if direction_id == 0:
             destination = f"{start} → {end}"
@@ -100,16 +117,19 @@ def get_realtime_active_trips(route_id, routes_dict):
         else:
             destination = "Unknown"
 
-        active.append({
-            "route": route_id,
-            "destination": destination,
-            "rt_time": rt_time,
-            "minutes_due": int(minutes_due),
-            "delay": delay,
-            "status": status
-        })
+        active.append(
+            {
+                "route": route_id,
+                "destination": destination,
+                "rt_time": rt_time,
+                "minutes_due": int(minutes_due),
+                "delay": delay,
+                "status": status,
+            }
+        )
 
     return active
+
 
 # -------------------------------------------------------
 # 4. Display bus arrivals
@@ -125,13 +145,19 @@ def display_bus_arrivals(route_short, buses):
         return
 
     for i, b in enumerate(buses, start=1):
-        icon = "✓" if b["status"] == "On Time" else ("⚠️" if "Slight" in b["status"] else "❌")
-        print(f"{i}.{route_short} → {b['destination']}")
+        icon = (
+            "✓"
+            if b["status"] == "On Time"
+            else ("⚠️" if "Slight" in b["status"] else "❌")
+        )
+
+        print(f"{i}. {route_short} → {b['destination']}")
         print(f"   Status: {icon} {b['status']}")
         print(f"   Due in: {b['minutes_due']} min")
         print(f"   Delay: {b['delay']} seconds\n")
 
     print("=" * 80 + "\n")
+
 
 # -------------------------------------------------------
 # 5. On-time performance analysis
@@ -147,23 +173,36 @@ def display_on_time_analysis(route_short, buses):
     late = sum(1 for b in buses if "Late" in b["status"])
 
     on_time_pct = (on_time / total) * 100
+    slight_pct = (slight / total) * 100
+    late_pct = (late / total) * 100
 
     print("\n" + "=" * 80)
     print(f"📊 ROUTE {route_short} — LIVE ON-TIME ANALYSIS")
     print("=" * 80)
     print(f"Total buses tracked: {total}")
-    print(f"✓ On Time: {on_time} buses ({on_time_pct:.1f}%)")
-    print(f"⚠️  Slight Delay: {slight} buses ({slight/total*100:.1f}%)")
-    print(f"❌ Late: {late} buses ({late/total*100:.1f}%)\n")
+    print(f"✓ On Time: {on_time} buses ({on_time_pct: .1f}%)")
+    print(f"⚠️  Slight Delay: {slight} buses ({slight_pct: .1f}%)")
+    print(f"❌ Late: {late} buses ({late_pct: .1f}%)\n")
 
     if on_time_pct >= 80:
-        print(f"✓ GOOD - Route {route_short} is running well ({on_time_pct:.1f}% on-time)")
+        msg = (
+            f"✓ GOOD - Route {route_short} is running well "
+            f"({on_time_pct: .1f}% on-time)"
+        )
     elif on_time_pct >= 60:
-        print(f"⚠️ FAIR - Route {route_short} has some delays ({on_time_pct:.1f}% on-time)")
+        msg = (
+            f"⚠️ FAIR - Route {route_short} has some delays "
+            f"({on_time_pct: .1f}% on-time)"
+        )
     else:
-        print(f"❌ POOR - Route {route_short} has significant delays ({on_time_pct:.1f}% on-time)")
+        msg = (
+            f"❌ POOR - Route {route_short} has significant delays "
+            f"({on_time_pct: .1f}% on-time)"
+        )
 
+    print(msg)
     print("=" * 80 + "\n")
+
 
 # -------------------------------------------------------
 # MAIN
