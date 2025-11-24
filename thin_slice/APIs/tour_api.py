@@ -6,8 +6,7 @@ def get_current_location():
     """Detect your current location automatically."""
     try:
         response = requests.get(
-            "http://ip-api.com/json/?fields=status,lat,lon,"
-            "city,country,isp,mobile"
+            "http://ip-api.com/json/?fields=status,lat,lon," "city,country,isp,mobile"
         )
         data = response.json()
 
@@ -16,7 +15,7 @@ def get_current_location():
                 "latitude": data["lat"],
                 "longitude": data["lon"],
                 "city": data["city"],
-                "country": data["country"]
+                "country": data["country"],
             }
     except Exception as e:
         print(f"❌ Error getting location: {e}")
@@ -26,7 +25,7 @@ def get_current_location():
         "latitude": 53.3498,
         "longitude": -6.2603,
         "city": "Dublin",
-        "country": "Ireland"
+        "country": "Ireland",
     }
 
 
@@ -39,9 +38,10 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     delta_lat = math.radians(lat2 - lat1)
     delta_lon = math.radians(lon2 - lon1)
 
-    a = (math.sin(delta_lat / 2) ** 2
-         + math.cos(lat1_rad) * math.cos(lat2_rad)
-         * math.sin(delta_lon / 2) ** 2)
+    a = (
+        math.sin(delta_lat / 2) ** 2
+        + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon / 2) ** 2
+    )
     c = 2 * math.asin(math.sqrt(a))
 
     return R * c
@@ -60,7 +60,7 @@ def get_tours_from_api(latitude, longitude):
             "radius": 5000,  # 5km radius
             "lon": longitude,
             "lat": latitude,
-            "limit": 10
+            "limit": 10,
         }
 
         response = requests.get(url, params=params)
@@ -74,20 +74,22 @@ def get_tours_from_api(latitude, longitude):
             geom = attraction.get("geometry", {})
             coords = geom.get("coordinates", [0, 0])
 
-            distance = calculate_distance(latitude, longitude,
-                                          coords[1], coords[0])
+            distance = calculate_distance(latitude, longitude, coords[1], coords[0])
 
-            tours.append({
-                "name": props.get("name", "Unknown"),
-                "type": (
-                    props.get("kinds", "").split(",")[0]
-                    if props.get("kinds") else "Attraction"
-                ),
-                "latitude": coords[1],
-                "longitude": coords[0],
-                "distance_km": round(distance, 2),
-                "price": "Check on-site"
-            })
+            tours.append(
+                {
+                    "name": props.get("name", "Unknown"),
+                    "type": (
+                        props.get("kinds", "").split(",")[0]
+                        if props.get("kinds")
+                        else "Attraction"
+                    ),
+                    "latitude": coords[1],
+                    "longitude": coords[0],
+                    "distance_km": round(distance, 2),
+                    "price": "Check on-site",
+                }
+            )
 
         return tours
 
@@ -108,7 +110,7 @@ def get_sample_tours(latitude, longitude):
             "latitude": 53.3415,
             "longitude": -6.2775,
             "price": "€20.50",
-            "duration": "2 hours"
+            "duration": "2 hours",
         },
         {
             "name": "Dublin Historical Walking Tour",
@@ -116,7 +118,7 @@ def get_sample_tours(latitude, longitude):
             "latitude": 53.3441,
             "longitude": -6.2635,
             "price": "€15.00",
-            "duration": "2.5 hours"
+            "duration": "2.5 hours",
         },
         {
             "name": "Temple Bar Food Tour",
@@ -124,7 +126,7 @@ def get_sample_tours(latitude, longitude):
             "latitude": 53.3438,
             "longitude": -6.2800,
             "price": "€45.00",
-            "duration": "3 hours"
+            "duration": "3 hours",
         },
         {
             "name": "Cliffs of Moher Day Trip",
@@ -132,7 +134,7 @@ def get_sample_tours(latitude, longitude):
             "latitude": 52.9736,
             "longitude": -9.7477,
             "price": "€55.00",
-            "duration": "9 hours"
+            "duration": "9 hours",
         },
         {
             "name": "Trinity College & Book of Kells Tour",
@@ -140,7 +142,7 @@ def get_sample_tours(latitude, longitude):
             "latitude": 53.3434,
             "longitude": -6.2575,
             "price": "€18.50",
-            "duration": "1.5 hours"
+            "duration": "1.5 hours",
         },
         {
             "name": "Dublin Pub Crawl",
@@ -148,14 +150,14 @@ def get_sample_tours(latitude, longitude):
             "latitude": 53.3498,
             "longitude": -6.2603,
             "price": "€12.00",
-            "duration": "3 hours"
-        }
+            "duration": "3 hours",
+        },
     ]
 
     for tour in sample_tours:
         distance = calculate_distance(
-            latitude, longitude,
-            tour["latitude"], tour["longitude"])
+            latitude, longitude, tour["latitude"], tour["longitude"]
+        )
         tour["distance_km"] = round(distance, 2)
 
     return sample_tours
@@ -177,10 +179,11 @@ def display_tours(your_location, tours, radius_km=2.0):
     print("\n" + "=" * 80)
     print(f"🎫 TOURS WITHIN {radius_km} KM OF {your_location['city'].upper()}")
     print("=" * 80)
-    print(f"Your Location: {your_location['city']}, "
-          f"{your_location['country']}")
-    print(f"GPS: {your_location['latitude']: .4f}, "
-          f"{your_location['longitude']: .4f}\n")
+    print(f"Your Location: {your_location['city']}, " f"{your_location['country']}")
+    print(
+        f"GPS: {your_location['latitude']: .4f}, "
+        f"{your_location['longitude']: .4f}\n"
+    )
 
     if not nearby_tours:
         print(f"❌ No tours found within {radius_km} km")
@@ -188,8 +191,7 @@ def display_tours(your_location, tours, radius_km=2.0):
         print("=" * 80 + "\n")
         return
 
-    print(f"✓ Found {len(nearby_tours)} tour(s)"
-          f" within {radius_km} km: \n")
+    print(f"✓ Found {len(nearby_tours)} tour(s)" f" within {radius_km} km: \n")
     tours_sorted = sorted(nearby_tours, key=lambda x: x["distance_km"])
 
     for i, tour in enumerate(tours_sorted, 1):
@@ -217,10 +219,11 @@ def display_closest_tour(your_location, tours):
     print("\n" + "=" * 80)
     print("🎫 CLOSEST TOUR TO YOU")
     print("=" * 80)
-    print(f"Your Location: {your_location['city']}, "
-          f"{your_location['country']}")
-    print(f"Your GPS: {your_location['latitude']: .4f}, "
-          f"{your_location['longitude']: .4f}")
+    print(f"Your Location: {your_location['city']}, " f"{your_location['country']}")
+    print(
+        f"Your GPS: {your_location['latitude']: .4f}, "
+        f"{your_location['longitude']: .4f}"
+    )
     print("-" * 80)
     print(f"Tour Name: {closest['name']}")
     print(f"Type: {closest.get('type', 'N/A')}")
@@ -241,13 +244,12 @@ if __name__ == "__main__":
 
     your_location = get_current_location()
     print(f"📍 Location: {your_location['city']}, {your_location['country']}")
-    print(f"   GPS: {your_location['latitude']: .4f}, "
-          f"{your_location['longitude']: .4f}\n")
-
-    tours = get_sample_tours(
-        your_location["latitude"],
-        your_location["longitude"]
+    print(
+        f"   GPS: {your_location['latitude']: .4f}, "
+        f"{your_location['longitude']: .4f}\n"
     )
+
+    tours = get_sample_tours(your_location["latitude"], your_location["longitude"])
 
     display_closest_tour(your_location, tours)
 

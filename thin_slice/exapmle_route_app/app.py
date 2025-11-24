@@ -37,12 +37,18 @@ def get_route_from_google(origin, destination, travel_mode="DRIVE"):
     headers = {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": API_KEY,
-        "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline"
+        "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
     }
     payload = {
-        "origin": {"location": {"latLng": {"latitude": origin[0], "longitude": origin[1]}}},
-        "destination": {"location": {"latLng": {"latitude": destination[0], "longitude": destination[1]}}},
-        "travelMode": travel_mode
+        "origin": {
+            "location": {"latLng": {"latitude": origin[0], "longitude": origin[1]}}
+        },
+        "destination": {
+            "location": {
+                "latLng": {"latitude": destination[0], "longitude": destination[1]}
+            }
+        },
+        "travelMode": travel_mode,
     }
     resp = requests.post(url, headers=headers, json=payload)
     # Debug prints (helpful while developing)
@@ -64,7 +70,9 @@ def plot_route(origin, destination, encoded_polyline, out_path="route_map.html")
     m = folium.Map(location=midpoint, zoom_start=8)
     folium.PolyLine(route_points, weight=4, opacity=0.8).add_to(m)
     folium.Marker(origin, tooltip="Origin", icon=folium.Icon(color="green")).add_to(m)
-    folium.Marker(destination, tooltip="Destination", icon=folium.Icon(color="red")).add_to(m)
+    folium.Marker(
+        destination, tooltip="Destination", icon=folium.Icon(color="red")
+    ).add_to(m)
     m.save(out_path)
 
 
@@ -85,17 +93,27 @@ def parse_input(value):
     return geocode_address(value)
 
 
-def save_route_record(origin_input, destination_input, origin_coord, destination_coord, distance_m, duration):
+def save_route_record(
+    origin_input,
+    destination_input,
+    origin_coord,
+    destination_coord,
+    distance_m,
+    duration,
+):
     """Save the route request details to Firestore."""
     try:
         doc = {
             "origin_input": origin_input,
             "destination_input": destination_input,
             "origin_coord": {"lat": origin_coord[0], "lng": origin_coord[1]},
-            "destination_coord": {"lat": destination_coord[0], "lng": destination_coord[1]},
+            "destination_coord": {
+                "lat": destination_coord[0],
+                "lng": destination_coord[1],
+            },
             "distance_m": distance_m,
             "duration": duration,
-            "timestamp": datetime.datetime.utcnow().isoformat()
+            "timestamp": datetime.datetime.utcnow().isoformat(),
         }
         ref = db.collection(FIRESTORE_COLLECTION).add(doc)
         print("Saved route to Firestore, id:", ref[1].id if len(ref) > 1 else ref)
@@ -157,15 +175,20 @@ def get_route_endpoint():
 
         # Save to Firestore (best-effort)
         try:
-            save_route_record(origin_input, destination_input, origin_coord, destination_coord, distance_m, duration)
+            save_route_record(
+                origin_input,
+                destination_input,
+                origin_coord,
+                destination_coord,
+                distance_m,
+                duration,
+            )
         except Exception as e:
             print("Firestore save failed:", e)
 
-        return jsonify({
-            "distance_m": distance_m,
-            "duration": duration,
-            "map_url": "/route_map"
-        })
+        return jsonify(
+            {"distance_m": distance_m, "duration": duration, "map_url": "/route_map"}
+        )
     except requests.HTTPError as e:
         return jsonify({"error": "Upstream HTTP error", "details": str(e)}), 502
     except Exception as e:
@@ -195,5 +218,7 @@ def history_endpoint():
 
 if __name__ == "__main__":
     # Helpful startup info
-    print("Starting app. Make sure GOOGLE_API_KEY and GOOGLE_APPLICATION_CREDENTIALS are set.")
+    print(
+        "Starting app. Make sure GOOGLE_API_KEY and GOOGLE_APPLICATION_CREDENTIALS are set."
+    )
     app.run(host="0.0.0.0", port=5000, debug=True)

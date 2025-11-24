@@ -2,11 +2,13 @@ import pytest
 from flask import Flask
 from flask_login import login_user, LoginManager, UserMixin, current_user
 
+
 # ---- Example user model ----
 class User(UserMixin):
     def __init__(self, id, role):
         self.id = id
         self.role = role
+
 
 # ---- Flask app fixture ----
 @pytest.fixture
@@ -31,6 +33,7 @@ def app():
 
     return app
 
+
 # ---- Thin-slice RBAC tests ----
 @pytest.mark.parametrize(
     "user_id, role, expected_status",
@@ -39,7 +42,7 @@ def app():
         ("u2", "editor", 403),
         ("u3", "viewer", 403),
         ("u4", "admin", 200),
-    ]
+    ],
 )
 def test_rbac_various_roles(app, user_id, role, expected_status):
     with app.test_request_context():

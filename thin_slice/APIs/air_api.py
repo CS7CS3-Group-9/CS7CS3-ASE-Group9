@@ -70,8 +70,7 @@ def display_air_quality(location, air_data):
     print(f"🌍 AIR QUALITY & EMISSIONS DATA - {location['city'].upper()}")
     print("=" * 80)
     print(
-        f"📍 Location: {location['latitude']: .4f}, "
-        f"{location['longitude']: .4f}\n"
+        f"📍 Location: {location['latitude']: .4f}, " f"{location['longitude']: .4f}\n"
     )
 
     # AQI
@@ -142,10 +141,7 @@ if __name__ == "__main__":
     location = get_current_location()
 
     print(f"📍 Location: {location['city']}")
-    print(
-        f"   GPS: {location['latitude']: .4f}, "
-        f"{location['longitude']: .4f}\n"
-    )
+    print(f"   GPS: {location['latitude']: .4f}, " f"{location['longitude']: .4f}\n")
 
     air_data = get_air_quality(
         location["latitude"],
