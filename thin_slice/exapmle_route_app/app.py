@@ -8,7 +8,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 
 # ---- CONFIG ----
-API_KEY = os.environ.get("GOOGLE_API_KEY", "YOUR_API_KEY_HERE")
+API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "YOUR_API_KEY_HERE")
 FIRESTORE_COLLECTION = "routes"
 # ----------------
 
