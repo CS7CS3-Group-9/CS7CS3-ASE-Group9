@@ -1,0 +1,39 @@
+steps:
+  # 1. Build Docker image
+  - name: gcr.io/cloud-builders/docker
+    args:
+      [
+        "build",
+        "-t",
+        "europe-west1-docker.pkg.dev/ase-city-management/route-app-repo/route-app:latest",
+        "-f",
+        "thinslice/example_route_app/Dockerfile",
+        "."
+      ]
+
+  # 2. Push to Artifact Registry
+  - name: gcr.io/cloud-builders/docker
+    args:
+      [
+        "push",
+        "europe-west1-docker.pkg.dev/ase-city-management/route-app-repo/route-app:latest"
+      ]
+
+  # 3. Deploy to Cloud Run
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      [
+        "run", "deploy", "route-app",
+        "--image=europe-west1-docker.pkg.dev/ase-city-management/route-app-repo/route-app:latest",
+        "--region=europe-west1",
+        "--platform=managed",
+        "--allow-unauthenticated",
+        "--set-env-vars", "GOOGLE_MAPS_API_KEY=$_GOOGLE_MAPS_API_KEY"
+      ]
+
+images:
+  - "europe-west1-docker.pkg.dev/ase-city-management/route-app-repo/route-app:latest"
+
+options:
+  machineType: "E2_HIGHCPU_8"
