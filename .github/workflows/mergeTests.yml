@@ -21,7 +21,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install pytest
-        cd thin_slice/exapmle_route_app
+        cd thin_slice/example_route_app
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     
     - name: Run syntax tests

@@ -7,8 +7,8 @@ steps:
         "-t",
         "europe-west1-docker.pkg.dev/ase-city-management/route-app-repo/route-app:latest",
         "-f",
-        "thinslice/example_route_app/Dockerfile",
-        "."
+        "thin_slice/example_route_app/Dockerfile",
+        "thin_slice/example_route_app/"
       ]
 
   # 2. Push to Artifact Registry
@@ -29,11 +29,12 @@ steps:
         "--region=europe-west1",
         "--platform=managed",
         "--allow-unauthenticated",
-        "--set-env-vars", "GOOGLE_MAPS_API_KEY=$_GOOGLE_MAPS_API_KEY"
+        "--update-secrets", "GOOGLE_MAPS_API_KEY=maps-api-key:latest"
       ]
 
 images:
   - "europe-west1-docker.pkg.dev/ase-city-management/route-app-repo/route-app:latest"
 
 options:
-  machineType: "E2_HIGHCPU_8"
+  machineType: "E2_MEDIUM"
+  logging: CLOUD_LOGGING_ONLY
