@@ -136,23 +136,17 @@ def get_realtime_active_trips(route_id, routes_dict):
 # -------------------------------------------------------
 def display_bus_arrivals(route_short, buses):
     print("\n" + "=" * 80)
-    print(f"🚌 LIVE BUSES — ROUTE {route_short}")
+    print(f"LIVE BUSES — ROUTE {route_short}")
     print("=" * 80)
     print(f"Current Time: {datetime.now().strftime('%H:%M:%S')}\n")
 
     if not buses:
-        print("❌ No live buses found")
+        print("No live buses found")
         return
 
     for i, b in enumerate(buses, start=1):
-        icon = (
-            "✓"
-            if b["status"] == "On Time"
-            else ("⚠️" if "Slight" in b["status"] else "❌")
-        )
-
         print(f"{i}. {route_short} → {b['destination']}")
-        print(f"   Status: {icon} {b['status']}")
+        print(f"   Status: {b['status']}")
         print(f"   Due in: {b['minutes_due']} min")
         print(f"   Delay: {b['delay']} seconds\n")
 
@@ -164,7 +158,7 @@ def display_bus_arrivals(route_short, buses):
 # -------------------------------------------------------
 def display_on_time_analysis(route_short, buses):
     if not buses:
-        print("❌ No buses to analyze")
+        print("No buses to analyze")
         return
 
     total = len(buses)
@@ -177,26 +171,26 @@ def display_on_time_analysis(route_short, buses):
     late_pct = (late / total) * 100
 
     print("\n" + "=" * 80)
-    print(f"📊 ROUTE {route_short} — LIVE ON-TIME ANALYSIS")
+    print(f"ROUTE {route_short} — LIVE ON-TIME ANALYSIS")
     print("=" * 80)
     print(f"Total buses tracked: {total}")
-    print(f"✓ On Time: {on_time} buses ({on_time_pct: .1f}%)")
-    print(f"⚠️  Slight Delay: {slight} buses ({slight_pct: .1f}%)")
-    print(f"❌ Late: {late} buses ({late_pct: .1f}%)\n")
+    print(f"On Time: {on_time} buses ({on_time_pct: .1f}%)")
+    print(f"Slight Delay: {slight} buses ({slight_pct: .1f}%)")
+    print(f"Late: {late} buses ({late_pct: .1f}%)\n")
 
     if on_time_pct >= 80:
         msg = (
-            f"✓ GOOD - Route {route_short} is running well "
+            f"GOOD - Route {route_short} is running well "
             f"({on_time_pct: .1f}% on-time)"
         )
     elif on_time_pct >= 60:
         msg = (
-            f"⚠️ FAIR - Route {route_short} has some delays "
+            f"FAIR - Route {route_short} has some delays "
             f"({on_time_pct: .1f}% on-time)"
         )
     else:
         msg = (
-            f"❌ POOR - Route {route_short} has significant delays "
+            f"POOR - Route {route_short} has significant delays "
             f"({on_time_pct: .1f}% on-time)"
         )
 
@@ -208,21 +202,21 @@ def display_on_time_analysis(route_short, buses):
 # MAIN
 # -------------------------------------------------------
 if __name__ == "__main__":
-    route_short = "39A"
+    route_short = "G2"
 
-    print("\n🔍 Loading route_id from routes.txt...\n")
+    print("\nLoading route_id from routes.txt...\n")
     route_id = get_route_id_from_short_name(route_short)
 
     if not route_id:
-        print(f"❌ Could not find GTFS route_id for route {route_short}")
+        print(f"Could not find GTFS route_id for route {route_short}")
         exit()
 
-    print(f"✓ Route {route_short} maps to GTFS route_id: {route_id}\n")
+    print(f"Route {route_short} maps to GTFS route_id: {route_id}\n")
 
-    print("🔍 Loading routes and parsing directions...\n")
+    print("Loading routes and parsing directions...\n")
     routes_dict = load_routes("routes.txt")
 
-    print("📡 Fetching real-time bus updates...\n")
+    print("Fetching real-time bus updates...\n")
 
     try:
         buses = get_realtime_active_trips(route_id, routes_dict)
@@ -231,4 +225,4 @@ if __name__ == "__main__":
         display_on_time_analysis(route_short, buses)
 
     except Exception as e:
-        print(f"❌ Error fetching data: {e}")
+        print(f"Error fetching data: {e}")
