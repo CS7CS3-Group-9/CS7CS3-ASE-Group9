@@ -1,0 +1,1 @@
+# Moving averages, spikes
