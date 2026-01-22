@@ -18,11 +18,12 @@ class SnapshotService:
         for adapter in self.adapters:
             try:
                 partial = adapter.fetch(location)
-                self.merge(snapshot, partial)
+                self._merge(snapshot, partial)
+                snapshot.source_status[adapter.source_name()] = "live"
             except Exception:
                 snapshot.source_status[adapter.source_name()] = "failed"
 
-            return snapshot
+        return snapshot
 
     def _merge(self, snapshot, partial_snapshot):
         """Merge partial snapshot into full snapshot"""
