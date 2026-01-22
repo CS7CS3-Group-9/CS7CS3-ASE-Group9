@@ -1,1 +1,2 @@
 # api endpoints
+GET / snapshot
