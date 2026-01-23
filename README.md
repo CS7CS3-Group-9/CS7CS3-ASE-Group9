@@ -22,3 +22,61 @@ This is the README for group 9's project on sustainable city management :)
 - Resolve any comments before merging the PR
 - If it is a large potentially breaking change, request more than 1 reviewer
 - TODO: Create a PR template
+
+
+### One-Time Developer Setup (Pre-Commit, Black, Pycodestyle)
+Before contributing to this project, each developer must complete a one-time setup to enable automatic code formatting and PEP8 validation.
+
+This ensures that all code in the repository is:
+
+Consistently formatted (Black)
+
+PEP8-compliant (pycodestyle)
+
+Checked automatically before every commit
+
+📌 1. Install required tools
+Install pre-commit and pycodestyle into your Python environment:
+
+python -m pip install pre-commit pycodestyle
+(Using python -m ensures installation into the correct interpreter.)
+
+📌 2. Install the pre-commit hook
+Run this in the root of the repository:
+
+python -m pre_commit install
+This creates a Git hook at:
+
+
+.git/hooks/pre-commit
+Git will now run automatic checks before every commit.
+
+📌 3. Test it
+Make a small change to any .py file, then commit:
+
+
+git add .
+git commit -m "test commit"
+Expected behavior:
+
+Black will auto-format your code
+(If formatting changes are applied, the commit will be blocked; simply stage the changes and commit again.)
+
+pycodestyle will run a PEP8 compliance check
+
+If both checks pass, the commit succeeds
+
+✔️ What the hook does automatically
+Every time you commit, it will:
+
+1. Run Black
+Auto-formats your Python code
+
+Ensures consistent style across the project
+
+If changes were made → commit is stopped → you must stage the modifications and commit again
+
+2. Run pycodestyle
+Validates PEP8 compliance
+
+Blocks commit if violations are detected
