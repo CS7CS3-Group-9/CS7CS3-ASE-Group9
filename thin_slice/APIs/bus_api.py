@@ -81,9 +81,7 @@ def get_realtime_active_trips(route_id, routes_dict):
 
         next_stop = stop_updates[0]
 
-        rt_time = next_stop.get("arrival", {}).get("time") or next_stop.get(
-            "departure", {}
-        ).get("time")
+        rt_time = next_stop.get("arrival", {}).get("time") or next_stop.get("departure", {}).get("time")
 
         if isinstance(rt_time, str):
             try:
@@ -94,11 +92,7 @@ def get_realtime_active_trips(route_id, routes_dict):
         if rt_time is None:
             continue
 
-        delay = (
-            next_stop.get("arrival", {}).get("delay")
-            or next_stop.get("departure", {}).get("delay")
-            or 0
-        )
+        delay = next_stop.get("arrival", {}).get("delay") or next_stop.get("departure", {}).get("delay") or 0
 
         minutes_due = max(0, (rt_time - now) // 60)
 
@@ -131,6 +125,59 @@ def get_realtime_active_trips(route_id, routes_dict):
     return active
 
 
+def get_realtime_active_vehicles(route_id, routes_dict):
+    url = f"{BASE_URL}/Vehicles?format=json"
+    headers = {"x-api-key": API_KEY, "Accept": "application/json"}
+
+    response = requests.get(url, headers=headers, timeout=10)
+    response.raise_for_status()
+    data = response.json()
+
+    active = []
+
+    route_info = routes_dict.get(route_id, {})
+    start = route_info.get("start", "Unknown")
+    end = route_info.get("end", "Unknown")
+
+    for entity in data.get("entity", []):
+        vehicle = entity.get("vehicle")
+        if not vehicle:
+            continue
+
+        trip = vehicle.get("trip", {})
+        position = vehicle.get("position", {})
+
+        if trip.get("route_id") != route_id:
+            continue
+
+        lat = position.get("latitude")
+        lon = position.get("longitude")
+
+        if lat is None or lon is None:
+            continue
+
+        direction_id = trip.get("direction_id")
+        if direction_id == 0:
+            direction = f"{start} → {end}"
+        elif direction_id == 1:
+            direction = f"{end} → {start}"
+        else:
+            direction = "Unknown"
+
+        active.append(
+            {
+                "route_id": route_id,
+                "trip_id": trip.get("trip_id"),
+                "vehicle_id": vehicle.get("vehicle", {}).get("id"),
+                "latitude": lat,
+                "longitude": lon,
+                "direction": direction,
+            }
+        )
+
+    return active
+
+
 # -------------------------------------------------------
 # 4. Display bus arrivals
 # -------------------------------------------------------
@@ -151,6 +198,21 @@ def display_bus_arrivals(route_short, buses):
         print(f"   Delay: {b['delay']} seconds\n")
 
     print("=" * 80 + "\n")
+
+
+def display_live_vehicles(route_short, vehicles):
+    print("\n" + "=" * 80)
+    print(f"LIVE VEHICLES — ROUTE {route_short}")
+    print("=" * 80)
+
+    if not vehicles:
+        print("No live vehicles found")
+        return
+
+    for i, v in enumerate(vehicles, start=1):
+        print(f"{i}. Bus {v['vehicle_id']} ({route_short})")
+        print(f"   Direction: {v['direction']}")
+        print(f"   Location: {v['latitude']: .6f}, {v['longitude']: .6f}")
 
 
 # -------------------------------------------------------
@@ -179,20 +241,11 @@ def display_on_time_analysis(route_short, buses):
     print(f"Late: {late} buses ({late_pct: .1f}%)\n")
 
     if on_time_pct >= 80:
-        msg = (
-            f"GOOD - Route {route_short} is running well "
-            f"({on_time_pct: .1f}% on-time)"
-        )
+        msg = f"GOOD - Route {route_short} is running well " f"({on_time_pct: .1f}% on-time)"
     elif on_time_pct >= 60:
-        msg = (
-            f"FAIR - Route {route_short} has some delays "
-            f"({on_time_pct: .1f}% on-time)"
-        )
+        msg = f"FAIR - Route {route_short} has some delays " f"({on_time_pct: .1f}% on-time)"
     else:
-        msg = (
-            f"POOR - Route {route_short} has significant delays "
-            f"({on_time_pct: .1f}% on-time)"
-        )
+        msg = f"POOR - Route {route_short} has significant delays " f"({on_time_pct: .1f}% on-time)"
 
     print(msg)
     print("=" * 80 + "\n")
@@ -226,3 +279,12 @@ if __name__ == "__main__":
 
     except Exception as e:
         print(f"Error fetching data: {e}")
+
+    print("Fetching live vehicle positions\n")
+
+    try:
+        vehicles = get_realtime_active_vehicles(route_id, routes_dict)
+        display_live_vehicles(route_short, vehicles)
+
+    except Exception as e:
+        print(f"Error fetching vehical data {e}")
