@@ -10,7 +10,10 @@ class MobilitySnapshot:
         bikes=None,
         buses=None,
         traffic=None,
-        events=None,
+        airquality=None,
+        population=None,
+        alerts=None,
+        recommendations=None,
         source_status=None,
     ):
         self.timestamp = timestamp
@@ -18,5 +21,8 @@ class MobilitySnapshot:
         self.bikes = bikes
         self.buses = buses
         self.traffic = traffic
-        self.events = events
+        self.airquality = airquality
+        self.population = population
+        self.alerts = alerts
+        self.recommendations = recommendations
         self.source_status = source_status or {}
