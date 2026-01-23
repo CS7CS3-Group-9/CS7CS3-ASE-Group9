@@ -3,7 +3,7 @@ import json
 import requests
 
 # ---- CONFIG ----
-API_KEY = "AIzaSyB0NyaxFeJf26YUQBz9nKakijCRAisxRiw"
+API_KEY = "apiKey"
 # ----------------
 
 

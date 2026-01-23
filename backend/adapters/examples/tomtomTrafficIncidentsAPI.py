@@ -2,7 +2,7 @@ import json
 import requests
 
 # ---- CONFIG ----
-API_KEY = "hkRIaqbdLM2w5sujd4yq4CwPfWjoJupg"  # Get free key at https://developer.tomtom.com
+API_KEY = "apiKey"  # Get free key at https://developer.tomtom.com
 # ----------------
 
 

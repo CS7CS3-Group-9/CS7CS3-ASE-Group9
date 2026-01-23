@@ -4,7 +4,7 @@ import requests
 from itertools import permutations
 
 # ---- CONFIG ----
-API_KEY = "AIzaSyB0NyaxFeJf26YUQBz9nKakijCRAisxRiw"  # Replace with your actual key
+API_KEY = "apiKey"  # Replace with your actual key
 # ----------------
 
 
