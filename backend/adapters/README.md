@@ -1,0 +1,1 @@
+This directory is reponsible for handling how we interface with APIs, handle HTTP outbound traffic and normalise data into the models.
