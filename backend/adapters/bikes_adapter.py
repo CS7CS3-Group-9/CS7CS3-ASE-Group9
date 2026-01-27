@@ -2,6 +2,7 @@ import requests
 from datetime import datetime
 from backend.adapters.base_adapter import DataAdapter
 from backend.models.mobility_snapshot import MobilitySnapshot
+from backend.adapters.base_adapter import DataAdapter
 from backend.models.bike_models import StationMetrics, BikeMetrics
 
 class BikesAdapter(DataAdapter):
