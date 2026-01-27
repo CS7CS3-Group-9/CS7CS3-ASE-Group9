@@ -1,10 +1,10 @@
 import requests
 from datetime import datetime
-from backend.adapters.base_adapter import DataAdapter  # Changed from BaseAdapter
+from backend.adapters.base_adapter import DataAdapter
 from backend.models.mobility_snapshot import MobilitySnapshot
 from backend.models.bike_models import StationMetrics, BikeMetrics
 
-class BikesAdapter(DataAdapter):  # Changed from BaseAdapter
+class BikesAdapter(DataAdapter):
 
     def source_name(self) -> str:
         return "bikes"
