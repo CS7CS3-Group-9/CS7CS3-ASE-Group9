@@ -24,11 +24,11 @@ jobs:
         cd thin_slice/example_route_app
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     
-    - name: Run syntax tests
+    - name: Run syntax tests & Run PEP8 Compliance tests
       run: |
         pytest tests/ -v
 
-    - name: Run PEP8 Compliance tests
-      run: |
-        pytest tests/ -v
+    - name: Run adapter tests
+      run: | 
+        pytest backend/adapters/ -v
 
