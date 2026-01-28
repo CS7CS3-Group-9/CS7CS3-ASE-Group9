@@ -33,9 +33,4 @@ class BikesAdapter(DataAdapter):
             stations_reporting=len(stations)
         )
 
-        return MobilitySnapshot(
-            timestamp=datetime.utcnow(),
-            location=location,
-            bikes=metrics,
-            source_status={self.source_name(): "live"}
-        )
+        return MobilitySnapshot(timestamp=datetime.utcnow(), location=location, bikes=metrics)
