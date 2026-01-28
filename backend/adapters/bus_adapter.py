@@ -1,5 +1,6 @@
 import requests
 from datetime import datetime
+import time
 from backend.models.mobility_snapshot import MobilitySnapshot
 from backend.adapters.base_adapter import DataAdapter
 from backend.models.bus_models import BusRouteMetrics, BusSystemMetrics
@@ -15,14 +16,18 @@ class BusAdapter(DataAdapter):
         """
 
         # Example endpoint (replace with real one later)
-        url = "https://api.nationaltransport.ie/gtfsr/v2"
+        url = "https://api.nationaltransport.ie/gtfsr/v2/TripUpdates?format=json"
+        headers = {"x-api-key": API_KEY, "Accept": "application/json"}
 
-        response = requests.get(url, timeout=5)
+        response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         data = response.json()
 
         # ---- Route-level (static-ish) metrics ----
+        now = int(time.time())
+        active = []
         routes = []
+
         for route in data.get("routes", []):
             routes.append(
                 BusRouteMetrics(
