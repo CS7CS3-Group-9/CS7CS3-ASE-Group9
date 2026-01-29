@@ -12,6 +12,7 @@ class MobilitySnapshot:
         traffic=None,
         airquality=None,
         population=None,
+        tours=None,
         alerts=None,
         recommendations=None,
         source_status=None,
@@ -23,6 +24,7 @@ class MobilitySnapshot:
         self.traffic = traffic
         self.airquality = airquality
         self.population = population
+        self.tours = tours
         self.alerts = alerts
         self.recommendations = recommendations
         self.source_status = source_status or {}

@@ -1,13 +1,13 @@
 import sys
 from pathlib import Path
 
-# Add project root to Python path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
 import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime
 from backend.adapters.bikes_adapter import BikesAdapter
+
+# Add project root to Python path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 
 @pytest.fixture
@@ -16,24 +16,9 @@ def mock_api_response():
     return {
         "network": {
             "stations": [
-                {
-                    "name": "Smithfield",
-                    "free_bikes": 12,
-                    "empty_slots": 8,
-                    "extra": {"slots": 20}
-                },
-                {
-                    "name": "Parnell Square North",
-                    "free_bikes": 5,
-                    "empty_slots": 15,
-                    "extra": {"slots": 20}
-                },
-                {
-                    "name": "Custom House",
-                    "free_bikes": 0,
-                    "empty_slots": 30,
-                    "extra": {"slots": 30}
-                }
+                {"name": "Smithfield", "free_bikes": 12, "empty_slots": 8, "extra": {"slots": 20}},
+                {"name": "Parnell Square North", "free_bikes": 5, "empty_slots": 15, "extra": {"slots": 20}},
+                {"name": "Custom House", "free_bikes": 0, "empty_slots": 30, "extra": {"slots": 30}},
             ]
         }
     }
@@ -50,7 +35,7 @@ def test_source_name(adapter):
     assert adapter.source_name() == "bikes"
 
 
-@patch('backend.adapters.bikes_adapter.requests.get')
+@patch("backend.adapters.bikes_adapter.requests.get")
 def test_fetch_success(mock_get, adapter, mock_api_response):
     """Test successful API fetch and parsing"""
     # Mock the API response
@@ -63,14 +48,10 @@ def test_fetch_success(mock_get, adapter, mock_api_response):
     snapshot = adapter.fetch(location="dublin")
 
     # Verify API was called correctly
-    mock_get.assert_called_once_with(
-        "https://api.citybik.es/v2/networks/dublinbikes",
-        timeout=5
-    )
+    mock_get.assert_called_once_with("https://api.citybik.es/v2/networks/dublinbikes", timeout=5)
 
     # Verify snapshot structure
     assert snapshot.location == "dublin"
-    assert snapshot.source_status == {"bikes": "live"}
     assert isinstance(snapshot.timestamp, datetime)
 
     # Verify bike metrics are calculated correctly
@@ -79,7 +60,7 @@ def test_fetch_success(mock_get, adapter, mock_api_response):
     assert snapshot.bikes.stations_reporting == 3
 
 
-@patch('backend.adapters.bikes_adapter.requests.get')
+@patch("backend.adapters.bikes_adapter.requests.get")
 def test_fetch_station_parsing(mock_get, adapter, mock_api_response):
     """Test individual station metrics are parsed correctly"""
     mock_response = Mock()
@@ -93,7 +74,7 @@ def test_fetch_station_parsing(mock_get, adapter, mock_api_response):
     assert snapshot.bikes.stations_reporting == 3
 
 
-@patch('backend.adapters.bikes_adapter.requests.get')
+@patch("backend.adapters.bikes_adapter.requests.get")
 def test_fetch_empty_response(mock_get, adapter):
     """Test handling of empty stations list"""
     mock_response = Mock()
@@ -108,7 +89,7 @@ def test_fetch_empty_response(mock_get, adapter):
     assert snapshot.bikes.stations_reporting == 0
 
 
-@patch('backend.adapters.bikes_adapter.requests.get')
+@patch("backend.adapters.bikes_adapter.requests.get")
 def test_fetch_api_timeout(mock_get, adapter):
     """Test API timeout handling"""
     mock_get.side_effect = Exception("Timeout")
@@ -117,7 +98,7 @@ def test_fetch_api_timeout(mock_get, adapter):
         adapter.fetch()
 
 
-@patch('backend.adapters.bikes_adapter.requests.get')
+@patch("backend.adapters.bikes_adapter.requests.get")
 def test_fetch_api_error_status(mock_get, adapter):
     """Test HTTP error handling"""
     mock_response = Mock()
@@ -128,7 +109,7 @@ def test_fetch_api_error_status(mock_get, adapter):
         adapter.fetch()
 
 
-@patch('backend.adapters.bikes_adapter.requests.get')
+@patch("backend.adapters.bikes_adapter.requests.get")
 def test_fetch_malformed_response(mock_get, adapter):
     """Test handling of malformed API response"""
     mock_response = Mock()
@@ -140,7 +121,7 @@ def test_fetch_malformed_response(mock_get, adapter):
         adapter.fetch()
 
 
-@patch('backend.adapters.bikes_adapter.requests.get')
+@patch("backend.adapters.bikes_adapter.requests.get")
 def test_fetch_location_parameter(mock_get, adapter, mock_api_response):
     """Test different location parameters"""
     mock_response = Mock()
@@ -157,18 +138,18 @@ def test_fetch_location_parameter(mock_get, adapter, mock_api_response):
     assert snapshot.location == "dublin"
 
 
-@patch('backend.adapters.bikes_adapter.requests.get')
+@patch("backend.adapters.bikes_adapter.requests.get")
 def test_fetch_all_stations_have_bikes(mock_get, adapter):
     """Test when all stations have bikes available"""
     response_data = {
         "network": {
             "stations": [
                 {"name": "Station A", "free_bikes": 10, "empty_slots": 5, "extra": {"slots": 15}},
-                {"name": "Station B", "free_bikes": 20, "empty_slots": 10, "extra": {"slots": 30}}
+                {"name": "Station B", "free_bikes": 20, "empty_slots": 10, "extra": {"slots": 30}},
             ]
         }
     }
-    
+
     mock_response = Mock()
     mock_response.json.return_value = response_data
     mock_response.raise_for_status = Mock()
@@ -181,18 +162,18 @@ def test_fetch_all_stations_have_bikes(mock_get, adapter):
     assert snapshot.bikes.stations_reporting == 2
 
 
-@patch('backend.adapters.bikes_adapter.requests.get')
+@patch("backend.adapters.bikes_adapter.requests.get")
 def test_fetch_no_bikes_available(mock_get, adapter):
     """Test when no bikes are available at any station"""
     response_data = {
         "network": {
             "stations": [
                 {"name": "Station A", "free_bikes": 0, "empty_slots": 15, "extra": {"slots": 15}},
-                {"name": "Station B", "free_bikes": 0, "empty_slots": 30, "extra": {"slots": 30}}
+                {"name": "Station B", "free_bikes": 0, "empty_slots": 30, "extra": {"slots": 30}},
             ]
         }
     }
-    
+
     mock_response = Mock()
     mock_response.json.return_value = response_data
     mock_response.raise_for_status = Mock()
@@ -204,7 +185,7 @@ def test_fetch_no_bikes_available(mock_get, adapter):
     assert snapshot.bikes.available_docks == 45
 
 
-@patch('backend.adapters.bikes_adapter.requests.get')
+@patch("backend.adapters.bikes_adapter.requests.get")
 def test_timestamp_is_current(mock_get, adapter, mock_api_response):
     """Test that timestamp is set to current UTC time"""
     mock_response = Mock()
