@@ -20,15 +20,15 @@ jobs:
     
     - name: Install dependencies
       run: |
-        pip install pytest
+        pip install pytest pycodestyle
         cd thin_slice/example_route_app
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     
-    - name: Run syntax tests
+    - name: Run main tests (syntax & PEP8)
       run: |
         pytest tests/ -v
-
-    - name: Run PEP8 Compliance tests
+    
+    - name: Run adapter tests
       run: |
-        pytest tests/ -v
-
+        pytest backend/adapters/tests/ -v
+    
