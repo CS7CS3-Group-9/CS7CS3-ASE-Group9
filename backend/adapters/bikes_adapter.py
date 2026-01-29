@@ -4,6 +4,7 @@ from backend.adapters.base_adapter import DataAdapter
 from backend.models.mobility_snapshot import MobilitySnapshot
 from backend.models.bike_models import StationMetrics, BikeMetrics
 
+
 class BikesAdapter(DataAdapter):
 
     def source_name(self) -> str:
@@ -21,7 +22,7 @@ class BikesAdapter(DataAdapter):
                 name=s["name"],
                 free_bikes=s["free_bikes"],
                 empty_slots=s["empty_slots"],
-                total_spaces=s["extra"]["slots"]
+                total_spaces=s["extra"]["slots"],
             )
             for s in data
         ]
@@ -29,12 +30,7 @@ class BikesAdapter(DataAdapter):
         metrics = BikeMetrics(
             available_bikes=sum(s.free_bikes for s in stations),
             available_docks=sum(s.empty_slots for s in stations),
-            stations_reporting=len(stations)
+            stations_reporting=len(stations),
         )
 
-        return MobilitySnapshot(
-            timestamp=datetime.utcnow(),
-            location=location,
-            bikes=metrics,
-            source_status={self.source_name(): "live"}
-        )
+        return MobilitySnapshot(timestamp=datetime.utcnow(), location=location, bikes=metrics)
