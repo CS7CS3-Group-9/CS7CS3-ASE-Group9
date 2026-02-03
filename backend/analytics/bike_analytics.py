@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Any
 
 from backend.models.bike_models import StationMetrics
 
@@ -10,7 +10,7 @@ def get_station_occupancy(
     Returns occupancy percentage per station.
     """
 
-    occupancy = {}
+    occupancy: Dict[str, float] = {}
     for station in stations:
         if station.total_spaces <= 0:
             continue
@@ -24,12 +24,12 @@ def detect_critical_occupancy(
     stations: List[StationMetrics],
     low_threshold: float = 10,
     high_threshold: float = 90,
-):
+) -> List[Dict[str, Any]]:
     """
     Detect stations with critically low or high occupancy.
     """
 
-    critical = []
+    critical: List[Dict[str, Any]] = []
     for station in stations:
         if station.total_spaces <= 0:
             continue
