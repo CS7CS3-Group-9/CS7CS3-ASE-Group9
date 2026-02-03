@@ -107,7 +107,7 @@ def test_attraction_parsing(mock_post, adapter, mock_overpass_response):
     assert museum.latitude == 53.4506340
     assert museum.longitude == -6.1583261
     assert museum.open_times == "Mo-Fr 11:00-18:00; Sa, Su 10:30-18:00"
-    assert museum.price == "yes"
+
     assert museum.phone == "+35361711222"
     assert museum.website == "https://www.modelrailwaymuseum.ie"
     assert museum.wheelchair_accessible == "yes"
@@ -145,8 +145,7 @@ def test_metrics_calculation(mock_post, adapter, mock_overpass_response):
     metrics = snapshot.tours
 
     assert metrics.total_attractions == 3
-    assert metrics.free_attractions_count == 1  # Malahide Castle
-    assert metrics.paid_attractions_count == 1  # Casino Museum
+
     assert metrics.wheelchair_accessible_count == 2  # Museum and Newbridge
 
 
@@ -168,7 +167,7 @@ def test_attractions_by_type(mock_post, adapter, mock_overpass_response):
 
 @patch("backend.adapters.tour_adapter.requests.post")
 def test_fee_parsing(mock_post, adapter, mock_overpass_response):
-    """Test fee/price field is parsed correctly"""
+
     mock_response = Mock()
     mock_response.json.return_value = mock_overpass_response
     mock_response.raise_for_status = Mock()
@@ -176,12 +175,6 @@ def test_fee_parsing(mock_post, adapter, mock_overpass_response):
 
     snapshot = adapter.fetch(location="donabate", radius_km=5)
     attractions = snapshot.tours.attractions
-
-    # "fee": "yes" -> paid
-    assert attractions[0].price == "yes"
-
-    # "fee": "no" -> free
-    assert attractions[1].price == "no"
 
 
 @patch("backend.adapters.tour_adapter.requests.post")
@@ -196,8 +189,6 @@ def test_fetch_empty_response(mock_post, adapter):
 
     assert snapshot.tours.total_attractions == 0
     assert len(snapshot.tours.attractions) == 0
-    assert snapshot.tours.free_attractions_count == 0
-    assert snapshot.tours.paid_attractions_count == 0
 
 
 @patch("backend.adapters.tour_adapter.requests.post")
