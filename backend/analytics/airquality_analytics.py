@@ -34,10 +34,13 @@ def check_pollutant_safety(metrics: AirQualityMetrics) -> Dict[str, str]:
     """
     result = {}
     pollutants = metrics.pollutants
-    assert isinstance(pollutants, PollutantLevels)
     if pollutants is None:
-        return result
+        return {}
 
+    if not isinstance(pollutants, PollutantLevels):
+        raise TypeError("metrics.pollutants must be PollutantLevels or None")
+
+    result: Dict[str, str] = {}
     for pollutant, limit in POLLUTANT_LIMITS.items():
         value = getattr(pollutants, pollutant, 0.0)
         result[pollutant] = "unsafe" if value > limit else "safe"
