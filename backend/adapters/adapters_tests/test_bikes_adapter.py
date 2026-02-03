@@ -1,13 +1,7 @@
-import sys
-from pathlib import Path
-
 import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime
 from backend.adapters.bikes_adapter import BikesAdapter
-
-# Add project root to Python path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 
 @pytest.fixture
