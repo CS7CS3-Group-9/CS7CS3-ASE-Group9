@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: REPLACED_BY_CI
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /api/hello
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/hello
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10

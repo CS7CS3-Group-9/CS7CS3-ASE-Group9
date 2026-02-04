@@ -1,0 +1,90 @@
+name: Build & Deploy Frontend + Backend to GKE
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  id-token: write  # required for Workload Identity Federation (OIDC)
+
+env:
+  PROJECT_ID: ase-city-management
+  REGION: europe-west1
+  REPO: route-app-repo
+
+  GKE_CLUSTER: backend-test-cluster
+  GKE_LOCATION: europe-west1
+  K8S_NAMESPACE: default
+
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Auth to Google Cloud (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Install GKE auth plugin
+        run: |
+          gcloud components install gke-gcloud-auth-plugin --quiet
+          echo "USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $GITHUB_ENV
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build & push backend
+        run: |
+          BACKEND_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/backend:${GITHUB_SHA}"
+          docker build -t "${BACKEND_IMAGE}" ./backend
+          docker push "${BACKEND_IMAGE}"
+          echo "BACKEND_IMAGE=${BACKEND_IMAGE}" >> $GITHUB_ENV
+
+      - name: Build & push frontend
+        run: |
+          FRONTEND_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/frontend:${GITHUB_SHA}"
+          docker build -t "${FRONTEND_IMAGE}" ./frontend
+          docker push "${FRONTEND_IMAGE}"
+          echo "FRONTEND_IMAGE=${FRONTEND_IMAGE}" >> $GITHUB_ENV
+
+      - name: Get GKE credentials
+        run: |
+          gcloud container clusters get-credentials "${GKE_CLUSTER}" \
+            --location "${GKE_LOCATION}" \
+            --project "${PROJECT_ID}"
+
+      - name: Sanity check cluster access
+        run: |
+          kubectl version --client
+          kubectl get ns
+          kubectl -n "${K8S_NAMESPACE}" get deploy || true
+
+      - name: Apply manifests
+        run: |
+          kubectl apply -n "${K8S_NAMESPACE}" -f k8s/
+
+      - name: Update backend image + rollout
+        run: |
+          kubectl -n "${K8S_NAMESPACE}" set image deployment/backend backend="${BACKEND_IMAGE}"
+          kubectl -n "${K8S_NAMESPACE}" rollout status deployment/backend --timeout=180s
+
+      - name: Update frontend image + rollout
+        run: |
+          kubectl -n "${K8S_NAMESPACE}" set image deployment/frontend frontend="${FRONTEND_IMAGE}"
+          kubectl -n "${K8S_NAMESPACE}" rollout status deployment/frontend --timeout=180s
+
+      - name: Show frontend service external IP (if provisioned)
+        run: |
+          kubectl -n "${K8S_NAMESPACE}" get svc frontend -o wide || true
