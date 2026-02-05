@@ -1,15 +1,17 @@
 import requests
 from datetime import datetime
+from backend.adapters.base_adapter import DataAdapter
 from backend.models.mobility_snapshot import MobilitySnapshot
 from backend.adapters.base_adapter import DataAdapter
 from backend.models.bike_models import StationMetrics, BikeMetrics
 
 
-class BikeAdapter(DataAdapter):
-    def source_name(self):
+class BikesAdapter(DataAdapter):
+
+    def source_name(self) -> str:
         return "bikes"
 
-    def fetch(self, location="dublin"):
+    def fetch(self, location="dublin") -> MobilitySnapshot:
         url = "https://api.citybik.es/v2/networks/dublinbikes"
         response = requests.get(url, timeout=5)
         response.raise_for_status()
@@ -32,14 +34,4 @@ class BikeAdapter(DataAdapter):
             stations_reporting=len(stations),
         )
 
-        return MobilitySnapshot(
-            timestamp=datetime.utcnow(), location=location, bikes=metrics, source_status={self.source_name(): "live"}
-        )
-
-
-class DummyAdpater(DataAdapter):
-    def source_name(self):
-        return "Dummy"
-
-    def fetch(self, location):
-        raise Exception("Simulated failure")
+        return MobilitySnapshot(timestamp=datetime.utcnow(), location=location, bikes=metrics)

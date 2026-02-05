@@ -255,7 +255,7 @@ def display_on_time_analysis(route_short, buses):
 # MAIN
 # -------------------------------------------------------
 if __name__ == "__main__":
-    route_short = "G2"
+    route_short = "38"
 
     print("\nLoading route_id from routes.txt...\n")
     route_id = get_route_id_from_short_name(route_short)

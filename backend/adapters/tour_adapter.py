@@ -15,20 +15,18 @@ class TourAdapter(DataAdapter):
         """
         Fetch tourism / attraction data and convert it into AttractionMetrics.
         """
-        # Example endpoint – replace with a real one later
+
         url = "https://overpass-api.de/api/interpreter"
 
         overpass_query = (
-            "[out:json]; "
-            "("
-            '  node["tourism"="attraction"](around: 10000, 53.3498, -6.2603); '
-            '  node["tourism"="museum"](around: 10000, 53.3498, -6.2603); '
-            '  node["historic"="monument"](around: 10000, 53.3498, -6.2603); '
-            '  node["historic"="castle"](around: 10000, 53.3498, -6.2603); '
-            '  way["tourism"="attraction"](around: 10000, 53.3498, -6.2603); '
-            '  way["tourism"="museum"](around: 10000, 53.3498, -6.2603);'
-            "); "
-            "out center; "
+            "[out:json];("
+            'node["tourism"="attraction"](around:10000,53.3498,-6.2603);'
+            'node["tourism"="museum"](around:10000,53.3498,-6.2603);'
+            'node["historic"="monument"](around:10000,53.3498,-6.2603);'
+            'node["historic"="castle"](around:10000,53.3498,-6.2603);'
+            'way["tourism"="attraction"](around:10000,53.3498,-6.2603);'
+            'way["tourism"="museum"](around:10000,53.3498,-6.2603);'
+            ");out center;"
         )
 
         response = requests.get(url, data=overpass_query, timeout=30)
@@ -78,14 +76,9 @@ class TourAdapter(DataAdapter):
                 AttractionMetrics(
                     attraction_name=name,
                     open_times=opening_hours,
-                    location={lat_detail, lon_detail},
+                    location={"lat": lat_detail, "lon": lon_detail},
                     price=price,
                 )
             )
 
-        return MobilitySnapshot(
-            timestamp=datetime.utcnow(),
-            location=location,
-            events=attractions,
-            source_status={self.source_name(): "live"},
-        )
+        return MobilitySnapshot(timestamp=datetime.utcnow(), location=location, tours=attractions)
