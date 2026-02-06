@@ -1,5 +1,6 @@
 class TrafficIncident:
     """Individual traffic incident"""
+
     def __init__(
         self,
         category,
@@ -10,7 +11,7 @@ class TrafficIncident:
         road,
         length_meters,
         delay_seconds,
-        delay_minutes
+        delay_minutes,
     ):
         self.category = category  # Jam, Road Closed, Accident, etc.
         self.severity = severity  # Major, Moderate, Minor, Undefined
@@ -25,6 +26,7 @@ class TrafficIncident:
 
 class TrafficMetrics:
     """Aggregated traffic metrics for an area"""
+
     def __init__(
         self,
         congestion_level,
@@ -34,7 +36,7 @@ class TrafficMetrics:
         incidents_by_severity,
         total_delay_minutes,
         average_delay_minutes,
-        incidents  # List of TrafficIncident objects
+        incidents,  # List of TrafficIncident objects
     ):
         self.congestion_level = congestion_level  # low, medium, high
         self.average_speed = average_speed  # km/h (if available)
@@ -44,24 +46,3 @@ class TrafficMetrics:
         self.total_delay_minutes = total_delay_minutes
         self.average_delay_minutes = average_delay_minutes
         self.incidents = incidents  # Full list of TrafficIncident objects
-
-
-class TrafficSnapshot:
-    """Snapshot of traffic data for a location"""
-    def __init__(
-        self,
-        location,
-        latitude,
-        longitude,
-        radius_km,
-        timestamp,
-        metrics,
-        source_status
-    ):
-        self.location = location
-        self.latitude = latitude
-        self.longitude = longitude
-        self.radius_km = radius_km
-        self.timestamp = timestamp
-        self.metrics = metrics  # TrafficMetrics object
-        self.source_status = source_status  # {"tomtom": "live"}

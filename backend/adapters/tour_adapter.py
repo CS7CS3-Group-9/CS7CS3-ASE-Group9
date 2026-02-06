@@ -49,8 +49,7 @@ class TourAdapter(DataAdapter):
 
         attractions = []
         attractions_by_type = {}
-        free_count = 0
-        paid_count = 0
+
         wheelchair_yes_count = 0
 
         for element in elements:
@@ -83,17 +82,11 @@ class TourAdapter(DataAdapter):
                 attraction_type = historic or leisure or tourism or "unknown"
 
             open_times = tags.get("opening_hours")
-            price = tags.get("fee")  # "yes" or "no"
             phone = tags.get("phone")
             website = tags.get("website")
             wheelchair = tags.get("wheelchair")
 
             attractions_by_type[attraction_type] = attractions_by_type.get(attraction_type, 0) + 1
-
-            if price == "no":
-                free_count += 1
-            elif price == "yes":
-                paid_count += 1
 
             if wheelchair == "yes":
                 wheelchair_yes_count += 1
@@ -106,7 +99,6 @@ class TourAdapter(DataAdapter):
                     latitude=latitude,
                     longitude=longitude,
                     open_times=open_times,
-                    price=price,
                     website=website,
                     phone=phone,
                     wheelchair_accessible=wheelchair,
@@ -117,8 +109,6 @@ class TourAdapter(DataAdapter):
         metrics = AttractionMetrics(
             total_attractions=len(attractions),
             attractions_by_type=attractions_by_type,
-            free_attractions_count=free_count,
-            paid_attractions_count=paid_count,
             wheelchair_accessible_count=wheelchair_yes_count,
             attractions=attractions,
         )

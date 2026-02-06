@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime
 from backend.adapters.traffic_adapter import TrafficAdapter
+from backend.models.traffic_models import TrafficIncident
 
 
 @pytest.fixture
@@ -9,16 +10,10 @@ def mock_traffic_response():
     """Sample response from TomTom Traffic API - full 14 incidents"""
     return {
         "location": "dublin",
-        "coordinates": {
-            "lat": 53.3440956,
-            "lng": -6.2674862
-        },
+        "coordinates": {"lat": 53.3440956, "lng": -6.2674862},
         "radius_km": 0.5,
         "total_incidents": 14,
-        "summary": {
-            "Jam": 13,
-            "Road Closed": 1
-        },
+        "summary": {"Jam": 13, "Road Closed": 1},
         "incidents": [
             {
                 "category": "Jam",
@@ -29,7 +24,7 @@ def mock_traffic_response():
                 "road": "Unknown road",
                 "length_meters": 91.0335578732,
                 "delay_seconds": 85,
-                "delay_minutes": 1.4
+                "delay_minutes": 1.4,
             },
             {
                 "category": "Jam",
@@ -40,7 +35,7 @@ def mock_traffic_response():
                 "road": "Unknown road",
                 "length_meters": 191.0632476919,
                 "delay_seconds": 178,
-                "delay_minutes": 3.0
+                "delay_minutes": 3.0,
             },
             {
                 "category": "Jam",
@@ -51,7 +46,7 @@ def mock_traffic_response():
                 "road": "Unknown road",
                 "length_meters": 104.9745249761,
                 "delay_seconds": 112,
-                "delay_minutes": 1.9
+                "delay_minutes": 1.9,
             },
             {
                 "category": "Jam",
@@ -62,7 +57,7 @@ def mock_traffic_response():
                 "road": "Unknown road",
                 "length_meters": 158.488704609,
                 "delay_seconds": 139,
-                "delay_minutes": 2.3
+                "delay_minutes": 2.3,
             },
             {
                 "category": "Jam",
@@ -73,7 +68,7 @@ def mock_traffic_response():
                 "road": "Unknown road",
                 "length_meters": 40.7695392422,
                 "delay_seconds": 76,
-                "delay_minutes": 1.3
+                "delay_minutes": 1.3,
             },
             {
                 "category": "Jam",
@@ -84,7 +79,7 @@ def mock_traffic_response():
                 "road": "Unknown road",
                 "length_meters": 205.5532124722,
                 "delay_seconds": 231,
-                "delay_minutes": 3.9
+                "delay_minutes": 3.9,
             },
             {
                 "category": "Jam",
@@ -95,7 +90,7 @@ def mock_traffic_response():
                 "road": "R108, N1",
                 "length_meters": 725.2961172375,
                 "delay_seconds": 268,
-                "delay_minutes": 4.5
+                "delay_minutes": 4.5,
             },
             {
                 "category": "Jam",
@@ -106,7 +101,7 @@ def mock_traffic_response():
                 "road": "N81",
                 "length_meters": 688.6191833754,
                 "delay_seconds": 284,
-                "delay_minutes": 4.7
+                "delay_minutes": 4.7,
             },
             {
                 "category": "Jam",
@@ -117,7 +112,7 @@ def mock_traffic_response():
                 "road": "Unknown road",
                 "length_meters": 114.1159500372,
                 "delay_seconds": 110,
-                "delay_minutes": 1.8
+                "delay_minutes": 1.8,
             },
             {
                 "category": "Jam",
@@ -128,7 +123,7 @@ def mock_traffic_response():
                 "road": "N4",
                 "length_meters": 1120.4530749383,
                 "delay_seconds": 369,
-                "delay_minutes": 6.2
+                "delay_minutes": 6.2,
             },
             {
                 "category": "Jam",
@@ -139,7 +134,7 @@ def mock_traffic_response():
                 "road": "R108, N1",
                 "length_meters": 411.171,
                 "delay_seconds": 133,
-                "delay_minutes": 2.2
+                "delay_minutes": 2.2,
             },
             {
                 "category": "Jam",
@@ -150,7 +145,7 @@ def mock_traffic_response():
                 "road": "R114",
                 "length_meters": 585.0126486495,
                 "delay_seconds": 213,
-                "delay_minutes": 3.5
+                "delay_minutes": 3.5,
             },
             {
                 "category": "Jam",
@@ -161,7 +156,7 @@ def mock_traffic_response():
                 "road": "R114",
                 "length_meters": 334.9766140326,
                 "delay_seconds": 183,
-                "delay_minutes": 3.0
+                "delay_minutes": 3.0,
             },
             {
                 "category": "Road Closed",
@@ -172,9 +167,9 @@ def mock_traffic_response():
                 "road": "Unknown road",
                 "length_meters": 93.7069267635,
                 "delay_seconds": None,
-                "delay_minutes": 0
-            }
-        ]
+                "delay_minutes": 0,
+            },
+        ],
     }
 
 
@@ -189,7 +184,7 @@ def test_source_name(adapter):
     assert adapter.source_name() == "traffic"
 
 
-@patch('backend.adapters.traffic_adapter.requests.get')
+@patch("backend.adapters.traffic_adapter.requests.get")
 def test_fetch_success(mock_get, adapter, mock_traffic_response):
     """Test successful API fetch and parsing"""
     mock_response = Mock()
@@ -204,14 +199,13 @@ def test_fetch_success(mock_get, adapter, mock_traffic_response):
 
     # Verify snapshot structure
     assert snapshot.location == "dublin"
-    assert snapshot.radius_km == 0.5
-    assert snapshot.latitude == 53.3440956
-    assert snapshot.longitude == -6.2674862
     assert isinstance(snapshot.timestamp, datetime)
-    assert snapshot.source_status == {"tomtom": "live"}
+    assert isinstance(snapshot.traffic, list)
+    assert len(snapshot.traffic) == 14
+    assert all(isinstance(i, TrafficIncident) for i in snapshot.traffic)
 
 
-@patch('backend.adapters.traffic_adapter.requests.get')
+@patch("backend.adapters.traffic_adapter.requests.get")
 def test_incident_parsing(mock_get, adapter, mock_traffic_response):
     """Test individual incidents are parsed correctly"""
     mock_response = Mock()
@@ -220,10 +214,7 @@ def test_incident_parsing(mock_get, adapter, mock_traffic_response):
     mock_get.return_value = mock_response
 
     snapshot = adapter.fetch(location="dublin", radius_km=0.5)
-    incidents = snapshot.metrics.incidents
-
-    # Should have 14 incidents
-    assert len(incidents) == 14
+    incidents = snapshot.traffic
 
     # Check first incident (Major Jam)
     incident = incidents[0]
@@ -238,151 +229,19 @@ def test_incident_parsing(mock_get, adapter, mock_traffic_response):
     assert incident.delay_minutes == 1.4
 
 
-@patch('backend.adapters.traffic_adapter.requests.get')
-def test_metrics_calculation(mock_get, adapter, mock_traffic_response):
-    """Test aggregated metrics are calculated correctly"""
+@patch("backend.adapters.traffic_adapter.requests.get")
+def test_fetch_empty_incidents(mock_get, adapter):
     mock_response = Mock()
-    mock_response.json.return_value = mock_traffic_response
-    mock_response.raise_for_status = Mock()
-    mock_get.return_value = mock_response
-
-    snapshot = adapter.fetch(location="dublin", radius_km=0.5)
-    metrics = snapshot.metrics
-
-    assert metrics.total_incidents == 14
-
-
-@patch('backend.adapters.traffic_adapter.requests.get')
-def test_incidents_by_category(mock_get, adapter, mock_traffic_response):
-    """Test incidents are grouped by category"""
-    mock_response = Mock()
-    mock_response.json.return_value = mock_traffic_response
-    mock_response.raise_for_status = Mock()
-    mock_get.return_value = mock_response
-
-    snapshot = adapter.fetch(location="dublin", radius_km=0.5)
-    by_category = snapshot.metrics.incidents_by_category
-
-    assert by_category["Jam"] == 13
-    assert by_category["Road Closed"] == 1
-
-
-@patch('backend.adapters.traffic_adapter.requests.get')
-def test_incidents_by_severity(mock_get, adapter, mock_traffic_response):
-    """Test incidents are grouped by severity"""
-    mock_response = Mock()
-    mock_response.json.return_value = mock_traffic_response
-    mock_response.raise_for_status = Mock()
-    mock_get.return_value = mock_response
-
-    snapshot = adapter.fetch(location="dublin", radius_km=0.5)
-    by_severity = snapshot.metrics.incidents_by_severity
-
-    assert by_severity["Major"] == 6
-    assert by_severity["Moderate"] == 4
-    assert by_severity["Minor"] == 3
-    assert by_severity["Undefined"] == 1
-
-
-@patch('backend.adapters.traffic_adapter.requests.get')
-def test_total_delay_calculation(mock_get, adapter, mock_traffic_response):
-    """Test total delay is calculated correctly"""
-    mock_response = Mock()
-    mock_response.json.return_value = mock_traffic_response
-    mock_response.raise_for_status = Mock()
-    mock_get.return_value = mock_response
-
-    snapshot = adapter.fetch(location="dublin", radius_km=0.5)
-    
-    # Total delay: 1.4 + 3.0 + 1.9 + 2.3 + 1.3 + 3.9 + 4.5 + 4.7 + 1.8 + 6.2 + 2.2 + 3.5 + 3.0 + 0 = 39.7 minutes
-    assert snapshot.metrics.total_delay_minutes == pytest.approx(39.7, 0.1)
-
-
-@patch('backend.adapters.traffic_adapter.requests.get')
-def test_average_delay_calculation(mock_get, adapter, mock_traffic_response):
-    """Test average delay per incident calculation"""
-    mock_response = Mock()
-    mock_response.json.return_value = mock_traffic_response
-    mock_response.raise_for_status = Mock()
-    mock_get.return_value = mock_response
-
-    snapshot = adapter.fetch(location="dublin", radius_km=0.5)
-    
-    # Average delay = 39.7 total / 14 incidents = 2.836 minutes per incident
-    assert snapshot.metrics.average_delay_minutes == pytest.approx(2.836, 0.01)
-
-
-@patch('backend.adapters.traffic_adapter.requests.get')
-def test_congestion_level_high(mock_get, adapter, mock_traffic_response):
-    """Test congestion level is calculated as 'high' with many incidents"""
-    mock_response = Mock()
-    mock_response.json.return_value = mock_traffic_response
-    mock_response.raise_for_status = Mock()
-    mock_get.return_value = mock_response
-
-    snapshot = adapter.fetch(location="dublin", radius_km=0.5)
-    
-    # With 14 incidents in 0.5km radius (28 per km), congestion should be high
-    assert snapshot.metrics.congestion_level == "high"
-
-
-@patch('backend.adapters.traffic_adapter.requests.get')
-def test_congestion_level_low(mock_get, adapter):
-    """Test congestion level is 'low' with few incidents"""
-    mock_response = Mock()
-    mock_response.json.return_value = {
-        "location": "rural",
-        "coordinates": {"lat": 53.0, "lng": -6.0},
-        "radius_km": 5,
-        "total_incidents": 1,
-        "summary": {"Jam": 1},
-        "incidents": [
-            {
-                "category": "Jam",
-                "severity": "Minor",
-                "description": "Slow traffic",
-                "from": "A",
-                "to": "B",
-                "road": "R123",
-                "length_meters": 100,
-                "delay_seconds": 30,
-                "delay_minutes": 0.5
-            }
-        ]
-    }
-    mock_response.raise_for_status = Mock()
-    mock_get.return_value = mock_response
-
-    snapshot = adapter.fetch(location="rural", radius_km=5)
-    
-    # With 1 incident in 5km radius, congestion should be low
-    assert snapshot.metrics.congestion_level == "low"
-
-
-@patch('backend.adapters.traffic_adapter.requests.get')
-def test_fetch_empty_response(mock_get, adapter):
-    """Test handling of no incidents"""
-    mock_response = Mock()
-    mock_response.json.return_value = {
-        "location": "quiet_area",
-        "coordinates": {"lat": 53.0, "lng": -6.0},
-        "radius_km": 5,
-        "total_incidents": 0,
-        "summary": {},
-        "incidents": []
-    }
+    mock_response.json.return_value = {"location": "quiet_area", "incidents": []}
     mock_response.raise_for_status = Mock()
     mock_get.return_value = mock_response
 
     snapshot = adapter.fetch(location="quiet_area", radius_km=5)
-
-    assert snapshot.metrics.total_incidents == 0
-    assert len(snapshot.metrics.incidents) == 0
-    assert snapshot.metrics.total_delay_minutes == 0
-    assert snapshot.metrics.congestion_level == "low"
+    assert snapshot.location == "quiet_area"
+    assert snapshot.traffic == []
 
 
-@patch('backend.adapters.traffic_adapter.requests.get')
+@patch("backend.adapters.traffic_adapter.requests.get")
 def test_fetch_api_timeout(mock_get, adapter):
     """Test API timeout handling"""
     mock_get.side_effect = Exception("Timeout")
@@ -391,7 +250,7 @@ def test_fetch_api_timeout(mock_get, adapter):
         adapter.fetch(location="dublin", radius_km=0.5)
 
 
-@patch('backend.adapters.traffic_adapter.requests.get')
+@patch("backend.adapters.traffic_adapter.requests.get")
 def test_fetch_api_error_status(mock_get, adapter):
     """Test HTTP error handling"""
     mock_response = Mock()
@@ -402,7 +261,7 @@ def test_fetch_api_error_status(mock_get, adapter):
         adapter.fetch(location="dublin", radius_km=0.5)
 
 
-@patch('backend.adapters.traffic_adapter.requests.get')
+@patch("backend.adapters.traffic_adapter.requests.get")
 def test_fetch_malformed_response(mock_get, adapter):
     """Test handling of malformed API response"""
     mock_response = Mock()
@@ -414,93 +273,19 @@ def test_fetch_malformed_response(mock_get, adapter):
         adapter.fetch(location="dublin", radius_km=0.5)
 
 
-@patch('backend.adapters.traffic_adapter.requests.get')
-def test_null_delay_handling(mock_get, adapter):
-    """Test handling of null delay values (like road closures)"""
-    mock_response = Mock()
-    mock_response.json.return_value = {
-        "location": "test",
-        "coordinates": {"lat": 53.0, "lng": -6.0},
-        "radius_km": 1,
-        "total_incidents": 1,
-        "summary": {"Road Closed": 1},
-        "incidents": [
-            {
-                "category": "Road Closed",
-                "severity": "Undefined",
-                "description": "Closed",
-                "from": "A",
-                "to": "B",
-                "road": "R123",
-                "length_meters": 100,
-                "delay_seconds": None,
-                "delay_minutes": 0
-            }
-        ]
-    }
-    mock_response.raise_for_status = Mock()
-    mock_get.return_value = mock_response
-
-    snapshot = adapter.fetch(location="test", radius_km=1)
-    
-    incident = snapshot.metrics.incidents[0]
-    assert incident.delay_seconds is None
-    assert incident.delay_minutes == 0
-
-
-@patch('backend.adapters.traffic_adapter.requests.get')
-def test_different_radius_values(mock_get, adapter, mock_traffic_response):
-    """Test different search radius parameters"""
+@patch("backend.adapters.traffic_adapter.requests.get")
+def test_null_delay_handling(mock_get, adapter, mock_traffic_response):
     mock_response = Mock()
     mock_response.json.return_value = mock_traffic_response
     mock_response.raise_for_status = Mock()
     mock_get.return_value = mock_response
 
-    # Test with different radius values
     snapshot = adapter.fetch(location="dublin", radius_km=0.5)
-    assert snapshot.radius_km == 0.5
+    incident = snapshot.traffic[-1]
 
-    snapshot = adapter.fetch(location="dublin", radius_km=1.0)
-    assert snapshot.radius_km == 1.0
-
-    snapshot = adapter.fetch(location="dublin", radius_km=5.0)
-    assert snapshot.radius_km == 5.0
-
-
-@patch('backend.adapters.traffic_adapter.requests.get')
-def test_location_parameter(mock_get, adapter):
-    """Test different location parameters"""
-    # First location: cork
-    mock_response_cork = Mock()
-    mock_response_cork.json.return_value = {
-        "location": "cork",
-        "coordinates": {"lat": 51.89, "lng": -8.47},
-        "radius_km": 1,
-        "total_incidents": 0,
-        "summary": {},
-        "incidents": []
-    }
-    mock_response_cork.raise_for_status = Mock()
-    mock_get.return_value = mock_response_cork
-
-    snapshot = adapter.fetch(location="cork", radius_km=1)
-    assert snapshot.location == "cork"
-
-    # Second location: galway
-    mock_response_galway = Mock()
-    mock_response_galway.json.return_value = {
-        "location": "galway",
-        "coordinates": {"lat": 53.27, "lng": -9.05},
-        "radius_km": 1,
-        "total_incidents": 0,
-        "summary": {},
-        "incidents": []
-    }
-    mock_response_galway.raise_for_status = Mock()
-    mock_get.return_value = mock_response_galway
-
-    snapshot = adapter.fetch(location="galway", radius_km=1)
-    assert snapshot.location == "galway"
+    assert incident.category == "Road Closed"
+    assert incident.delay_seconds is None
+    assert incident.delay_minutes == 0
 
 
 if __name__ == "__main__":
