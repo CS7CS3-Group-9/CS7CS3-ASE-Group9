@@ -80,6 +80,32 @@ jobs:
           kubectl -n "${K8S_NAMESPACE}" set image deployment/backend backend="${BACKEND_IMAGE}"
           kubectl -n "${K8S_NAMESPACE}" rollout status deployment/backend --timeout=180s
 
+      - name: Debug backend rollout on failure
+        if: failure()
+        run: |
+          echo "=== Deploy backend describe ==="
+          kubectl -n "${K8S_NAMESPACE}" describe deployment backend || true
+
+          echo "=== Backend pods ==="
+          kubectl -n "${K8S_NAMESPACE}" get pods -l app=backend -o wide || true
+
+          echo "=== Describe backend pods ==="
+          for p in $(kubectl -n "${K8S_NAMESPACE}" get pods -l app=backend -o name); do
+            echo "--- $p ---"
+            kubectl -n "${K8S_NAMESPACE}" describe "$p" || true
+          done
+
+          echo "=== Logs (last 200 lines) ==="
+          for p in $(kubectl -n "${K8S_NAMESPACE}" get pods -l app=backend -o jsonpath='{.items[*].metadata.name}'); do
+            echo "--- logs: $p (backend) ---"
+            kubectl -n "${K8S_NAMESPACE}" logs "$p" -c backend --tail=200 || true
+            echo "--- logs: $p (previous backend) ---"
+            kubectl -n "${K8S_NAMESPACE}" logs "$p" -c backend --previous --tail=200 || true
+          done
+
+          echo "=== Recent events ==="
+          kubectl -n "${K8S_NAMESPACE}" get events --sort-by=.metadata.creationTimestamp | tail -80 || true
+
       - name: Update frontend image + rollout
         run: |
           kubectl -n "${K8S_NAMESPACE}" set image deployment/frontend frontend="${FRONTEND_IMAGE}"
