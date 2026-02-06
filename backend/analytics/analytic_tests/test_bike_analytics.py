@@ -1,5 +1,4 @@
 import pytest
-
 from backend.models.bike_models import StationMetrics
 from backend.analytics.bike_analytics import get_station_occupancy, detect_critical_occupancy
 
