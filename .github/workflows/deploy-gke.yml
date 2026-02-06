@@ -2,7 +2,7 @@ name: Build & Deploy Frontend + Backend to GKE
 
 on:
   push:
-    branches: ["main"]
+    branches: ["infra-testing"]
 
 permissions:
   contents: read
