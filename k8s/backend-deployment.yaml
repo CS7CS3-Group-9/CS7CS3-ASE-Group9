@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: REPLACED_BY_CI
+          image: europe-west1-docker.pkg.dev/ase-city-management/route-app-repo/backend:latest
           ports:
             - containerPort: 8080
           readinessProbe:
