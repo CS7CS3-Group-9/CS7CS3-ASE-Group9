@@ -11,3 +11,10 @@ class BusSystemMetrics:
         self.route_id = route_id
         self.active_buses = active_buses  # number of active buses for specified route
         self.average_delay = average_delay
+
+
+class BusMetrics:
+    def __init__(self, routes_lookup, route_metrics, system_metrics):
+        self.routes_lookup = routes_lookup
+        self.route_metrics = route_metrics
+        self.system_metrics = system_metrics

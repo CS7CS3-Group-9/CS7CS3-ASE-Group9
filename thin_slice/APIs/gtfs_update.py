@@ -54,7 +54,7 @@ API_KEY = "1fea1c21bef840e6bf0241e34a41e5d8"
 if not API_KEY:
     raise SystemExit("ERROR: Set env var NTA_API_KEY")
 
-STATIC_GTFS_DIR = "C:/Users/awals/Downloads/GTFS"
+STATIC_GTFS_DIR = "C:/Users/awals/Downloads/GTFS"  # Change depending where GTFS folder is located
 if not STATIC_GTFS_DIR:
     raise SystemExit("ERROR: Set env var STATIC_GTFS_DIR to your unzipped GTFS folder")
 
