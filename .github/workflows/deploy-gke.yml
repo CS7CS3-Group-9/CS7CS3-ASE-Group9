@@ -14,7 +14,7 @@ env:
   REPO: route-app-repo
 
   GKE_CLUSTER: backend-test-cluster
-  GKE_LOCATION: europe-west1
+  GKE_LOCATION: europe-west1-b
   K8S_NAMESPACE: default
 
 jobs:
