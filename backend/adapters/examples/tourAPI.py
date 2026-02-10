@@ -5,7 +5,7 @@ import math
 def get_location_from_user():
     """Prompt user for location and convert to coordinates using Nominatim."""
     location_input = input("Enter your location (address, city, or place): ").strip()
-    
+
     if not location_input:
         print("No location provided. Using Dublin city center as default.")
         return {
@@ -13,25 +13,19 @@ def get_location_from_user():
             "longitude": -6.2603,
             "city": "Dublin",
             "country": "Ireland",
-            "display_name": "Dublin, Ireland"
+            "display_name": "Dublin, Ireland",
         }
-    
+
     # Use Nominatim geocoding API
     url = "https://nominatim.openstreetmap.org/search"
-    params = {
-        "q": location_input,
-        "format": "json",
-        "limit": 1
-    }
-    headers = {
-        "User-Agent": "TourFinderApp/1.0"
-    }
-    
+    params = {"q": location_input, "format": "json", "limit": 1}
+    headers = {"User-Agent": "TourFinderApp/1.0"}
+
     try:
         response = requests.get(url, params=params, headers=headers)
         response.raise_for_status()
         data = response.json()
-        
+
         if data:
             result = data[0]
             return {
@@ -39,7 +33,7 @@ def get_location_from_user():
                 "longitude": float(result["lon"]),
                 "city": result.get("display_name", "").split(",")[0],
                 "country": result.get("display_name", "").split(",")[-1].strip(),
-                "display_name": result["display_name"]
+                "display_name": result["display_name"],
             }
         else:
             print(f"Location '{location_input}' not found. Using Dublin city center.")
@@ -48,7 +42,7 @@ def get_location_from_user():
                 "longitude": -6.2603,
                 "city": "Dublin",
                 "country": "Ireland",
-                "display_name": "Dublin, Ireland"
+                "display_name": "Dublin, Ireland",
             }
     except Exception as e:
         print(f"Error geocoding location: {e}")
@@ -58,7 +52,7 @@ def get_location_from_user():
             "longitude": -6.2603,
             "city": "Dublin",
             "country": "Ireland",
-            "display_name": "Dublin, Ireland"
+            "display_name": "Dublin, Ireland",
         }
 
 
@@ -71,10 +65,7 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     delta_lat = math.radians(lat2 - lat1)
     delta_lon = math.radians(lon2 - lon1)
 
-    a = (
-        math.sin(delta_lat / 2) ** 2
-        + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon / 2) ** 2
-    )
+    a = math.sin(delta_lat / 2) ** 2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon / 2) ** 2
     c = 2 * math.asin(math.sqrt(a))
 
     return R * c
@@ -112,7 +103,7 @@ def get_tours_from_api(latitude, longitude):
 
         try:
             data = response.json()
-        except:
+        except Exception as e:
             print(f"Invalid JSON response from API")
             return None
 
@@ -183,10 +174,7 @@ def display_tours(your_location, tours, radius_km=2.0):
     print(f"TOURS WITHIN {radius_km} KM OF {your_location['city'].upper()}")
     print("=" * 80)
     print(f"Your Location: {your_location['display_name']}")
-    print(
-        f"GPS: {your_location['latitude']: .4f}, "
-        f"{your_location['longitude']: .4f}\n"
-    )
+    print(f"GPS: {your_location['latitude']: .4f}, " f"{your_location['longitude']: .4f}\n")
 
     if not nearby_tours:
         print(f"No tours found within {radius_km} km")
@@ -221,10 +209,7 @@ def display_closest_tour(your_location, tours):
     print("CLOSEST TOUR TO YOU")
     print("=" * 80)
     print(f"Your Location: {your_location['display_name']}")
-    print(
-        f"Your GPS: {your_location['latitude']: .4f}, "
-        f"{your_location['longitude']: .4f}"
-    )
+    print(f"Your GPS: {your_location['latitude']: .4f}, " f"{your_location['longitude']: .4f}")
     print("-" * 80)
     print(f"Tour Name: {closest['name']}")
     print(f"Type: {closest.get('type', 'N/A')}")
@@ -243,10 +228,7 @@ if __name__ == "__main__":
 
     your_location = get_location_from_user()
     print(f"\nUsing location: {your_location['display_name']}")
-    print(
-        f"GPS: {your_location['latitude']: .4f}, "
-        f"{your_location['longitude']: .4f}\n"
-    )
+    print(f"GPS: {your_location['latitude']: .4f}, " f"{your_location['longitude']: .4f}\n")
 
     tours = get_tours_from_api(your_location["latitude"], your_location["longitude"])
 

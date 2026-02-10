@@ -61,36 +61,39 @@ def parse_input(value):
 def main():
     # Get origin
     origin_input = input("Enter origin: ").strip()
-    
+
     # Get destination
     destination_input = input("Enter destination: ").strip()
-    
+
     try:
         # Parse inputs
         origin_coord = parse_input(origin_input)
         destination_coord = parse_input(destination_input)
-        
+
         # Get route
         route = get_route_from_google(origin_coord, destination_coord)
-        
+
         # Build JSON response
         result = {
             "origin": {
                 "input": origin_input,
-                "coordinates": {"lat": origin_coord[0], "lng": origin_coord[1]}
+                "coordinates": {"lat": origin_coord[0], "lng": origin_coord[1]},
             },
             "destination": {
                 "input": destination_input,
-                "coordinates": {"lat": destination_coord[0], "lng": destination_coord[1]}
+                "coordinates": {
+                    "lat": destination_coord[0],
+                    "lng": destination_coord[1],
+                },
             },
             "distance_meters": route.get("distanceMeters"),
             "duration": route.get("duration"),
-            "encoded_polyline": route["polyline"]["encodedPolyline"]
+            "encoded_polyline": route["polyline"]["encodedPolyline"],
         }
-        
+
         # Print JSON
         print(json.dumps(result, indent=2))
-        
+
     except Exception as e:
         error_result = {"error": str(e)}
         print(json.dumps(error_result, indent=2))

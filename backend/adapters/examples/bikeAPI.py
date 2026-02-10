@@ -5,7 +5,7 @@ import requests
 def get_location_from_user():
     """Prompt user for location and convert to coordinates using Nominatim."""
     location_input = input("Enter your location (address, city, or place): ").strip()
-    
+
     if not location_input:
         print("No location provided. Using Dublin city center as default.")
         return {
@@ -13,25 +13,19 @@ def get_location_from_user():
             "longitude": -6.2603,
             "city": "Dublin",
             "country": "Ireland",
-            "display_name": "Dublin, Ireland"
+            "display_name": "Dublin, Ireland",
         }
-    
+
     # Use Nominatim geocoding API
     url = "https://nominatim.openstreetmap.org/search"
-    params = {
-        "q": location_input,
-        "format": "json",
-        "limit": 1
-    }
-    headers = {
-        "User-Agent": "DublinBikesApp/1.0"
-    }
-    
+    params = {"q": location_input, "format": "json", "limit": 1}
+    headers = {"User-Agent": "DublinBikesApp/1.0"}
+
     try:
         response = requests.get(url, params=params, headers=headers)
         response.raise_for_status()
         data = response.json()
-        
+
         if data:
             result = data[0]
             return {
@@ -39,7 +33,7 @@ def get_location_from_user():
                 "longitude": float(result["lon"]),
                 "city": result.get("display_name", "").split(",")[0],
                 "country": result.get("display_name", "").split(",")[-1].strip(),
-                "display_name": result["display_name"]
+                "display_name": result["display_name"],
             }
         else:
             print(f"Location '{location_input}' not found. Using Dublin city center.")
@@ -48,7 +42,7 @@ def get_location_from_user():
                 "longitude": -6.2603,
                 "city": "Dublin",
                 "country": "Ireland",
-                "display_name": "Dublin, Ireland"
+                "display_name": "Dublin, Ireland",
             }
     except Exception as e:
         print(f"Error geocoding location: {e}")
@@ -58,7 +52,7 @@ def get_location_from_user():
             "longitude": -6.2603,
             "city": "Dublin",
             "country": "Ireland",
-            "display_name": "Dublin, Ireland"
+            "display_name": "Dublin, Ireland",
         }
 
 
@@ -71,9 +65,7 @@ def find_closest_station(your_latitude, your_longitude):
 
     stations_with_distance = []
     for station in stations:
-        distance = calculate_distance(
-            your_latitude, your_longitude, station["latitude"], station["longitude"]
-        )
+        distance = calculate_distance(your_latitude, your_longitude, station["latitude"], station["longitude"])
         stations_with_distance.append(
             {
                 "name": station["name"],
@@ -99,10 +91,7 @@ def display_closest_station(station, your_location):
     print("CLOSEST BIKE STATION TO YOU")
     print("=" * 60)
     print(f"Your Location: {your_location['display_name']}")
-    print(
-        f"Your GPS: {your_location['latitude']: .4f}, "
-        f"{your_location['longitude']: .4f}"
-    )
+    print(f"Your GPS: {your_location['latitude']: .4f}, " f"{your_location['longitude']: .4f}")
     print("-" * 60)
     print(f"Station: {station['name']}")
     print(f"Distance: {station['distance_km']: .2f} km")
@@ -111,11 +100,7 @@ def display_closest_station(station, your_location):
     print(f"Empty Spaces: {station['empty_slots']}")
     print(f" Total Spaces: {station['total_spaces']}")
 
-    availability = (
-        station["free_bikes"] / station["total_spaces"] * 100
-        if station["total_spaces"] > 0
-        else 0
-    )
+    availability = station["free_bikes"] / station["total_spaces"] * 100 if station["total_spaces"] > 0 else 0
     print(f"Availability: {availability: .1f}%")
     print("=" * 60 + "\n")
 
@@ -129,9 +114,7 @@ def list_nearby_stations(your_latitude, your_longitude, radius_km):
 
     nearby = []
     for station in stations:
-        distance = calculate_distance(
-            your_latitude, your_longitude, station["latitude"], station["longitude"]
-        )
+        distance = calculate_distance(your_latitude, your_longitude, station["latitude"], station["longitude"])
         if distance <= radius_km:
             nearby.append(
                 {
@@ -183,10 +166,7 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     delta_lat = math.radians(lat2 - lat1)
     delta_lon = math.radians(lon2 - lon1)
 
-    a = (
-        math.sin(delta_lat / 2) ** 2
-        + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon / 2) ** 2
-    )
+    a = math.sin(delta_lat / 2) ** 2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon / 2) ** 2
     c = 2 * math.asin(math.sqrt(a))
     return R * c
 
@@ -257,19 +237,12 @@ if __name__ == "__main__":
 
     your_location = get_location_from_user()
     print(f"\nUsing location: {your_location['display_name']}")
-    print(
-        f"GPS: {your_location['latitude']: .4f}, "
-        f"{your_location['longitude']: .4f}\n"
-    )
+    print(f"GPS: {your_location['latitude']: .4f}, " f"{your_location['longitude']: .4f}\n")
 
     print("Finding closest bike station...\n")
-    closest = find_closest_station(
-        your_location["latitude"], your_location["longitude"]
-    )
+    closest = find_closest_station(your_location["latitude"], your_location["longitude"])
     display_closest_station(closest, your_location)
 
     radius_km = 5
 
-    list_nearby_stations(
-        your_location["latitude"], your_location["longitude"], radius_km
-    )
+    list_nearby_stations(your_location["latitude"], your_location["longitude"], radius_km)

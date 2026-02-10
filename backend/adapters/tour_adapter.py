@@ -3,82 +3,114 @@ from datetime import datetime
 
 from backend.adapters.base_adapter import DataAdapter
 from backend.models.mobility_snapshot import MobilitySnapshot
-from backend.models.tour_models import AttractionMetrics
+from backend.models.tour_models import Attraction, AttractionMetrics
 
 
 class TourAdapter(DataAdapter):
+    """
+    Adapter for OpenStreetMap Overpass tourism / attraction data.
+    Returns partial MobilitySnapshot with tours=AttractionMetrics.
+    """
 
     def source_name(self) -> str:
         return "tours"
 
-    def fetch(self, location: str = "dublin") -> MobilitySnapshot:
+    def fetch(self, location: str = "dublin", radius_km: float = 5) -> MobilitySnapshot:
         """
         Fetch tourism / attraction data and convert it into AttractionMetrics.
+        In unit tests, requests.post is mocked.
         """
 
         url = "https://overpass-api.de/api/interpreter"
 
+        # Fixed Dublin centre for now (geocoding can be added later)
+        lat, lon = 53.3498, -6.2603
+        radius_m = int(radius_km * 1000)
+
         overpass_query = (
-            "[out:json];("
-            'node["tourism"="attraction"](around:10000,53.3498,-6.2603);'
-            'node["tourism"="museum"](around:10000,53.3498,-6.2603);'
-            'node["historic"="monument"](around:10000,53.3498,-6.2603);'
-            'node["historic"="castle"](around:10000,53.3498,-6.2603);'
-            'way["tourism"="attraction"](around:10000,53.3498,-6.2603);'
-            'way["tourism"="museum"](around:10000,53.3498,-6.2603);'
-            ");out center;"
+            f"[out:json];("
+            f'node["tourism"="attraction"](around:{radius_m},{lat},{lon});'
+            f'node["tourism"="museum"](around:{radius_m},{lat},{lon});'
+            f'node["historic"="castle"](around:{radius_m},{lat},{lon});'
+            f'node["historic"="monument"](around:{radius_m},{lat},{lon});'
+            f'way["tourism"="attraction"](around:{radius_m},{lat},{lon});'
+            f'way["tourism"="museum"](around:{radius_m},{lat},{lon});'
+            f'way["historic"="castle"](around:{radius_m},{lat},{lon});'
+            f'way["leisure"="park"](around:{radius_m},{lat},{lon});'
+            f");out center;"
         )
 
-        response = requests.get(url, data=overpass_query, timeout=30)
+        response = requests.post(url, data=overpass_query, timeout=30)
         response.raise_for_status()
         data = response.json()
 
-        elements = data.get("elements", [])
+        # Will raise KeyError if malformed (test expects this)
+        elements = data["elements"]
 
         attractions = []
+        attractions_by_type = {}
+
+        wheelchair_yes_count = 0
+
         for element in elements:
             tags = element.get("tags", {})
             name = tags.get("name", "Unknown")
 
-            # Get coordinates
-            lat_detail = None
-            lon_detail = None
-
+            # Coordinates
             if "lat" in element and "lon" in element:
-                lat_detail = element["lat"]
-                lon_detail = element["lon"]
+                latitude = element["lat"]
+                longitude = element["lon"]
             elif "center" in element:
-                lat_detail = element["center"].get("lat")
-                lon_detail = element["center"].get("lon")
-
-            if lat_detail is None or lon_detail is None:
+                latitude = element["center"].get("lat")
+                longitude = element["center"].get("lon")
+            else:
                 continue
 
-            opening_hours = tags.get("opening_hours", "Not available")
-            # Get price/fee information if available
-            price = "Not available"
-            if tags.get("fee") == "yes":
-                # Check for specific price tags
-                if tags.get("charge"):
-                    price = tags.get("charge")
-                elif tags.get("price"):
-                    price = tags.get("price")
-                else:
-                    price = "Yes (contact for details)"
-            elif tags.get("fee") == "no":
-                price = "Free"
-            elif tags.get("price"):
-                price = tags.get("price")
-            elif tags.get("charge"):
-                price = tags.get("charge")
+            if latitude is None or longitude is None:
+                continue
+
+            # Determine attraction type with sensible precedence
+            tourism = tags.get("tourism")
+            historic = tags.get("historic")
+            leisure = tags.get("leisure")
+
+            if tourism and tourism != "attraction":
+                # tourism already specific: museum, hotel, information, etc.
+                attraction_type = tourism
+            else:
+                # tourism is generic (or missing): prefer historic/leisure if present
+                attraction_type = historic or leisure or tourism or "unknown"
+
+            open_times = tags.get("opening_hours")
+            phone = tags.get("phone")
+            website = tags.get("website")
+            wheelchair = tags.get("wheelchair")
+
+            attractions_by_type[attraction_type] = attractions_by_type.get(attraction_type, 0) + 1
+
+            if wheelchair == "yes":
+                wheelchair_yes_count += 1
 
             attractions.append(
-                AttractionMetrics(
+                Attraction(
+                    attraction_id=element.get("id"),
                     attraction_name=name,
-                    open_times=opening_hours,
-                    location={"lat": lat_detail, "lon": lon_detail},
-                    price=price,
+                    attraction_type=attraction_type,
+                    latitude=latitude,
+                    longitude=longitude,
+                    open_times=open_times,
+                    website=website,
+                    phone=phone,
+                    wheelchair_accessible=wheelchair,
+                    tags=tags,
                 )
             )
 
-        return MobilitySnapshot(timestamp=datetime.utcnow(), location=location, tours=attractions)
+        metrics = AttractionMetrics(
+            total_attractions=len(attractions),
+            attractions_by_type=attractions_by_type,
+            wheelchair_accessible_count=wheelchair_yes_count,
+            attractions=attractions,
+        )
+
+        return MobilitySnapshot(timestamp=datetime.utcnow(), location=location, tours=metrics)

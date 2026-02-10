@@ -1,5 +1,6 @@
 class Attraction:
     """Individual attraction with all details"""
+
     def __init__(
         self,
         attraction_id,
@@ -8,11 +9,10 @@ class Attraction:
         latitude,
         longitude,
         open_times=None,
-        price=None,
         website=None,
         phone=None,
         wheelchair_accessible=None,
-        tags=None
+        tags=None,
     ):
         self.attraction_id = attraction_id
         self.attraction_name = attraction_name
@@ -20,7 +20,6 @@ class Attraction:
         self.latitude = latitude
         self.longitude = longitude
         self.open_times = open_times
-        self.price = price  # "free", "yes", or specific amount
         self.website = website
         self.phone = phone
         self.wheelchair_accessible = wheelchair_accessible
@@ -29,35 +28,15 @@ class Attraction:
 
 class AttractionMetrics:
     """Aggregated metrics for attractions in an area"""
+
     def __init__(
         self,
         total_attractions,
         attractions_by_type,
-        free_attractions_count,
-        paid_attractions_count,
         wheelchair_accessible_count,
-        attractions  # List of Attraction objects
+        attractions,  # List of Attraction objects
     ):
         self.total_attractions = total_attractions
         self.attractions_by_type = attractions_by_type  # Dict: {"museum": 3, "castle": 1}
-        self.free_attractions_count = free_attractions_count
-        self.paid_attractions_count = paid_attractions_count
         self.wheelchair_accessible_count = wheelchair_accessible_count
         self.attractions = attractions  # Full list of Attraction objects
-
-
-class TourSnapshot:
-    """Snapshot of tourism data for a location"""
-    def __init__(
-        self,
-        location,
-        search_radius_km,
-        timestamp,
-        metrics,
-        source_status
-    ):
-        self.location = location
-        self.search_radius_km = search_radius_km
-        self.timestamp = timestamp
-        self.metrics = metrics  # AttractionMetrics object
-        self.source_status = source_status  # {"overpass": "live"}
