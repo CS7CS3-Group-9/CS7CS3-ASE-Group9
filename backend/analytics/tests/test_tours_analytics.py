@@ -1,7 +1,7 @@
 import os
 import pytest
 from typing import List, Dict
-from tour_analytics import (
+from backend.analytics.tour_analytics import (
     get_tour_type_distribution,
     get_distance_statistics,
     detect_tours_by_distance,

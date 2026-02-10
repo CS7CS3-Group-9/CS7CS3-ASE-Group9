@@ -31,4 +31,12 @@ jobs:
     - name: Run adapter tests
       run: |
         pytest backend/adapters/tests/ -v
+
+    - name: Run analytics tests
+      run: |
+        pytest backend/analytics/tests/ -v
+
+    - name: Run service tests
+      run: | 
+        pytest backend/services/tests/ -v
     
