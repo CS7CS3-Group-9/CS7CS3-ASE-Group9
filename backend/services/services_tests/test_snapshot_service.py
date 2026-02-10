@@ -61,6 +61,14 @@ class AdapterFails:
         raise Exception("Simulated adapter failure")
 
 
+class PartialNoneAdapter:
+    def source_name(self) -> str:
+        return "none"
+
+    def fetch(self, location: str = "dublin", **kwargs) -> MobilitySnapshot:
+        return MobilitySnapshot(timestamp=datetime.utcnow(), location=location, bikes=None)
+
+
 # ----------------------------
 # Tests
 # ----------------------------
@@ -74,7 +82,11 @@ def test_build_snapshot_sets_location_and_timestamp():
     assert isinstance(snapshot.timestamp, datetime)
 
 
-def test_build_snapshot_merges_fields_from_multiple_adapters():
+def test_build_snapshot_merges_fields_from_multiple_adapters(monkeypatch):
+    from backend.services import snapshot_service as ss_module
+
+    monkeypatch.setattr(ss_module, "build_traffic_metrics", lambda incidents, radius_km: incidents)
+
     service = SnapshotService(adapters=[BikesAdapterOK(), TrafficAdapterOK()])
     snapshot = service.build_snapshot(location="dublin")
 
@@ -83,7 +95,11 @@ def test_build_snapshot_merges_fields_from_multiple_adapters():
     assert len(snapshot.traffic) == 2
 
 
-def test_source_status_live_for_successful_adapters():
+def test_source_status_live_for_successful_adapters(monkeypatch):
+    from backend.services import snapshot_service as ss_module
+
+    monkeypatch.setattr(ss_module, "build_traffic_metrics", lambda incidents, radius_km: incidents)
+
     service = SnapshotService(adapters=[BikesAdapterOK(), TrafficAdapterOK()])
     snapshot = service.build_snapshot(location="dublin")
 
@@ -150,10 +166,26 @@ def test_airquality_status_is_set_by_analytics(monkeypatch):
     assert snapshot.airquality.status == "medium"
 
 
-def test_adapter_specs_pass_kwargs_to_adapter():
+def test_init_rejects_both_adapters_and_specs():
+    with pytest.raises(ValueError):
+        SnapshotService(
+            adapters=[BikesAdapterOK()],
+            adapter_specs=[AdapterCallSpec(adapter=BikesAdapterOK(), kwargs={})],
+        )
+
+
+def test_init_requires_at_least_one_adapter():
+    with pytest.raises(ValueError):
+        SnapshotService()
+
+
+def test_adapter_specs_pass_kwargs_to_adapter(monkeypatch):
     """
     Ensures SnapshotService can call adapters with per-adapter kwargs (no hardcoding).
     """
+    from backend.services import snapshot_service as ss_module
+
+    monkeypatch.setattr(ss_module, "build_traffic_metrics", lambda incidents, radius_km: incidents)
 
     class AdapterWithKwargs:
         def source_name(self) -> str:
@@ -171,6 +203,12 @@ def test_adapter_specs_pass_kwargs_to_adapter():
 
     assert snapshot.source_status["kw"] == "live"
     assert snapshot.traffic[0]["radius_km"] == 7.5
+
+
+def test_merge_does_not_overwrite_with_none():
+    service = SnapshotService(adapters=[BikesAdapterOK(), PartialNoneAdapter()])
+    snapshot = service.build_snapshot("dublin")
+    assert snapshot.bikes == {"bikes": 123}
 
 
 if __name__ == "__main__":
