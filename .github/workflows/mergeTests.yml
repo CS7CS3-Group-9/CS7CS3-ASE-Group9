@@ -38,5 +38,5 @@ jobs:
 
     - name: Run service tests
       run: | 
-        pytest backend/service/tests/ -v
+        pytest backend/services/tests/ -v
     
