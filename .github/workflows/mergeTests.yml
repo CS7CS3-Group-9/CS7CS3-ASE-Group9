@@ -42,5 +42,5 @@ jobs:
   
     - name: Run health tests
       run: | 
-        pytest backend/api/tests/test_health.py -v
+        pytest backend/api/tests/ -v
     
