@@ -1,4 +1,5 @@
 # python dependencies
-fastapi==0.104.1
+flask==3.0.0
 gunicorn==22.0.0
-uvicorn[standard]
+firebase-admin>=6.0.0
+requests>=2.31.0
