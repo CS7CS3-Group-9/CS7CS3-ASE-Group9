@@ -43,4 +43,8 @@ jobs:
     - name: Run API tests
       run: |
         pytest backend/api/tests/ -v
+
+    - name: Run Caching tests
+      run: |
+        pytest backend/fallback/tests/ -v
     
