@@ -1,18 +1,15 @@
 from flask import Flask
-
-from backend.api.deps import build_adapters
-from backend.api.endpoints.health import health_bp
-from backend.api.endpoints.snapshot import snapshot_bp
+from backend.api.endpoints.bikes import bikes_bp
+from backend.api.endpoints.traffic import traffic_bp
+from backend.api.endpoints.airquality import airquality_bp
+from backend.api.endpoints.tours import tours_bp
 
 
 def create_app():
     app = Flask(__name__)
-
-    # Register adapters once at startup
-    app.config["ADAPTERS"] = build_adapters()
-
-    # Blueprints
-    app.register_blueprint(health_bp)
-    app.register_blueprint(snapshot_bp)
+    app.register_blueprint(bikes_bp)
+    app.register_blueprint(traffic_bp)
+    app.register_blueprint(airquality_bp)
+    app.register_blueprint(tours_bp)
 
     return app

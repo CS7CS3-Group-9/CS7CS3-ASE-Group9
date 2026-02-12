@@ -76,7 +76,7 @@ class SnapshotService:
     def _iter_adapters_with_kwargs(self) -> Iterable[Tuple[Any, Dict[str, Any]]]:
         if self._adapter_specs:
             for spec in self._adapter_specs:
-                yield spec.adapter, dict(spec.kwargs)
+                yield spec.adapter, spec.kwargs
         else:
             for adapter in self._adapters:
                 yield adapter, {}
