@@ -10,24 +10,9 @@ def mock_api_response():
     return {
         "network": {
             "stations": [
-                {
-                    "name": "Smithfield",
-                    "free_bikes": 12,
-                    "empty_slots": 8,
-                    "extra": {"slots": 20},
-                },
-                {
-                    "name": "Parnell Square North",
-                    "free_bikes": 5,
-                    "empty_slots": 15,
-                    "extra": {"slots": 20},
-                },
-                {
-                    "name": "Custom House",
-                    "free_bikes": 0,
-                    "empty_slots": 30,
-                    "extra": {"slots": 30},
-                },
+                {"name": "Smithfield", "free_bikes": 12, "empty_slots": 8, "extra": {"slots": 20}},
+                {"name": "Parnell Square North", "free_bikes": 5, "empty_slots": 15, "extra": {"slots": 20}},
+                {"name": "Custom House", "free_bikes": 0, "empty_slots": 30, "extra": {"slots": 30}},
             ]
         }
     }
@@ -153,18 +138,8 @@ def test_fetch_all_stations_have_bikes(mock_get, adapter):
     response_data = {
         "network": {
             "stations": [
-                {
-                    "name": "Station A",
-                    "free_bikes": 10,
-                    "empty_slots": 5,
-                    "extra": {"slots": 15},
-                },
-                {
-                    "name": "Station B",
-                    "free_bikes": 20,
-                    "empty_slots": 10,
-                    "extra": {"slots": 30},
-                },
+                {"name": "Station A", "free_bikes": 10, "empty_slots": 5, "extra": {"slots": 15}},
+                {"name": "Station B", "free_bikes": 20, "empty_slots": 10, "extra": {"slots": 30}},
             ]
         }
     }
@@ -187,18 +162,8 @@ def test_fetch_no_bikes_available(mock_get, adapter):
     response_data = {
         "network": {
             "stations": [
-                {
-                    "name": "Station A",
-                    "free_bikes": 0,
-                    "empty_slots": 15,
-                    "extra": {"slots": 15},
-                },
-                {
-                    "name": "Station B",
-                    "free_bikes": 0,
-                    "empty_slots": 30,
-                    "extra": {"slots": 30},
-                },
+                {"name": "Station A", "free_bikes": 0, "empty_slots": 15, "extra": {"slots": 15}},
+                {"name": "Station B", "free_bikes": 0, "empty_slots": 30, "extra": {"slots": 30}},
             ]
         }
     }

@@ -275,27 +275,9 @@ def test_attraction_types_from_tags(mock_post, adapter):
     mock_response = Mock()
     mock_response.json.return_value = {
         "elements": [
-            {
-                "type": "node",
-                "id": 1,
-                "lat": 53.45,
-                "lon": -6.15,
-                "tags": {"name": "Museum A", "tourism": "museum"},
-            },
-            {
-                "type": "node",
-                "id": 2,
-                "lat": 53.45,
-                "lon": -6.15,
-                "tags": {"name": "Hotel B", "tourism": "hotel"},
-            },
-            {
-                "type": "node",
-                "id": 3,
-                "lat": 53.45,
-                "lon": -6.15,
-                "tags": {"name": "Info C", "tourism": "information"},
-            },
+            {"type": "node", "id": 1, "lat": 53.45, "lon": -6.15, "tags": {"name": "Museum A", "tourism": "museum"}},
+            {"type": "node", "id": 2, "lat": 53.45, "lon": -6.15, "tags": {"name": "Hotel B", "tourism": "hotel"}},
+            {"type": "node", "id": 3, "lat": 53.45, "lon": -6.15, "tags": {"name": "Info C", "tourism": "information"}},
         ]
     }
     mock_response.raise_for_status = Mock()
@@ -336,13 +318,7 @@ def test_wheelchair_accessibility_variations(mock_post, adapter):
                 "lon": -6.15,
                 "tags": {"name": "A3", "tourism": "museum", "wheelchair": "limited"},
             },
-            {
-                "type": "node",
-                "id": 4,
-                "lat": 53.45,
-                "lon": -6.15,
-                "tags": {"name": "A4", "tourism": "museum"},
-            },
+            {"type": "node", "id": 4, "lat": 53.45, "lon": -6.15, "tags": {"name": "A4", "tourism": "museum"}},
         ]
     }
     mock_response.raise_for_status = Mock()

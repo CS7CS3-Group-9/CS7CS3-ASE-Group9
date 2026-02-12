@@ -225,14 +225,7 @@ def test_zero_pollutants(mock_get, adapter):
     assert snapshot.metrics.aqi_value == 0
     assert all(
         getattr(snapshot.metrics.pollutants, attr) == 0.0
-        for attr in [
-            "pm2_5",
-            "pm10",
-            "nitrogen_dioxide",
-            "carbon_monoxide",
-            "ozone",
-            "sulphur_dioxide",
-        ]
+        for attr in ["pm2_5", "pm10", "nitrogen_dioxide", "carbon_monoxide", "ozone", "sulphur_dioxide"]
     )
 
 

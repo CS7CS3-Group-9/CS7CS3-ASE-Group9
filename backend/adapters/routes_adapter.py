@@ -50,15 +50,7 @@ class RoutesAdapter:
         # Multi-stop mocked schema
         if waypoints:
             return self._parse_multistop(
-                data,
-                start,
-                end,
-                transport_mode,
-                dep_time,
-                arr_time,
-                fast_route,
-                eco_route,
-                waypoints,
+                data, start, end, transport_mode, dep_time, arr_time, fast_route, eco_route, waypoints
             )
 
         # Single route mocked schema

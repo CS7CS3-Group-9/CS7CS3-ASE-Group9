@@ -45,9 +45,7 @@ class TrafficAdapter(DataAdapter):
 
         # Create and return snapshot
         return MobilitySnapshot(
-            timestamp=datetime.now(timezone.utc),
-            location=data.get("location", location),
-            traffic=incidents,
+            timestamp=datetime.now(timezone.utc), location=data.get("location", location), traffic=incidents
         )
 
     def _make_api_request(self, location: str, radius_km: float):
