@@ -1,49 +1,75 @@
 from __future__ import annotations
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, jsonify, request
 
-from backend.api.serializer import to_jsonable
+from backend.api.serializers import to_jsonable
 from backend.services.snapshot_service import AdapterCallSpec, SnapshotService
+
+from backend.adapters.bikes_adapter import BikesAdapter
+from backend.adapters.traffic_adapter import TrafficAdapter
+from backend.adapters.airquality_adapter import AirQualityAdapter
+from backend.adapters.tour_adapter import TourAdapter
+from backend.adapters.airquality_location_adapter import AirQualityLocationAdapter
 
 snapshot_bp = Blueprint("snapshot", __name__)
 
 
+def build_adapter_specs(
+    include: list[str],
+    radius_km: float,
+    latitude: float | None,
+    longitude: float | None,
+) -> list[AdapterCallSpec]:
+    specs: list[AdapterCallSpec] = []
+
+    if "bikes" in include:
+        specs.append(AdapterCallSpec(adapter=BikesAdapter(), kwargs={}))
+
+    if "traffic" in include:
+        specs.append(AdapterCallSpec(adapter=TrafficAdapter(), kwargs={"radius_km": radius_km}))
+
+    if "airquality" in include:
+        specs.append(
+            AdapterCallSpec(
+                adapter=AirQualityLocationAdapter(),
+                kwargs={"latitude": latitude, "longitude": longitude},
+            )
+        )
+
+    if "tours" in include:
+        specs.append(AdapterCallSpec(adapter=TourAdapter(), kwargs={"radius_km": radius_km}))
+
+    return specs
+
+
 @snapshot_bp.get("/snapshot")
 def get_snapshot():
-    """
-    GET /snapshot?location=dublin&traffic_radius_km=1.0&tour_radius_km=5
-
-    Returns a JSON-serialisable MobilitySnapshot.
-    """
     location = request.args.get("location", "dublin")
 
-    # Optional per-adapter params (passed via AdapterCallSpec)
-    traffic_radius_km = request.args.get("traffic_radius_km", type=float)
-    tour_radius_km = request.args.get("tour_radius_km", type=float)
+    try:
+        radius_km = float(request.args.get("radius_km", "1.0"))
+    except ValueError:
+        radius_km = 1.0
+    radius_km = max(0.1, min(radius_km, 50.0))
 
-    adapters = current_app.config["ADAPTERS"]  # dict name -> adapter instance
+    lat_raw = request.args.get("lat")
+    lon_raw = request.args.get("lon")
+    latitude = None
+    longitude = None
+    try:
+        if lat_raw is not None and lon_raw is not None:
+            latitude = float(lat_raw)
+            longitude = float(lon_raw)
+    except ValueError:
+        latitude = None
+        longitude = None
 
-    specs = []
+    include = request.args.getlist("include")
+    if not include:
+        include = ["bikes", "traffic", "airquality", "tours"]
 
-    # Bikes (no kwargs currently)
-    specs.append(AdapterCallSpec(adapter=adapters["bikes"], kwargs={}))
-
-    # Traffic
-    traffic_kwargs = {}
-    if traffic_radius_km is not None:
-        traffic_kwargs["radius_km"] = traffic_radius_km
-    specs.append(AdapterCallSpec(adapter=adapters["traffic"], kwargs=traffic_kwargs))
-
-    # Air quality (no kwargs currently, you can add area later if you want)
-    specs.append(AdapterCallSpec(adapter=adapters["airquality"], kwargs={}))
-
-    # Tours
-    tour_kwargs = {}
-    if tour_radius_km is not None:
-        tour_kwargs["radius_km"] = tour_radius_km
-    specs.append(AdapterCallSpec(adapter=adapters["tours"], kwargs=tour_kwargs))
-
-    service = SnapshotService(adapter_specs=specs)
+    adapter_specs = build_adapter_specs(include, radius_km, latitude, longitude)
+    service = SnapshotService(adapter_specs=adapter_specs)
     snapshot = service.build_snapshot(location=location)
 
     return jsonify(to_jsonable(snapshot))
