@@ -1,5 +1,5 @@
 # python dependencies
 flask==3.0.0
-uvicorn
+gunicorn==22.0.0
 firebase-admin>=6.0.0
 requests>=2.31.0
