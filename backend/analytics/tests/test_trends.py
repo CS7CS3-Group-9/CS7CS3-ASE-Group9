@@ -1,6 +1,6 @@
 import math
 
-from analytics.trends import (
+from backend.analytics.trends import (
     moving_average,
     rolling_std,
     rate_of_change,

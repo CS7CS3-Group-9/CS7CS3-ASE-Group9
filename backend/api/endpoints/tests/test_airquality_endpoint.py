@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import pytest
 
 from app import create_app
-from models.mobility_snapshot import MobilitySnapshot
+from backend.models.mobility_snapshot import MobilitySnapshot
 
 
 @pytest.fixture

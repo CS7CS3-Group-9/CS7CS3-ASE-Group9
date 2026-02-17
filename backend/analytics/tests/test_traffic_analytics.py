@@ -1,7 +1,7 @@
 import pytest
 
-from models.traffic_models import TrafficIncident
-from analytics.traffic_analytics import build_traffic_metrics
+from backend.models.traffic_models import TrafficIncident
+from backend.analytics.traffic_analytics import build_traffic_metrics
 
 
 @pytest.fixture

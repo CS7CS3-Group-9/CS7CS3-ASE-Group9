@@ -1,8 +1,8 @@
 import pytest
 from datetime import datetime
 
-from models.mobility_snapshot import MobilitySnapshot
-from services.snapshot_service import SnapshotService, AdapterCallSpec
+from backend.models.mobility_snapshot import MobilitySnapshot
+from backend.services.snapshot_service import SnapshotService, AdapterCallSpec
 
 
 # ----------------------------

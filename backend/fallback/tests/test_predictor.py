@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from fallback.predictor import predict_snapshot, predict_value
-from models.mobility_snapshot import MobilitySnapshot
+from backend.fallback.predictor import predict_snapshot, predict_value
+from backend.models.mobility_snapshot import MobilitySnapshot
 
 
 def _make_snapshot(age_seconds: int = 0):

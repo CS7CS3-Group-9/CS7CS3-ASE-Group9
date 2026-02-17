@@ -2,9 +2,9 @@ import pytest
 from datetime import datetime, timezone
 from flask import Flask
 
-from models.mobility_snapshot import MobilitySnapshot
-from api.endpoints.snapshot import snapshot_bp
-from models.traffic_models import TrafficIncident
+from backend.models.mobility_snapshot import MobilitySnapshot
+from backend.api.endpoints.snapshot import snapshot_bp
+from backend.models.traffic_models import TrafficIncident
 
 
 class DummyAdapter:
