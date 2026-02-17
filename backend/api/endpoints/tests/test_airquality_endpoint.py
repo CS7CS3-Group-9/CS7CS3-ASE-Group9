@@ -5,6 +5,7 @@ import pytest
 
 from backend.app import create_app
 from backend.models.mobility_snapshot import MobilitySnapshot
+from backend.api.contracts import validate_snapshot_contract
 
 
 @pytest.fixture
@@ -37,3 +38,4 @@ def test_airquality_success(monkeypatch, client):
     assert resp.status_code == 200
     data = resp.get_json()
     assert data["location"] == "dublin"
+    assert validate_snapshot_contract(data, require_source_keys=["airquality"]) == []
