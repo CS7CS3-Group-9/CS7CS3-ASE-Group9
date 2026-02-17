@@ -61,6 +61,14 @@ class AdapterFails:
         raise Exception("Simulated adapter failure")
 
 
+class BikesAdapterFails:
+    def source_name(self) -> str:
+        return "bikes"
+
+    def fetch(self, location: str = "dublin", **kwargs) -> MobilitySnapshot:
+        raise Exception("Simulated adapter failure")
+
+
 class PartialNoneAdapter:
     def source_name(self) -> str:
         return "none"
@@ -209,6 +217,20 @@ def test_merge_does_not_overwrite_with_none():
     service = SnapshotService(adapters=[BikesAdapterOK(), PartialNoneAdapter()])
     snapshot = service.build_snapshot("dublin")
     assert snapshot.bikes == {"bikes": 123}
+
+
+def test_cache_is_used_when_adapter_fails():
+    from backend.fallback.cache import AdapterCache
+
+    cache = AdapterCache()
+    # prime cache with a successful bikes snapshot
+    cache.fetch_with_fallback(BikesAdapterOK(), location="dublin")
+
+    service = SnapshotService(adapters=[BikesAdapterFails()], cache=cache)
+    snapshot = service.build_snapshot(location="dublin")
+
+    assert snapshot.bikes == {"bikes": 123}
+    assert snapshot.source_status["bikes"] == "cached"
 
 
 if __name__ == "__main__":
