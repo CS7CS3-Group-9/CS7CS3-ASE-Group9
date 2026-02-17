@@ -6,6 +6,7 @@ import pytest
 
 from backend.app import create_app
 from backend.models.mobility_snapshot import MobilitySnapshot
+from backend.api.contracts import validate_snapshot_contract
 
 
 @pytest.fixture
@@ -37,6 +38,7 @@ def test_traffic_endpoint_success(monkeypatch, client):
     assert data["location"] == "dublin"
     assert data["traffic"]["congestion_level"] == "high"
     assert data["source_status"]["traffic"] == "live"
+    assert validate_snapshot_contract(data, require_source_keys=["traffic"]) == []
 
 
 def test_traffic_endpoint_radius_km_bad_value_still_works(monkeypatch, client):

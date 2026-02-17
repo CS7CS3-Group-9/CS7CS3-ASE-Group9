@@ -10,6 +10,7 @@ from unittest.mock import patch
 from flask import Flask
 
 from backend.api.endpoints.health import health_bp, ADAPTER_REGISTRY
+from backend.api.contracts import validate_health_contract
 
 
 @pytest.fixture
@@ -177,6 +178,8 @@ def test_health_response_structure(mock_check, client):
     required_keys = ["status", "adapters", "timestamp", "last_snapshot"]
     for key in required_keys:
         assert key in data, f"Missing required key: {key}"
+
+    assert validate_health_contract(data) == []
 
 
 # ──────────────────────────────────────────────

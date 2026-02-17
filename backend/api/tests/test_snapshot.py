@@ -5,6 +5,7 @@ from flask import Flask
 from backend.models.mobility_snapshot import MobilitySnapshot
 from backend.api.endpoints.snapshot import snapshot_bp
 from backend.models.traffic_models import TrafficIncident
+from backend.api.contracts import validate_snapshot_contract
 
 
 class DummyAdapter:
@@ -114,6 +115,7 @@ def test_snapshot_contains_expected_keys(monkeypatch, client):
     assert "source_status" in data
 
     assert data["bikes"] == {"available": 10}
+    assert validate_snapshot_contract(data) == []
 
 
 def test_snapshot_accepts_location_param(client):
