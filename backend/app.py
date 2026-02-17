@@ -38,7 +38,7 @@ except Exception as e:
 
 
 # ── Temporary test endpoint - remove after verifying Firestore ──
-@app.route('/test-firestore')
+@app.route("/test-firestore")
 def test_firestore():
     """Quick test to verify Firestore works from GKE."""
     if db is None:
@@ -47,10 +47,12 @@ def test_firestore():
     try:
         # Write
         doc_ref = db.collection("test").document("gke-check")
-        doc_ref.set({
-            "status": "working",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        doc_ref.set(
+            {
+                "status": "working",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
 
         # Read back
         doc = doc_ref.get()
@@ -59,11 +61,13 @@ def test_firestore():
         # Clean up
         doc_ref.delete()
 
-        return jsonify({
-            "status": "ok",
-            "firestore": "connected",
-            "read_back": data,
-        })
+        return jsonify(
+            {
+                "status": "ok",
+                "firestore": "connected",
+                "read_back": data,
+            }
+        )
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -75,4 +79,3 @@ def test_firestore():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug=True)
-    uvicorn.run(app, host="0.0.0.0", port=8080)

@@ -6,6 +6,7 @@ Firestore-specific tests mock firebase calls.
 
 Run: pytest backend/fallback/tests/test_adapter_cache.py -v
 """
+
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
@@ -16,6 +17,7 @@ from backend.fallback.cache import AdapterCache
 # ──────────────────────────────────────────────
 # Helpers
 # ──────────────────────────────────────────────
+
 
 def _make_snapshot(bikes=None, traffic=None):
     """Build a fake MobilitySnapshot-like object (for memory-only tests)."""
@@ -32,6 +34,7 @@ def _make_snapshot(bikes=None, traffic=None):
 
 class SimpleSnapshot:
     """Picklable snapshot for Firestore tests (MagicMock can't be pickled)."""
+
     def __init__(self, bikes=None, traffic=None):
         self.timestamp = datetime.now(timezone.utc)
         self.location = "dublin"
@@ -57,6 +60,7 @@ class WorkingAdapter:
 
 class PicklableWorkingAdapter:
     """Returns picklable snapshots for Firestore tests."""
+
     def __init__(self, data=None):
         self._data = data or {"available_bikes": 50}
 
@@ -93,6 +97,7 @@ class SometimesFailsAdapter:
 # ──────────────────────────────────────────────
 # 1. Basic cache behaviour (memory-only, no Firestore)
 # ──────────────────────────────────────────────
+
 
 def test_cache_stores_successful_result():
     """After a successful fetch, result should be in cache."""
@@ -138,6 +143,7 @@ def test_cache_returns_none_on_failure_without_cache():
 # 2. Cache updates on success
 # ──────────────────────────────────────────────
 
+
 def test_cache_updates_with_newer_data():
     """Cache should update when adapter returns new data."""
     cache = AdapterCache()
@@ -173,6 +179,7 @@ def test_cache_keys_by_adapter_name():
 # 3. Adapter flapping (works, fails, works)
 # ──────────────────────────────────────────────
 
+
 def test_cache_handles_flapping_adapter():
     """Adapter that alternates between working and failing."""
     cache = AdapterCache()
@@ -198,6 +205,7 @@ def test_cache_handles_flapping_adapter():
 # ──────────────────────────────────────────────
 # 4. Cache metadata
 # ──────────────────────────────────────────────
+
 
 def test_cache_tracks_last_success_time():
     """Cache should track when data was last successfully fetched."""
@@ -235,6 +243,7 @@ def test_cache_has_cached_returns_true_after_success():
 # 5. Kwargs passthrough
 # ──────────────────────────────────────────────
 
+
 def test_cache_passes_kwargs_to_adapter():
     """Extra kwargs should be forwarded to adapter.fetch()."""
     cache = AdapterCache()
@@ -249,9 +258,7 @@ def test_cache_passes_kwargs_to_adapter():
             return snap
 
     adapter = KwargsAdapter()
-    result, status = cache.fetch_with_fallback(
-        adapter, location="dublin", radius_km=5.0
-    )
+    result, status = cache.fetch_with_fallback(adapter, location="dublin", radius_km=5.0)
 
     assert result.traffic == {"radius": 5.0}
     assert status == "live"
@@ -260,6 +267,7 @@ def test_cache_passes_kwargs_to_adapter():
 # ──────────────────────────────────────────────
 # 6. Clear cache
 # ──────────────────────────────────────────────
+
 
 def test_clear_cache_removes_all():
     """clear() should remove all cached data."""
@@ -295,6 +303,7 @@ def test_clear_single_adapter():
 # ──────────────────────────────────────────────
 # 7. Firestore persistence tests (mocked)
 # ──────────────────────────────────────────────
+
 
 def _make_mock_db():
     """Create a mock Firestore client with working storage."""
@@ -338,6 +347,7 @@ def _make_mock_db():
                 def delete():
                     db._last_doc_name = n
                     db._store.pop(n, None)
+
                 return delete
 
             doc.reference.delete = make_delete(captured_name)
@@ -422,6 +432,7 @@ def test_firestore_clear_all_deletes_everything():
     class PicklableTrafficAdapter:
         def source_name(self):
             return "traffic"
+
         def fetch(self, **kwargs):
             return SimpleSnapshot(traffic=[{"incidents": 3}])
 
@@ -448,3 +459,29 @@ def test_works_without_firestore():
     failing = FailingAdapter()
     result2, status2 = cache.fetch_with_fallback(failing, location="dublin")
     assert status2 == "cached"
+
+
+def test_get_cached_returns_snapshot_when_available():
+    cache = AdapterCache()
+    adapter = WorkingAdapter()
+    cache.fetch_with_fallback(adapter, location="dublin")
+
+    cached = cache.get_cached("bikes")
+    assert cached is not None
+    assert cached.bikes == {"available_bikes": 50}
+
+
+def test_get_cached_returns_none_when_missing():
+    cache = AdapterCache()
+    assert cache.get_cached("missing") is None
+
+
+def test_cached_age_seconds_returns_number():
+    cache = AdapterCache()
+    adapter = WorkingAdapter()
+    cache.fetch_with_fallback(adapter, location="dublin")
+
+    age = cache.cached_age_seconds("bikes")
+    assert age is not None
+    assert age >= 0.0
+    assert age < 60.0

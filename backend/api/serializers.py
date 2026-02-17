@@ -4,7 +4,14 @@ from typing import Any
 
 
 def to_jsonable(obj: Any) -> Any:
-
+    """
+    Convert arbitrary domain objects into JSON-serializable primitives.
+    Handles:
+      - datetime -> ISO string
+      - list/tuple -> list
+      - dict -> dict
+      - objects with __dict__ -> dict recursively
+    """
     if obj is None:
         return None
 
@@ -23,4 +30,5 @@ def to_jsonable(obj: Any) -> Any:
     if hasattr(obj, "__dict__"):
         return {k: to_jsonable(v) for k, v in obj.__dict__.items()}
 
+    # fallback: stringify unknown types
     return str(obj)
