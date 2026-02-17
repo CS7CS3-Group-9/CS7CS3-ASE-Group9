@@ -5,7 +5,12 @@ from backend.adapters.bus_adapter import BusAdapter
 from backend.models.bus_models import BusStop, BusMetrics
 from backend.models.mobility_snapshot import MobilitySnapshot
 
-REAL_GTFS_DIR = r"C:\Users\Ruby\Documents\GitHub\CS7CS3-ASE-Group9\data\historical"
+# Get the directory of this test file
+TEST_DIR = Path(__file__).parent
+# Go up to project root (three levels: tests/ -> adapters/ -> backend/ -> project root)
+PROJECT_ROOT = TEST_DIR.parent.parent.parent
+# Build path to data/historical
+REAL_GTFS_DIR = PROJECT_ROOT / "data" / "historical"
 
 
 def test_source_name():
@@ -40,6 +45,13 @@ def test_fetch_dublin_stops_only():
         assert stop.name, "Stop name should not be empty"
         assert isinstance(stop.lat, float)
         assert isinstance(stop.longitude, float)
+
+    assert hasattr(metrics, "stop_frequencies")
+    assert isinstance(metrics.stop_frequencies, dict)
+    # At least one stop should have a frequency > 0 (assuming stop_times exists)
+    if metrics.stops:
+        any_freq = any(metrics.stop_frequencies.get(stop.stop_id, 0) > 0 for stop in metrics.stops)
+        assert any_freq, "No stop frequency > 0 found – is stop_times.txt missing or empty?"
 
 
 if __name__ == "__main__":

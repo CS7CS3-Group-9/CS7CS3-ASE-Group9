@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Dict
 
 
 @dataclass
@@ -16,17 +16,13 @@ class BusRoute:
     agency_id: str
     route_short_name: str
     route_long_name: str
-    route_type: int  # 0 = tram, 1 = subway, 2 = rail, 3 = bus, etc.
-    # Optional: add route_color, route_text_color, etc. as needed
+    route_type: int
 
 
 @dataclass
 class BusMetrics:
-    """
-    Container for bus stop and route data.
-    """
-
     stops: List[BusStop] = field(default_factory=list)
     routes: List[BusRoute] = field(default_factory=list)
+    stop_frequencies: Dict[str, int] = field(default_factory=dict)  # stop_id -> trip count
     total_stops: int = 0
     total_routes: int = 0
