@@ -4,11 +4,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, Optional, Tuple
 
-from backend.models.mobility_snapshot import MobilitySnapshot
+from models.mobility_snapshot import MobilitySnapshot
 
 # Import analytics you already have (adjust names if yours differ)
-from backend.analytics.traffic_analytics import build_traffic_metrics
-from backend.analytics.airquality_analytics import overall_air_quality_level
+from analytics.traffic_analytics import build_traffic_metrics
+from analytics.airquality_analytics import overall_air_quality_level
 
 
 @dataclass

@@ -4,8 +4,8 @@ from datetime import datetime, timezone
 
 import pytest
 
-from backend.app import create_app
-from backend.models.mobility_snapshot import MobilitySnapshot
+from app import create_app
+from models.mobility_snapshot import MobilitySnapshot
 
 
 @pytest.fixture
@@ -16,7 +16,7 @@ def client():
 
 
 def test_bikes_endpoint_success(monkeypatch, client):
-    from backend.services import snapshot_service as ss_module
+    from services import snapshot_service as ss_module
 
     def fake_build_snapshot(self, location="dublin"):
         return MobilitySnapshot(

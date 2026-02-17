@@ -1,4 +1,4 @@
-from backend.models.traffic_models import TrafficMetrics
+from models.traffic_models import TrafficMetrics
 
 
 def build_traffic_metrics(incidents, radius_km: float) -> TrafficMetrics:

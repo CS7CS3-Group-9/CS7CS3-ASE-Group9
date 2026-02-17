@@ -1,6 +1,6 @@
 import math
 
-from backend.analytics.correlations import (
+from analytics.correlations import (
     pearson_correlation,
     rolling_correlation,
     pairwise_correlations,

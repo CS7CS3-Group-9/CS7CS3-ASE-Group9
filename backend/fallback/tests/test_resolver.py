@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 
-from backend.fallback.resolver import choose_snapshot, resolve_with_cache
-from backend.fallback.cache import AdapterCache
-from backend.models.mobility_snapshot import MobilitySnapshot
+from fallback.resolver import choose_snapshot, resolve_with_cache
+from fallback.cache import AdapterCache
+from models.mobility_snapshot import MobilitySnapshot
 
 
 class WorkingAdapter:

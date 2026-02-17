@@ -11,7 +11,7 @@ import pytest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
-from backend.fallback.cache import AdapterCache
+from fallback.cache import AdapterCache
 
 
 # ──────────────────────────────────────────────

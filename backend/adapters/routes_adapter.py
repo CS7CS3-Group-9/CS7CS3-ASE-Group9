@@ -3,7 +3,7 @@ import requests
 from datetime import datetime
 from typing import List, Optional
 
-from backend.models.route_models import RouteRecommendation, MultiStopRoute, RouteLeg
+from models.route_models import RouteRecommendation, MultiStopRoute, RouteLeg
 
 
 class RoutesAdapter:

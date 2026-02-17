@@ -2,9 +2,9 @@ import pytest
 from datetime import datetime, timezone
 from flask import Flask
 
-from backend.models.mobility_snapshot import MobilitySnapshot
-from backend.api.endpoints.snapshot import snapshot_bp
-from backend.models.traffic_models import TrafficIncident
+from models.mobility_snapshot import MobilitySnapshot
+from api.endpoints.snapshot import snapshot_bp
+from models.traffic_models import TrafficIncident
 
 
 class DummyAdapter:
@@ -91,7 +91,7 @@ def test_snapshot_returns_json(client):
 
 
 def test_snapshot_contains_expected_keys(monkeypatch, client):
-    from backend.services import snapshot_service as ss_module
+    from services import snapshot_service as ss_module
 
     def fake_build_snapshot(self, location="dublin"):
         return MobilitySnapshot(

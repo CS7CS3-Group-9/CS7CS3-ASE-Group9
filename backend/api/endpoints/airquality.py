@@ -1,8 +1,8 @@
 from flask import Blueprint, jsonify, request
 
-from backend.api.serializers import to_jsonable
-from backend.services.snapshot_service import AdapterCallSpec, SnapshotService
-from backend.adapters.airquality_location_adapter import AirQualityLocationAdapter
+from api.serializers import to_jsonable
+from services.snapshot_service import AdapterCallSpec, SnapshotService
+from adapters.airquality_location_adapter import AirQualityLocationAdapter
 
 airquality_bp = Blueprint("airquality", __name__)
 

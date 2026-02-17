@@ -1,6 +1,6 @@
 import pytest
-from backend.models.airquality_models import PollutantLevels, AirQualityMetrics
-from backend.analytics.airquality_analytics import (
+from models.airquality_models import PollutantLevels, AirQualityMetrics
+from analytics.airquality_analytics import (
     categorise_aqi,
     check_pollutant_safety,
     overall_air_quality_level,

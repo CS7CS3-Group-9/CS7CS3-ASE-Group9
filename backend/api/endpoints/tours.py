@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
 
-from backend.api.serializers import to_jsonable
-from backend.services.snapshot_service import AdapterCallSpec, SnapshotService
-from backend.adapters.tour_adapter import TourAdapter
+from api.serializers import to_jsonable
+from services.snapshot_service import AdapterCallSpec, SnapshotService
+from adapters.tour_adapter import TourAdapter
 
 tours_bp = Blueprint("tours", __name__)
 

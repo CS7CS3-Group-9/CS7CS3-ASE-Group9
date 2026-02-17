@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime
-from backend.adapters.airquality_adapter import AirQualityAdapter
+from adapters.airquality_adapter import AirQualityAdapter
 
 
 @pytest.fixture
@@ -24,7 +24,7 @@ def mock_airquality_response():
             "carbon_monoxide": "μg/m³",
             "ozone": "μg/m³",
             "sulphur_dioxide": "μg/m³",
-            "european_aqi": "EAQI"
+            "european_aqi": "EAQI",
         },
         "current": {
             "time": "2026-01-29T16:00",
@@ -35,8 +35,8 @@ def mock_airquality_response():
             "carbon_monoxide": 153.0,
             "ozone": 61.0,
             "sulphur_dioxide": 0.7,
-            "european_aqi": 24
-        }
+            "european_aqi": 24,
+        },
     }
 
 
@@ -51,7 +51,7 @@ def test_source_name(adapter):
     assert adapter.source_name() == "airquality"
 
 
-@patch('backend.adapters.airquality_adapter.requests.get')
+@patch("backend.adapters.airquality_adapter.requests.get")
 def test_fetch_success(mock_get, adapter, mock_airquality_response):
     """Test successful API fetch and parsing"""
     mock_response = Mock()
@@ -73,7 +73,7 @@ def test_fetch_success(mock_get, adapter, mock_airquality_response):
     assert snapshot.source_status == {"open-meteo": "live"}
 
 
-@patch('backend.adapters.airquality_adapter.requests.get')
+@patch("backend.adapters.airquality_adapter.requests.get")
 def test_pollutant_parsing(mock_get, adapter, mock_airquality_response):
     """Test individual pollutants are parsed correctly"""
     mock_response = Mock()
@@ -93,7 +93,7 @@ def test_pollutant_parsing(mock_get, adapter, mock_airquality_response):
     assert pollutants.sulphur_dioxide == 0.7
 
 
-@patch('backend.adapters.airquality_adapter.requests.get')
+@patch("backend.adapters.airquality_adapter.requests.get")
 def test_pollutant_units(mock_get, adapter, mock_airquality_response):
     """Test pollutant units are stored correctly"""
     mock_response = Mock()
@@ -110,7 +110,7 @@ def test_pollutant_units(mock_get, adapter, mock_airquality_response):
     assert units["ozone"] == "μg/m³"
 
 
-@patch('backend.adapters.airquality_adapter.requests.get')
+@patch("backend.adapters.airquality_adapter.requests.get")
 def test_aqi_value(mock_get, adapter, mock_airquality_response):
     """Test AQI value is extracted correctly"""
     mock_response = Mock()
@@ -123,7 +123,7 @@ def test_aqi_value(mock_get, adapter, mock_airquality_response):
     assert snapshot.metrics.aqi_value == 24
 
 
-@patch('backend.adapters.airquality_adapter.requests.get')
+@patch("backend.adapters.airquality_adapter.requests.get")
 def test_different_coordinates(mock_get, adapter, mock_airquality_response):
     """Test different latitude/longitude parameters"""
     mock_response = Mock()
@@ -141,7 +141,7 @@ def test_different_coordinates(mock_get, adapter, mock_airquality_response):
     assert snapshot.latitude == 53.300003  # Mock returns same data
 
 
-@patch('backend.adapters.airquality_adapter.requests.get')
+@patch("backend.adapters.airquality_adapter.requests.get")
 def test_fetch_api_timeout(mock_get, adapter):
     """Test API timeout handling"""
     mock_get.side_effect = Exception("Timeout")
@@ -150,7 +150,7 @@ def test_fetch_api_timeout(mock_get, adapter):
         adapter.fetch(latitude=53.3, longitude=-6.3)
 
 
-@patch('backend.adapters.airquality_adapter.requests.get')
+@patch("backend.adapters.airquality_adapter.requests.get")
 def test_fetch_api_error_status(mock_get, adapter):
     """Test HTTP error handling"""
     mock_response = Mock()
@@ -161,7 +161,7 @@ def test_fetch_api_error_status(mock_get, adapter):
         adapter.fetch(latitude=53.3, longitude=-6.3)
 
 
-@patch('backend.adapters.airquality_adapter.requests.get')
+@patch("backend.adapters.airquality_adapter.requests.get")
 def test_fetch_malformed_response(mock_get, adapter):
     """Test handling of malformed API response"""
     mock_response = Mock()
@@ -173,7 +173,7 @@ def test_fetch_malformed_response(mock_get, adapter):
         adapter.fetch(latitude=53.3, longitude=-6.3)
 
 
-@patch('backend.adapters.airquality_adapter.requests.get')
+@patch("backend.adapters.airquality_adapter.requests.get")
 def test_timestamp_parsing(mock_get, adapter, mock_airquality_response):
     """Test timestamp is parsed correctly"""
     mock_response = Mock()
@@ -189,7 +189,7 @@ def test_timestamp_parsing(mock_get, adapter, mock_airquality_response):
     assert snapshot.timestamp.day == 29
 
 
-@patch('backend.adapters.airquality_adapter.requests.get')
+@patch("backend.adapters.airquality_adapter.requests.get")
 def test_zero_pollutants(mock_get, adapter):
     """Test handling of zero pollutant values"""
     mock_response = Mock()
@@ -204,7 +204,7 @@ def test_zero_pollutants(mock_get, adapter):
             "nitrogen_dioxide": "μg/m³",
             "carbon_monoxide": "μg/m³",
             "ozone": "μg/m³",
-            "sulphur_dioxide": "μg/m³"
+            "sulphur_dioxide": "μg/m³",
         },
         "current": {
             "time": "2026-01-29T16:00",
@@ -214,8 +214,8 @@ def test_zero_pollutants(mock_get, adapter):
             "carbon_monoxide": 0.0,
             "ozone": 0.0,
             "sulphur_dioxide": 0.0,
-            "european_aqi": 0
-        }
+            "european_aqi": 0,
+        },
     }
     mock_response.raise_for_status = Mock()
     mock_get.return_value = mock_response
@@ -223,9 +223,10 @@ def test_zero_pollutants(mock_get, adapter):
     snapshot = adapter.fetch(latitude=53.3, longitude=-6.3)
 
     assert snapshot.metrics.aqi_value == 0
-    assert all(getattr(snapshot.metrics.pollutants, attr) == 0.0 
-               for attr in ['pm2_5', 'pm10', 'nitrogen_dioxide', 
-                           'carbon_monoxide', 'ozone', 'sulphur_dioxide'])
+    assert all(
+        getattr(snapshot.metrics.pollutants, attr) == 0.0
+        for attr in ["pm2_5", "pm10", "nitrogen_dioxide", "carbon_monoxide", "ozone", "sulphur_dioxide"]
+    )
 
 
 if __name__ == "__main__":

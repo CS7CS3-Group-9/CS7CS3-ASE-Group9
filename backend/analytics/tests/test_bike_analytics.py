@@ -1,6 +1,6 @@
 import pytest
-from backend.models.bike_models import StationMetrics
-from backend.analytics.bike_analytics import get_station_occupancy, detect_critical_occupancy
+from models.bike_models import StationMetrics
+from analytics.bike_analytics import get_station_occupancy, detect_critical_occupancy
 
 
 def test_calculates_occupancy_percentage_for_each_station():

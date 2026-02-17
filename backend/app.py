@@ -4,11 +4,11 @@ from firebase_admin import firestore
 from datetime import datetime, timezone
 
 from api.endpoints.example import example_bp
-from backend.api.endpoints.snapshot import snapshot_bp
-from backend.api.endpoints.bikes import bikes_bp
-from backend.api.endpoints.traffic import traffic_bp
-from backend.api.endpoints.airquality import airquality_bp
-from backend.api.endpoints.tours import tours_bp
+from api.endpoints.snapshot import snapshot_bp
+from api.endpoints.bikes import bikes_bp
+from api.endpoints.traffic import traffic_bp
+from api.endpoints.airquality import airquality_bp
+from api.endpoints.tours import tours_bp
 
 
 # command: python -m flask --app backend.app:create_app --debug run --port 5000

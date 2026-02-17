@@ -1,6 +1,6 @@
 from typing import List, Dict, Any
 
-from backend.models.bike_models import StationMetrics
+from models.bike_models import StationMetrics
 
 
 def get_station_occupancy(

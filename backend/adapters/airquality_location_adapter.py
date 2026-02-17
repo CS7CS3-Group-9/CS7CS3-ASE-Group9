@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from backend.adapters.base_adapter import DataAdapter
-from backend.adapters.airquality_adapter import AirQualityAdapter
-from backend.models.mobility_snapshot import MobilitySnapshot
+from adapters.base_adapter import DataAdapter
+from adapters.airquality_adapter import AirQualityAdapter
+from models.mobility_snapshot import MobilitySnapshot
 
 
 class AirQualityLocationAdapter(DataAdapter):

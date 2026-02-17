@@ -9,7 +9,7 @@ import pytest
 from unittest.mock import patch
 from flask import Flask
 
-from backend.api.endpoints.health import health_bp, ADAPTER_REGISTRY
+from api.endpoints.health import health_bp, ADAPTER_REGISTRY
 
 
 @pytest.fixture

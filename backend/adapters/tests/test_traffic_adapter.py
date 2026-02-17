@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime
-from backend.adapters.traffic_adapter import TrafficAdapter
-from backend.models.traffic_models import TrafficIncident
+from adapters.traffic_adapter import TrafficAdapter
+from models.traffic_models import TrafficIncident
 
 
 @pytest.fixture

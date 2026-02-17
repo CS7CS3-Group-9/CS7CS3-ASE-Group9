@@ -3,9 +3,9 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Set, Dict
 
-from backend.adapters.base_adapter import DataAdapter
-from backend.models.bus_models import BusStop, BusMetrics
-from backend.models.mobility_snapshot import MobilitySnapshot
+from adapters.base_adapter import DataAdapter
+from models.bus_models import BusStop, BusMetrics
+from models.mobility_snapshot import MobilitySnapshot
 
 
 class BusAdapter(DataAdapter):

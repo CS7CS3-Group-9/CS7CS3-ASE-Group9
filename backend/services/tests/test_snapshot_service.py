@@ -1,8 +1,8 @@
 import pytest
 from datetime import datetime
 
-from backend.models.mobility_snapshot import MobilitySnapshot
-from backend.services.snapshot_service import SnapshotService, AdapterCallSpec
+from models.mobility_snapshot import MobilitySnapshot
+from services.snapshot_service import SnapshotService, AdapterCallSpec
 
 
 # ----------------------------
@@ -83,7 +83,7 @@ def test_build_snapshot_sets_location_and_timestamp():
 
 
 def test_build_snapshot_merges_fields_from_multiple_adapters(monkeypatch):
-    from backend.services import snapshot_service as ss_module
+    from services import snapshot_service as ss_module
 
     monkeypatch.setattr(ss_module, "build_traffic_metrics", lambda incidents, radius_km: incidents)
 
@@ -96,7 +96,7 @@ def test_build_snapshot_merges_fields_from_multiple_adapters(monkeypatch):
 
 
 def test_source_status_live_for_successful_adapters(monkeypatch):
-    from backend.services import snapshot_service as ss_module
+    from services import snapshot_service as ss_module
 
     monkeypatch.setattr(ss_module, "build_traffic_metrics", lambda incidents, radius_km: incidents)
 
@@ -130,7 +130,7 @@ def test_traffic_analytics_is_applied(monkeypatch):
     SnapshotService should convert traffic list -> TrafficMetrics by calling build_traffic_metrics.
     We monkeypatch it to confirm it was called and that output replaces list.
     """
-    from backend.services import snapshot_service as ss_module
+    from services import snapshot_service as ss_module
 
     sentinel_metrics = object()
 
@@ -152,7 +152,7 @@ def test_airquality_status_is_set_by_analytics(monkeypatch):
     SnapshotService should compute overall air quality level and set airquality.status
     if the model has that attribute.
     """
-    from backend.services import snapshot_service as ss_module
+    from services import snapshot_service as ss_module
 
     def fake_overall_air_quality_level(air_model):
         return "medium"
@@ -183,7 +183,7 @@ def test_adapter_specs_pass_kwargs_to_adapter(monkeypatch):
     """
     Ensures SnapshotService can call adapters with per-adapter kwargs (no hardcoding).
     """
-    from backend.services import snapshot_service as ss_module
+    from services import snapshot_service as ss_module
 
     monkeypatch.setattr(ss_module, "build_traffic_metrics", lambda incidents, radius_km: incidents)
 

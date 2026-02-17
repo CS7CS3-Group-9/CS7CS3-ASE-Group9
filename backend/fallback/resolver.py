@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Optional, Tuple
 
-from backend.fallback.cache import AdapterCache
-from backend.fallback.predictor import PredictionResult, predict_snapshot
+from fallback.cache import AdapterCache
+from fallback.predictor import PredictionResult, predict_snapshot
 
 
 @dataclass(frozen=True)

@@ -1,8 +1,8 @@
 from flask import Blueprint, jsonify, request
 
-from backend.api.serializers import to_jsonable
-from backend.services.snapshot_service import AdapterCallSpec, SnapshotService
-from backend.adapters.bikes_adapter import BikesAdapter
+from api.serializers import to_jsonable
+from services.snapshot_service import AdapterCallSpec, SnapshotService
+from adapters.bikes_adapter import BikesAdapter
 
 bikes_bp = Blueprint("bikes", __name__)
 

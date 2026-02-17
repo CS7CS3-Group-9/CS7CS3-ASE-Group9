@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-from backend.models.airquality_models import AirQualityMetrics
-from backend.models.bike_models import BikeMetrics
-from backend.models.traffic_models import TrafficMetrics
+from models.airquality_models import AirQualityMetrics
+from models.bike_models import BikeMetrics
+from models.traffic_models import TrafficMetrics
 
 
 EMISSIONS_G_PER_KM = {

@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import pytest
 
-from backend.app import create_app
-from backend.models.mobility_snapshot import MobilitySnapshot
+from app import create_app
+from models.mobility_snapshot import MobilitySnapshot
 
 
 @pytest.fixture
@@ -21,7 +21,7 @@ def test_airquality_requires_coords(client):
 
 def test_airquality_success(monkeypatch, client):
     # Patch SnapshotService.build_snapshot so it doesn't call real APIs
-    from backend.services import snapshot_service as ss_module
+    from services import snapshot_service as ss_module
 
     def fake_build_snapshot(self, location="dublin"):
         return MobilitySnapshot(

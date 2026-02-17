@@ -1,6 +1,6 @@
 from typing import Dict
 
-from backend.models.airquality_models import AirQualityMetrics, PollutantLevels
+from models.airquality_models import AirQualityMetrics, PollutantLevels
 
 # WHO / EU recommended limits for pollutants (μg/m³)
 POLLUTANT_LIMITS = {

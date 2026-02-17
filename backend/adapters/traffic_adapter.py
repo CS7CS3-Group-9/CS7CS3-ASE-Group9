@@ -1,8 +1,8 @@
 import requests
 from datetime import datetime, timezone
-from backend.adapters.base_adapter import DataAdapter
-from backend.models.mobility_snapshot import MobilitySnapshot
-from backend.models.traffic_models import TrafficIncident
+from adapters.base_adapter import DataAdapter
+from models.mobility_snapshot import MobilitySnapshot
+from models.traffic_models import TrafficIncident
 
 
 class TrafficAdapter(DataAdapter):

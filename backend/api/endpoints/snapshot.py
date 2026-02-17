@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
 
-from backend.api.serializers import to_jsonable
-from backend.services.snapshot_service import AdapterCallSpec, SnapshotService
+from api.serializers import to_jsonable
+from services.snapshot_service import AdapterCallSpec, SnapshotService
 
-from backend.adapters.bikes_adapter import BikesAdapter
-from backend.adapters.traffic_adapter import TrafficAdapter
-from backend.adapters.airquality_adapter import AirQualityAdapter
-from backend.adapters.tour_adapter import TourAdapter
-from backend.adapters.airquality_location_adapter import AirQualityLocationAdapter
+from adapters.bikes_adapter import BikesAdapter
+from adapters.traffic_adapter import TrafficAdapter
+from adapters.airquality_adapter import AirQualityAdapter
+from adapters.tour_adapter import TourAdapter
+from adapters.airquality_location_adapter import AirQualityLocationAdapter
 
 snapshot_bp = Blueprint("snapshot", __name__)
 

@@ -1,14 +1,14 @@
 import math
 
-from backend.analytics.metrics import (
+from analytics.metrics import (
     estimate_emissions_kg,
     congestion_score,
     bike_availability_score,
     air_quality_score,
 )
-from backend.models.traffic_models import TrafficMetrics
-from backend.models.bike_models import BikeMetrics
-from backend.models.airquality_models import AirQualityMetrics, PollutantLevels
+from models.traffic_models import TrafficMetrics
+from models.bike_models import BikeMetrics
+from models.airquality_models import AirQualityMetrics, PollutantLevels
 
 
 def test_estimate_emissions_kg_default_car():
