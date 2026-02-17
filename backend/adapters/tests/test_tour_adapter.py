@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime
-from adapters.tour_adapter import TourAdapter
+from backend.adapters.tour_adapter import TourAdapter
 
 
 @pytest.fixture

@@ -1,9 +1,9 @@
 import pytest
 from pathlib import Path
 
-from adapters.bus_adapter import BusAdapter
-from models.bus_models import BusStop, BusMetrics
-from models.mobility_snapshot import MobilitySnapshot
+from backend.adapters.bus_adapter import BusAdapter
+from backend.models.bus_models import BusStop, BusMetrics
+from backend.models.mobility_snapshot import MobilitySnapshot
 
 # Get the directory of this test file
 TEST_DIR = Path(__file__).parent

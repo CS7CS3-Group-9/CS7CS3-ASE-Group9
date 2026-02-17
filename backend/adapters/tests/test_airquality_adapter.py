@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime
-from adapters.airquality_adapter import AirQualityAdapter
+from backend.adapters.airquality_adapter import AirQualityAdapter
 
 
 @pytest.fixture

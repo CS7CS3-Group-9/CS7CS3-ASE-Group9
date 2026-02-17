@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime
-from adapters.bikes_adapter import BikesAdapter
+from backend.adapters.bikes_adapter import BikesAdapter
 
 
 @pytest.fixture

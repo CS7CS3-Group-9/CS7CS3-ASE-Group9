@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime
-from adapters.routes_adapter import RoutesAdapter
+from backend.adapters.routes_adapter import RoutesAdapter
 
 
 @pytest.fixture
