@@ -6,6 +6,7 @@ import pytest
 
 from backend.app import create_app
 from backend.models.mobility_snapshot import MobilitySnapshot
+from backend.api.contracts import validate_snapshot_contract
 
 
 @pytest.fixture
@@ -36,3 +37,4 @@ def test_tours_endpoint_success(monkeypatch, client):
     assert isinstance(data["tours"], list)
     assert len(data["tours"]) == 2
     assert data["source_status"]["tours"] == "live"
+    assert validate_snapshot_contract(data, require_source_keys=["tours"]) == []

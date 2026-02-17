@@ -2,6 +2,96 @@
 
 This is the README for group 9's project on sustainable city management :)
 
+## Run Backend Locally
+
+### Prerequisites
+- Python 3.12+
+- Dependencies: `pip install -r backend/requirements.txt`
+
+### Start the API
+From the repo root:
+```powershell
+$env:ENABLE_FIRESTORE="false"
+python -m flask --app backend.app:create_app --debug run --port 5000
+```
+
+### (Optional) Firestore test
+Only if you have valid Firestore credentials:
+```powershell
+$env:ENABLE_FIRESTORE="true"
+python -m flask --app backend.app:create_app --debug run --port 5000
+```
+Then hit:
+```
+http://127.0.0.1:5000/test-firestore
+```
+
+## Smoke Test
+With the API running in another terminal:
+```powershell
+.\smoke_test.ps1
+```
+
+Optional custom base URL:
+```powershell
+.\smoke_test.ps1 -BaseUrl "http://127.0.0.1:5000"
+```
+
+If scripts are blocked:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\smoke_test.ps1
+```
+
+## API Contracts (Response Shape)
+All endpoint responses are JSON. The domain endpoints return a unified `MobilitySnapshot` shape:
+```json
+{
+  "timestamp": "2026-02-17T12:00:00+00:00",
+  "location": "dublin",
+  "source_status": {
+    "bikes": "live",
+    "traffic": "cached",
+    "airquality": "live",
+    "tours": "failed"
+  },
+  "bikes": null,
+  "buses": null,
+  "traffic": null,
+  "airquality": null,
+  "population": null,
+  "tours": null,
+  "alerts": null,
+  "recommendations": null
+}
+```
+Endpoints:
+- `/bikes` returns `MobilitySnapshot` with `bikes` populated.
+- `/traffic` returns `MobilitySnapshot` with `traffic` populated.
+- `/airquality` returns `MobilitySnapshot` with `airquality` populated.
+- `/tours` returns `MobilitySnapshot` with `tours` populated.
+- `/snapshot` returns `MobilitySnapshot` with multiple domains populated.
+
+Other endpoints:
+- `/health`:
+```json
+{
+  "status": "ok",
+  "adapters": {
+    "bikes": "configured",
+    "routes": "configured",
+    "traffic": "configured",
+    "air_quality": "configured",
+    "tour": "configured"
+  },
+  "timestamp": "2026-02-17T12:00:00+00:00",
+  "last_snapshot": null
+}
+```
+- `/api/hello`:
+```json
+{"message": "Hello World!"}
+```
+
 ### Git steps for making a contribution
 1. Clone the repo to your local machine with `git clone` using either HTTPS or SSH
 2. If you already have the repo cloned checkout the main branch with `git checkout main`
