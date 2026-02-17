@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 
 from backend.api.serializers import to_jsonable
 from backend.services.snapshot_service import AdapterCallSpec, SnapshotService
@@ -10,8 +10,17 @@ from backend.adapters.traffic_adapter import TrafficAdapter
 from backend.adapters.airquality_adapter import AirQualityAdapter
 from backend.adapters.tour_adapter import TourAdapter
 from backend.adapters.airquality_location_adapter import AirQualityLocationAdapter
+from backend.fallback.cache import AdapterCache
 
 snapshot_bp = Blueprint("snapshot", __name__)
+
+
+def _get_adapter_cache() -> AdapterCache:
+    cache = current_app.config.get("ADAPTER_CACHE")
+    if cache is None:
+        cache = AdapterCache()
+        current_app.config["ADAPTER_CACHE"] = cache
+    return cache
 
 
 def build_adapter_specs(
@@ -69,7 +78,8 @@ def get_snapshot():
         include = ["bikes", "traffic", "airquality", "tours"]
 
     adapter_specs = build_adapter_specs(include, radius_km, latitude, longitude)
-    service = SnapshotService(adapter_specs=adapter_specs)
+    cache = _get_adapter_cache()
+    service = SnapshotService(adapter_specs=adapter_specs, cache=cache)
     snapshot = service.build_snapshot(location=location)
 
     return jsonify(to_jsonable(snapshot))
