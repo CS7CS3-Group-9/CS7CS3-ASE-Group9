@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, Iterable, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, Optional, Tuple
 
 from backend.models.mobility_snapshot import MobilitySnapshot
 
 # Import analytics you already have (adjust names if yours differ)
 from backend.analytics.traffic_analytics import build_traffic_metrics
 from backend.analytics.airquality_analytics import overall_air_quality_level
+from backend.fallback.cache import AdapterCache
+from backend.fallback.resolver import resolve_with_cache
 
 
 @dataclass
@@ -34,6 +36,8 @@ class SnapshotService:
         self,
         adapters: Iterable[Any] | None = None,
         adapter_specs: Iterable[AdapterCallSpec] | None = None,
+        cache: AdapterCache | None = None,
+        predictor: Callable[[Any], Optional[Any]] | None = None,
     ):
         """
         Provide either:
@@ -43,6 +47,8 @@ class SnapshotService:
         """
         self._adapters = list(adapters) if adapters else []
         self._adapter_specs = list(adapter_specs) if adapter_specs else []
+        self._cache = cache
+        self._predictor = predictor
 
         if self._adapters and self._adapter_specs:
             raise ValueError("Provide either adapters OR adapter_specs, not both.")
@@ -59,14 +65,28 @@ class SnapshotService:
 
         for adapter, kwargs in self._iter_adapters_with_kwargs():
             name = self._safe_source_name(adapter)
-
-            try:
-                partial = adapter.fetch(location=location, **kwargs)
-                self._merge(snapshot, partial)
-                snapshot.source_status[name] = "live"
-            except Exception:
-                # Keep system running even if one source fails
-                snapshot.source_status[name] = "failed"
+            if self._cache is None:
+                try:
+                    partial = adapter.fetch(location=location, **kwargs)
+                    self._merge(snapshot, partial)
+                    snapshot.source_status[name] = "live"
+                except Exception:
+                    # Keep system running even if one source fails
+                    snapshot.source_status[name] = "failed"
+            else:
+                try:
+                    result = resolve_with_cache(
+                        adapter,
+                        self._cache,
+                        predictor=self._predictor,
+                        location=location,
+                        **kwargs,
+                    )
+                    if result.snapshot is not None:
+                        self._merge(snapshot, result.snapshot)
+                    snapshot.source_status[name] = result.status
+                except Exception:
+                    snapshot.source_status[name] = "failed"
 
         # After merging raw data, compute derived indicators
         self._apply_analytics(snapshot)
