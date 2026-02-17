@@ -11,6 +11,7 @@ Status is "live", "cached", or "failed".
 
 Location: backend/fallback/adapter_cache.py
 """
+
 import pickle
 import base64
 from datetime import datetime, timezone
@@ -39,8 +40,8 @@ class AdapterCache:
                 If None, cache is in-memory only (still works,
                 just won't persist across restarts).
         """
-        self._cache = {}          # name -> snapshot
-        self._timestamps = {}     # name -> datetime
+        self._cache = {}  # name -> snapshot
+        self._timestamps = {}  # name -> datetime
         self._db = db
 
     def _get_collection(self):
@@ -49,9 +50,7 @@ class AdapterCache:
             return self._db.collection(self.COLLECTION_NAME)
         return None
 
-    def fetch_with_fallback(
-        self, adapter: Any, **kwargs
-    ) -> Tuple[Optional[Any], str]:
+    def fetch_with_fallback(self, adapter: Any, **kwargs) -> Tuple[Optional[Any], str]:
         """
         Try to fetch from adapter. On success, cache it.
         On failure, return cached data or None.
@@ -83,13 +82,13 @@ class AdapterCache:
         collection = self._get_collection()
         if collection is not None:
             try:
-                blob = base64.b64encode(
-                    pickle.dumps(snapshot)
-                ).decode("utf-8")
-                collection.document(name).set({
-                    "data": blob,
-                    "timestamp": now.isoformat(),
-                })
+                blob = base64.b64encode(pickle.dumps(snapshot)).decode("utf-8")
+                collection.document(name).set(
+                    {
+                        "data": blob,
+                        "timestamp": now.isoformat(),
+                    }
+                )
             except Exception:
                 # Firestore save failed - memory cache still works
                 pass
@@ -118,14 +117,10 @@ class AdapterCache:
             doc = collection.document(name).get()
             if doc.exists:
                 data = doc.to_dict()
-                snapshot = pickle.loads(
-                    base64.b64decode(data["data"])
-                )
+                snapshot = pickle.loads(base64.b64decode(data["data"]))
                 # Warm the memory cache
                 self._cache[name] = snapshot
-                self._timestamps[name] = datetime.fromisoformat(
-                    data["timestamp"]
-                )
+                self._timestamps[name] = datetime.fromisoformat(data["timestamp"])
                 return snapshot
         except Exception:
             pass
@@ -148,6 +143,24 @@ class AdapterCache:
         # Try loading from Firestore (populates self._timestamps)
         self._load_from_firestore(name)
         return self._timestamps.get(name)
+
+    def get_cached(self, name: str) -> Optional[Any]:
+        """
+        Return cached snapshot for adapter if available.
+        May load from Firestore as a fallback.
+        """
+        if name in self._cache:
+            return self._cache[name]
+        return self._load_from_firestore(name)
+
+    def cached_age_seconds(self, name: str) -> Optional[float]:
+        """
+        Return age of cached data in seconds, or None if no cache exists.
+        """
+        ts = self.last_success_time(name)
+        if ts is None:
+            return None
+        return (datetime.now(timezone.utc) - ts).total_seconds()
 
     def clear(self, adapter_name: str = None) -> None:
         """
