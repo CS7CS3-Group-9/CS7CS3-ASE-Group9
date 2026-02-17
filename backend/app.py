@@ -5,13 +5,13 @@ from flask import Flask, jsonify, current_app
 import firebase_admin
 from firebase_admin import firestore
 
-from api.endpoints.example import example_bp
-from api.endpoints.snapshot import snapshot_bp
-from api.endpoints.bikes import bikes_bp
-from api.endpoints.traffic import traffic_bp
-from api.endpoints.airquality import airquality_bp
-from api.endpoints.tours import tours_bp
-from api.endpoints.health import health_bp
+from backend.api.endpoints.example import example_bp
+from backend.api.endpoints.snapshot import snapshot_bp
+from backend.api.endpoints.bikes import bikes_bp
+from backend.api.endpoints.traffic import traffic_bp
+from backend.api.endpoints.airquality import airquality_bp
+from backend.api.endpoints.tours import tours_bp
+from backend.api.endpoints.health import health_bp
 
 
 def _init_firestore(app: Flask) -> None:
