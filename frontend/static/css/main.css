@@ -1,0 +1,11 @@
+/*
+  Main stylesheet for the Smart City Dashboard.
+  TODO: Base reset and body font (suggest: system-ui or Inter)
+  TODO: Navbar styles
+  TODO: Dashboard grid layout (two-column: map + panels)
+  TODO: KPI indicator card styles (with colour variants for ok/warning/critical)
+  TODO: Panel card styles (shared by bikes, traffic, air quality panels)
+  TODO: Recommendation card styles with priority colour coding
+  TODO: Map container sizing (#map must have explicit height for Leaflet)
+  TODO: Responsive breakpoint — stack to single column on smaller screens
+*/
