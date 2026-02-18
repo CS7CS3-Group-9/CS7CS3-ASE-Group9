@@ -1,7 +1,37 @@
-<!--
-  Air quality status panel.
-  TODO: Show current AQI value and a status label (Good / Moderate / Poor)
-  TODO: Show the individual readings (PM2.5, NO2, O3) if available
-  TODO: Use a coloured badge for the overall status
-  TODO: Data passed in as 'air_quality' variable from overview.py
--->
+<div class="panel-card">
+  <div class="panel-header">
+    <h3>&#127807; Air Quality</h3>
+    {% if source_status and source_status.get('airquality') %}
+      <span class="status-badge status-{{ source_status.get('airquality') }}">{{ source_status.get('airquality') }}</span>
+    {% endif %}
+  </div>
+
+  {% if airquality %}
+    {% set aqi = airquality.aqi_value %}
+    {% if aqi is not none %}
+      {% if aqi <= 20 %}{% set aq_class = 'good' %}{% set aq_label = 'Good' %}
+      {% elif aqi <= 40 %}{% set aq_class = 'fair' %}{% set aq_label = 'Fair' %}
+      {% elif aqi <= 60 %}{% set aq_class = 'moderate' %}{% set aq_label = 'Moderate' %}
+      {% elif aqi <= 80 %}{% set aq_class = 'poor' %}{% set aq_label = 'Poor' %}
+      {% elif aqi <= 100 %}{% set aq_class = 'verypoor' %}{% set aq_label = 'Very Poor' %}
+      {% else %}{% set aq_class = 'hazardous' %}{% set aq_label = 'Hazardous' %}
+      {% endif %}
+      <div class="aqi-display">
+        <span class="aqi-value">{{ aqi | round(1) }}</span>
+        <span class="aqi-badge aqi-{{ aq_class }}">{{ aq_label }}</span>
+      </div>
+    {% endif %}
+
+    {% if airquality.pollutants %}
+      {% set p = airquality.pollutants %}
+      <ul class="pollutant-list">
+        {% if p.pm2_5 is not none %}<li><span class="pollutant-name">PM2.5</span><span class="pollutant-value">{{ p.pm2_5 | round(1) }}</span></li>{% endif %}
+        {% if p.pm10 is not none %}<li><span class="pollutant-name">PM10</span><span class="pollutant-value">{{ p.pm10 | round(1) }}</span></li>{% endif %}
+        {% if p.nitrogen_dioxide is not none %}<li><span class="pollutant-name">NO&#8322;</span><span class="pollutant-value">{{ p.nitrogen_dioxide | round(1) }}</span></li>{% endif %}
+        {% if p.ozone is not none %}<li><span class="pollutant-name">O&#8323;</span><span class="pollutant-value">{{ p.ozone | round(1) }}</span></li>{% endif %}
+      </ul>
+    {% endif %}
+  {% else %}
+    <p class="no-data">Air quality data unavailable.</p>
+  {% endif %}
+</div>

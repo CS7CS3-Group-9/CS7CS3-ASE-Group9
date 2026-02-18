@@ -12,6 +12,8 @@ class TrafficIncident:
         length_meters,
         delay_seconds,
         delay_minutes,
+        latitude=None,
+        longitude=None,
     ):
         self.category = category  # Jam, Road Closed, Accident, etc.
         self.severity = severity  # Major, Moderate, Minor, Undefined
@@ -22,6 +24,8 @@ class TrafficIncident:
         self.length_meters = length_meters
         self.delay_seconds = delay_seconds
         self.delay_minutes = delay_minutes
+        self.latitude = latitude    # midpoint of incident geometry
+        self.longitude = longitude  # midpoint of incident geometry
 
 
 class TrafficMetrics:
