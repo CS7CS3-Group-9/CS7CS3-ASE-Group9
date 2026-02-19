@@ -1,4 +1,5 @@
 import requests
+from concurrent.futures import ThreadPoolExecutor
 from flask import Blueprint, render_template, jsonify, current_app
 
 overview_bp = Blueprint("overview", __name__, url_prefix="/dashboard")
@@ -18,7 +19,7 @@ def _fetch_snapshot(backend_url):
                 ("include", "airquality"),
                 ("include", "tours"),
             ],
-            timeout=10,
+            timeout=30,
         )
         resp.raise_for_status()
         return resp.json(), None
@@ -26,24 +27,24 @@ def _fetch_snapshot(backend_url):
         return {}, str(e)
 
 
-def _fetch_bike_stations():
+def _fetch_bus_stops(backend_url):
+    """Fetch Dublin bus stops from the backend."""
     try:
-        resp = requests.get(
-            "https://api.citybik.es/v2/networks/dublinbikes", timeout=5
-        )
+        resp = requests.get(f"{backend_url}/buses/stops", timeout=20)
         resp.raise_for_status()
-        stations = resp.json()["network"]["stations"]
-        return [
-            {
-                "name": s["name"],
-                "lat": s["latitude"],
-                "lon": s["longitude"],
-                "free_bikes": s["free_bikes"],
-                "empty_slots": s["empty_slots"],
-                "total": s["extra"]["slots"],
-            }
-            for s in stations
-        ]
+        data = resp.json()
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def _fetch_bike_stations(backend_url):
+    """Fetch per-station Dublin Bikes data from the backend."""
+    try:
+        resp = requests.get(f"{backend_url}/bikes/stations", timeout=5)
+        resp.raise_for_status()
+        data = resp.json()
+        return data if isinstance(data, list) else []
     except Exception:
         return []
 
@@ -153,21 +154,31 @@ def dashboard():
 @overview_bp.get("/data")
 def dashboard_data():
     backend_url = current_app.config["BACKEND_API_URL"]
-    snapshot, error = _fetch_snapshot(backend_url)
-    bike_stations = _fetch_bike_stations()
+
+    # Run all three slow fetches in parallel so the page loads faster
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        f_snapshot      = pool.submit(_fetch_snapshot, backend_url)
+        f_bike_stations = pool.submit(_fetch_bike_stations, backend_url)
+        f_bus_stops     = pool.submit(_fetch_bus_stops, backend_url)
+
+        snapshot, error = f_snapshot.result()
+        bike_stations   = f_bike_stations.result()
+        bus_stops       = f_bus_stops.result()
+
     recommendations = _build_recommendations(
         snapshot.get("bikes"),
         snapshot.get("traffic"),
         snapshot.get("airquality"),
     )
     return jsonify({
-        "timestamp": snapshot.get("timestamp"),
+        "timestamp":     snapshot.get("timestamp"),
         "source_status": snapshot.get("source_status", {}),
-        "bikes": snapshot.get("bikes"),
-        "traffic": snapshot.get("traffic"),
-        "airquality": snapshot.get("airquality"),
-        "tours": snapshot.get("tours"),
+        "bikes":         snapshot.get("bikes"),
+        "traffic":       snapshot.get("traffic"),
+        "airquality":    snapshot.get("airquality"),
+        "tours":         snapshot.get("tours"),
         "bike_stations": bike_stations,
+        "bus_stops":     bus_stops,
         "recommendations": recommendations,
-        "error": error,
+        "error":         error,
     })

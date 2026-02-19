@@ -5,6 +5,7 @@ from frontend.config import Config
 from frontend.dashboard.overview import overview_bp
 from frontend.dashboard.analytics import analytics_bp
 from frontend.dashboard.recommendations import recommendations_bp
+from frontend.dashboard.routing import routing_bp
 
 
 def create_app(config_class=Config):
@@ -18,6 +19,7 @@ def create_app(config_class=Config):
     app.register_blueprint(overview_bp)
     app.register_blueprint(analytics_bp)
     app.register_blueprint(recommendations_bp)
+    app.register_blueprint(routing_bp)
 
     @app.route("/")
     def index():

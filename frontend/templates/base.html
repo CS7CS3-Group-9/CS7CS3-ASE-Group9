@@ -25,6 +25,8 @@
              class="{{ 'active' if request.endpoint == 'analytics.analytics' else '' }}">Analytics</a></li>
       <li><a href="{{ url_for('recommendations.recommendations') }}"
              class="{{ 'active' if request.endpoint == 'recommendations.recommendations' else '' }}">Recommendations</a></li>
+      <li><a href="{{ url_for('routing.routing') }}"
+             class="{{ 'active' if request.endpoint == 'routing.routing' else '' }}">&#128205; Route Planner</a></li>
     </ul>
   </nav>
 

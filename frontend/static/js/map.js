@@ -18,6 +18,7 @@
   var bikeLayer    = L.layerGroup().addTo(map);
   var trafficLayer = L.layerGroup().addTo(map);
   var tourismLayer = L.layerGroup().addTo(map);
+  var busLayer     = L.layerGroup().addTo(map);
 
   /* ---- Bike station colour by availability % ---- */
   function bikeColour(free, total) {
@@ -154,11 +155,38 @@
     });
   }
 
+  /* ---- Populate bus layer ---- */
+  var _busIcon = L.divIcon({
+    html: "<div style='" +
+          "background:#1d4ed8;color:#fff;border-radius:3px;" +
+          "width:20px;height:20px;display:flex;align-items:center;" +
+          "justify-content:center;font-size:11px;font-weight:700;" +
+          "box-shadow:0 1px 3px rgba(0,0,0,.4)'>B</div>",
+    className: "",
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  });
+
+  function populateBuses(stops) {
+    busLayer.clearLayers();
+    if (!stops || !stops.length) return;
+    stops.forEach(function (s) {
+      var popup =
+        "<strong>" + s.name + "</strong>" +
+        (s.ref ? " <span style='color:#6b7280'>#" + s.ref + "</span>" : "") +
+        (s.routes ? "<br><em>" + s.routes + "</em>" : "");
+      L.marker([s.lat, s.lon], { icon: _busIcon })
+        .bindPopup(popup)
+        .addTo(busLayer);
+    });
+  }
+
   /* ---- Fetch data and refresh all layers ---- */
   function refreshMap(data) {
     populateBikes(data.bike_stations || []);
     populateTraffic(data.traffic || null);
     populateTourism(data.tours || null);
+    populateBuses(data.bus_stops || []);
   }
 
   function fetchAndRefresh() {
@@ -184,6 +212,7 @@
   wireToggle("toggle-bikes",   bikeLayer);
   wireToggle("toggle-traffic", trafficLayer);
   wireToggle("toggle-tourism", tourismLayer);
+  wireToggle("toggle-buses",   busLayer);
 
   /* ---- Boot ---- */
   fetchAndRefresh();
