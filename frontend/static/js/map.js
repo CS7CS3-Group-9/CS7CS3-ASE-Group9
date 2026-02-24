@@ -20,6 +20,27 @@
   var tourismLayer = L.layerGroup().addTo(map);
   var busLayer     = L.layerGroup().addTo(map);
 
+  function _toRad(deg) {
+    return deg * Math.PI / 180;
+  }
+
+  function _distanceKm(aLat, aLon, bLat, bLon) {
+    var r = 6371;
+    var dLat = _toRad(bLat - aLat);
+    var dLon = _toRad(bLon - aLon);
+    var lat1 = _toRad(aLat);
+    var lat2 = _toRad(bLat);
+    var sin1 = Math.sin(dLat / 2);
+    var sin2 = Math.sin(dLon / 2);
+    var h = sin1 * sin1 + Math.cos(lat1) * Math.cos(lat2) * sin2 * sin2;
+    return 2 * r * Math.asin(Math.min(1, Math.sqrt(h)));
+  }
+
+  function _withinRadiusKm(lat, lon, radiusKm) {
+    if (!radiusKm) return true;
+    return _distanceKm(DUBLIN[0], DUBLIN[1], lat, lon) <= radiusKm;
+  }
+
   /* ---- Bike emoji icon ---- */
   var _bikeIcon = L.divIcon({
     html: "<div style='font-size:18px;line-height:1'>\uD83D\uDEB2</div>",
@@ -32,7 +53,9 @@
   function populateBikes(stations) {
     bikeLayer.clearLayers();
     if (!stations || !stations.length) return;
+    var radiusKm = window.getDashboardRadiusKm ? Number(window.getDashboardRadiusKm()) : null;
     stations.forEach(function (s) {
+      if (!_withinRadiusKm(s.lat, s.lon, radiusKm)) return;
       var marker = L.marker([s.lat, s.lon], { icon: _bikeIcon });
       marker.bindPopup(
         "<strong>" + s.name + "</strong><br>" +
@@ -164,7 +187,9 @@
   function populateBuses(stops) {
     busLayer.clearLayers();
     if (!stops || !stops.length) return;
+    var radiusKm = window.getDashboardRadiusKm ? Number(window.getDashboardRadiusKm()) : null;
     stops.forEach(function (s) {
+      if (!_withinRadiusKm(s.lat, s.lon, radiusKm)) return;
       var popup =
         "<strong>" + s.name + "</strong>" +
         (s.ref ? " <span style='color:#6b7280'>#" + s.ref + "</span>" : "") +
@@ -184,7 +209,9 @@
   }
 
   function fetchAndRefresh() {
-    fetch("/dashboard/data")
+    var radiusKm = window.getDashboardRadiusKm ? window.getDashboardRadiusKm() : null;
+    var url = radiusKm ? "/dashboard/data?radius_km=" + encodeURIComponent(radiusKm) : "/dashboard/data";
+    fetch(url)
       .then(function (r) { return r.json(); })
       .then(refreshMap)
       .catch(function () {});

@@ -9,6 +9,30 @@
 
   /* ---- KPI helpers ---- */
 
+  function getRadiusKm() {
+    var input = document.getElementById("radius-km");
+    if (!input) return null;
+    var value = Number(input.value);
+    if (!Number.isFinite(value)) return null;
+    if (value < 1) value = 1;
+    if (value > 50) value = 50;
+    input.value = Math.round(value);
+    return input.value;
+  }
+
+  function dashboardDataUrl() {
+    var radiusKm = getRadiusKm();
+    return radiusKm ? "/dashboard/data?radius_km=" + encodeURIComponent(radiusKm) : "/dashboard/data";
+  }
+
+  function updateRadiusQueryParam() {
+    var radiusKm = getRadiusKm();
+    if (!radiusKm) return;
+    var url = new URL(window.location.href);
+    url.searchParams.set("radius_km", radiusKm);
+    window.history.replaceState({}, "", url.toString());
+  }
+
   function setKpi(id, value) {
     var el = document.getElementById(id);
     if (el && value != null) el.textContent = value;
@@ -41,7 +65,7 @@
   /* ---- Fetch dashboard data and update KPIs ---- */
 
   function fetchDashboardData() {
-    fetch("/dashboard/data")
+    fetch(dashboardDataUrl())
       .then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
@@ -169,6 +193,8 @@
   function init() {
     var onDashboard = document.getElementById("kpi-bikes") !== null;
     var onAnalytics = document.getElementById("airQualityChart") !== null;
+    var radiusInput = document.getElementById("radius-km");
+    var radiusApply = document.getElementById("radius-apply");
 
     if (onDashboard) {
       fetchDashboardData();
@@ -177,6 +203,20 @@
 
     if (onAnalytics) {
       setInterval(fetchAndUpdateCharts, REFRESH_INTERVAL);
+    }
+
+    if (radiusInput && radiusApply) {
+      radiusApply.addEventListener("click", function () {
+        updateRadiusQueryParam();
+        fetchDashboardData();
+      });
+      radiusInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          updateRadiusQueryParam();
+          fetchDashboardData();
+        }
+      });
     }
   }
 
@@ -188,4 +228,5 @@
 
   /* Export for analytics page inline call */
   window.initCharts = initCharts;
+  window.getDashboardRadiusKm = getRadiusKm;
 })();
