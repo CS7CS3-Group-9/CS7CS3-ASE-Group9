@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Route Planner — Dublin City{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1>Route Planner</h1>
+  <p class="page-subtitle">Plan your journey across Dublin. Add multiple stops and the optimal order is found automatically.</p>
+</div>
+
+<div class="routing-layout">
+
+  <!-- ===== Sidebar ===== -->
+  <div class="routing-sidebar">
+
+    <div class="panel-card">
+      <div class="panel-header"><h3>&#128205; Plan Journey</h3></div>
+
+      <!-- Master optimise toggle -->
+      <div class="optimise-toggle-row" id="optimise-toggle-row">
+        <label class="optimise-toggle-label">
+          <span class="toggle-track">
+            <input type="checkbox" id="optimize-toggle" checked>
+            <span class="toggle-thumb"></span>
+          </span>
+          <span class="optimise-toggle-text">&#128260; Optimise stop order</span>
+        </label>
+        <span class="optimise-hint">🔓 free stops will be reordered for the fastest journey</span>
+      </div>
+
+      <!-- Stops list — origin and destination always present -->
+      <div id="stops-container">
+
+        <div class="stop-row" data-role="origin" data-locked="true">
+          <span class="stop-dot stop-dot-a">A</span>
+          <input type="text" class="form-input stop-input" placeholder="From — e.g. Dublin Airport">
+          <button class="btn-lock-stop is-locked" title="Locked — click to free this stop">&#128274;</button>
+        </div>
+
+        <!-- intermediate stops inserted dynamically here -->
+
+        <div class="stop-row" data-role="destination" data-locked="true">
+          <span class="stop-dot stop-dot-b">B</span>
+          <input type="text" class="form-input stop-input" placeholder="To — e.g. Trinity College Dublin">
+          <button class="btn-lock-stop is-locked" title="Locked — click to free this stop">&#128274;</button>
+        </div>
+
+      </div>
+
+      <button class="btn-add-stop" id="add-stop-btn">+ Add Stop</button>
+
+      <!-- Transport mode -->
+      <div class="form-group" style="margin-top:.9rem">
+        <label class="form-label">Transport</label>
+        <div class="seg-control" id="mode-control">
+          <button class="seg-btn active" data-value="driving">&#128664; Drive</button>
+          <button class="seg-btn"        data-value="cycling">&#128690; Cycle</button>
+          <button class="seg-btn"        data-value="walking">&#128694; Walk</button>
+          <button class="seg-btn"        data-value="transit">&#128652; Transit</button>
+        </div>
+      </div>
+
+      <!-- Priority (hidden when transit is selected) -->
+      <div class="form-group" id="priority-row">
+        <label class="form-label">Priority</label>
+        <div class="route-type-row">
+          <label class="route-type-card active" id="type-quickest">
+            <input type="radio" name="route-type" value="quickest" checked>
+            <span class="route-type-icon">&#9889;</span>
+            <span class="route-type-name">Quickest</span>
+            <span class="route-type-desc">Fastest travel time</span>
+          </label>
+          <label class="route-type-card" id="type-eco">
+            <input type="radio" name="route-type" value="eco">
+            <span class="route-type-icon">&#127807;</span>
+            <span class="route-type-name">Eco</span>
+            <span class="route-type-desc">Lower emissions</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Time -->
+      <div class="form-group" id="time-row" style="margin-top:.9rem">
+        <label class="form-label">Time</label>
+        <div class="time-radio-row">
+          <label class="time-radio-option">
+            <input type="radio" name="time-type" value="now" checked> Leave now
+          </label>
+          <label class="time-radio-option" id="time-depart-label">
+            <input type="radio" name="time-type" value="depart"> Depart at
+          </label>
+          <label class="time-radio-option" id="time-arrive-label">
+            <input type="radio" name="time-type" value="arrive"> Arrive by
+          </label>
+        </div>
+        <input type="datetime-local" id="time-input" class="form-input time-input" style="display:none; margin-top:.5rem">
+      </div>
+
+      <button id="calculate-btn" class="btn-primary">Calculate Route</button>
+      <p id="route-error" class="route-error" style="display:none"></p>
+    </div>
+
+    <!-- Route summary (shown after calculation) -->
+    <div class="panel-card" id="route-summary" style="display:none">
+      <div class="panel-header">
+        <h3>&#128204; Route Summary</h3>
+        <span id="route-mode-badge" class="route-mode-badge"></span>
+      </div>
+
+      <div id="route-stats" class="route-stat-row"></div>
+
+      <div id="eco-note"          class="eco-note"   style="display:none"></div>
+      <div id="reorder-note"      class="eco-note"   style="display:none"></div>
+      <div id="transit-info-note" class="panel-note" style="display:none"></div>
+
+      <!-- OSRM turn-by-turn steps -->
+      <div id="osrm-steps-wrap" style="display:none">
+        <button class="steps-toggle" id="steps-toggle">Show turn-by-turn &#9660;</button>
+        <ol class="steps-list" id="route-steps" style="display:none"></ol>
+      </div>
+
+      <!-- Transit legs -->
+      <div id="transit-legs-wrap" style="display:none">
+        <div class="transit-legs" id="transit-legs"></div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ===== Map ===== -->
+  <div class="routing-map-col">
+    <div class="panel-card map-wrapper">
+      <div class="panel-header"><h3>&#128506; Route Map</h3></div>
+      <div id="routing-map"></div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/routing.js') }}"></script>
+{% endblock %}

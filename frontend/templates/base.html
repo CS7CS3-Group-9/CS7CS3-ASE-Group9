@@ -1,10 +1,46 @@
-<!--
-  Base layout template — all other templates extend this.
-  TODO: Add <head> with meta tags, page title block
-  TODO: Load Leaflet.js CSS + JS from CDN
-  TODO: Load Chart.js from CDN
-  TODO: Link to /static/css/main.css
-  TODO: Add a navbar with links to Dashboard, Analytics, Recommendations
-  TODO: Add a {% block content %}{% endblock %} for page content
-  TODO: Load /static/js/dashboard.js and /static/js/map.js at bottom of body
--->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Dublin City Dashboard{% endblock %}</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- App CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <span class="navbar-logo">&#127961;</span>
+      Dublin City Dashboard
+    </div>
+    <ul class="navbar-links">
+      <li><a href="{{ url_for('overview.dashboard') }}"
+             class="{{ 'active' if request.endpoint == 'overview.dashboard' else '' }}">Dashboard</a></li>
+      <li><a href="{{ url_for('analytics.analytics') }}"
+             class="{{ 'active' if request.endpoint == 'analytics.analytics' else '' }}">Analytics</a></li>
+      <li><a href="{{ url_for('recommendations.recommendations') }}"
+             class="{{ 'active' if request.endpoint == 'recommendations.recommendations' else '' }}">Recommendations</a></li>
+      <li><a href="{{ url_for('routing.routing') }}"
+             class="{{ 'active' if request.endpoint == 'routing.routing' else '' }}">&#128205; Route Planner</a></li>
+    </ul>
+  </nav>
+
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  {% block scripts %}{% endblock %}
+
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

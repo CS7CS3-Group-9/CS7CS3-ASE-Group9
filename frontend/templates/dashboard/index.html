@@ -1,10 +1,115 @@
-<!--
-  Main dashboard overview page. Extends base.html.
-  TODO: {% extends "base.html" %}
-  TODO: Render the top KPI indicators row (bikes available, traffic incidents,
-        air quality status) — data passed in from overview.py
-  TODO: Two-column layout: map on left, data panels on right
-  TODO: Include the map component: {% include "components/map.html" %}
-  TODO: Include side panels: bikes.html, traffic.html, air_quality.html
-  TODO: Include recommendations.html at the bottom as a summary strip
--->
+{% extends "base.html" %}
+{% block title %}Dashboard — Dublin City{% endblock %}
+
+{% block content %}
+
+{% if backend_error %}
+  <div class="alert alert-warning">
+    &#9888; Backend unavailable — showing degraded state. ({{ backend_error }})
+  </div>
+{% endif %}
+
+<div class="page-header">
+  <h1>Dublin City Overview</h1>
+  {% if timestamp %}
+    <span class="last-updated" id="last-updated">Updated: {{ timestamp }}</span>
+  {% endif %}
+  <div class="radius-control">
+    <label for="radius-km">Radius (km)</label>
+    <input
+      id="radius-km"
+      type="number"
+      min="1"
+      max="50"
+      step="1"
+      value="{{ radius_km | default(5) | int }}"
+    >
+    <button id="radius-apply" type="button">Apply</button>
+  </div>
+</div>
+
+<!-- KPI Indicators Row -->
+<div class="kpi-row kpi-top">
+
+  <div class="kpi-card {% if bikes %}{% if bikes.available_bikes > 50 %}kpi-ok{% elif bikes.available_bikes > 10 %}kpi-warning{% else %}kpi-critical{% endif %}{% else %}kpi-unknown{% endif %}">
+    <div class="kpi-icon">&#128690;</div>
+    <div class="kpi-body">
+      <div class="kpi-value" id="kpi-bikes">{{ bikes.available_bikes if bikes else '&#8212;' }}</div>
+      <div class="kpi-label">Bikes Available</div>
+    </div>
+  </div>
+
+  <div class="kpi-card {% if traffic %}{% if traffic.congestion_level == 'low' %}kpi-ok{% elif traffic.congestion_level == 'medium' %}kpi-warning{% else %}kpi-critical{% endif %}{% else %}kpi-unknown{% endif %}">
+    <div class="kpi-icon">&#128652;</div>
+    <div class="kpi-body">
+      <div class="kpi-value" id="kpi-traffic">{{ traffic.congestion_level | capitalize if traffic else '&#8212;' }}</div>
+      <div class="kpi-label">Congestion</div>
+    </div>
+  </div>
+
+  <div class="kpi-card {% if traffic %}{% if traffic.total_incidents == 0 %}kpi-ok{% elif traffic.total_incidents < 5 %}kpi-warning{% else %}kpi-critical{% endif %}{% else %}kpi-unknown{% endif %}">
+    <div class="kpi-icon">&#9888;</div>
+    <div class="kpi-body">
+      <div class="kpi-value" id="kpi-incidents">{{ traffic.total_incidents if traffic else '&#8212;' }}</div>
+      <div class="kpi-label">Incidents</div>
+    </div>
+  </div>
+
+  {% if airquality and airquality.aqi_value is not none %}
+    {% set aqi = airquality.aqi_value %}
+    {% if aqi <= 40 %}{% set aq_class = 'kpi-ok' %}
+    {% elif aqi <= 80 %}{% set aq_class = 'kpi-warning' %}
+    {% else %}{% set aq_class = 'kpi-critical' %}{% endif %}
+  {% else %}
+    {% set aq_class = 'kpi-unknown' %}
+  {% endif %}
+  <div class="kpi-card {{ aq_class }}">
+    <div class="kpi-icon">&#127807;</div>
+    <div class="kpi-body">
+      <div class="kpi-value" id="kpi-aqi">
+        {% if airquality and airquality.aqi_value is not none %}{{ airquality.aqi_value | round(1) }}{% else %}&#8212;{% endif %}
+      </div>
+      <div class="kpi-label">AQI</div>
+    </div>
+  </div>
+
+  <div class="kpi-card kpi-ok">
+    <div class="kpi-icon">&#127963;</div>
+    <div class="kpi-body">
+      <div class="kpi-value" id="kpi-tours">{{ tours.total_attractions if tours else '&#8212;' }}</div>
+      <div class="kpi-label">Attractions</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Two-Column Grid: Map + Panels -->
+<div class="dashboard-grid">
+
+  <div class="map-column">
+    <div class="panel-card map-wrapper">
+      <div class="panel-header"><h3>&#128506; Live City Map</h3></div>
+      {% include "components/map.html" %}
+    </div>
+  </div>
+
+  <div class="panels-column">
+    {% include "components/bikes.html" %}
+    {% include "components/traffic.html" %}
+    {% include "components/air_quality.html" %}
+  </div>
+
+</div>
+
+<!-- Recommendations Strip -->
+{% include "components/recommendations.html" %}
+
+<script>
+  window.REFRESH_INTERVAL = Number("{{ refresh_interval }}") * 1000;
+</script>
+
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/map.js') }}"></script>
+{% endblock %}

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple
@@ -63,16 +64,18 @@ class SnapshotService:
             source_status={},
         )
 
-        for adapter, kwargs in self._iter_adapters_with_kwargs():
+        adapter_list = list(self._iter_adapters_with_kwargs())
+
+        def _fetch_one(adapter_kwargs: Tuple[Any, Dict]) -> Tuple[str, Any, str]:
+            """Fetch a single adapter; returns (name, partial_snapshot, status)."""
+            adapter, kwargs = adapter_kwargs
             name = self._safe_source_name(adapter)
             if self._cache is None:
                 try:
                     partial = adapter.fetch(location=location, **kwargs)
-                    self._merge(snapshot, partial)
-                    snapshot.source_status[name] = "live"
+                    return name, partial, "live"
                 except Exception:
-                    # Keep system running even if one source fails
-                    snapshot.source_status[name] = "failed"
+                    return name, None, "failed"
             else:
                 try:
                     result = resolve_with_cache(
@@ -82,11 +85,19 @@ class SnapshotService:
                         location=location,
                         **kwargs,
                     )
-                    if result.snapshot is not None:
-                        self._merge(snapshot, result.snapshot)
-                    snapshot.source_status[name] = result.status
+                    return name, result.snapshot, result.status
                 except Exception:
-                    snapshot.source_status[name] = "failed"
+                    return name, None, "failed"
+
+        # Fetch all adapters concurrently then merge sequentially (thread-safe)
+        n_workers = max(1, len(adapter_list))
+        with ThreadPoolExecutor(max_workers=n_workers) as pool:
+            results = list(pool.map(_fetch_one, adapter_list))
+
+        for name, partial, status in results:
+            if partial is not None:
+                self._merge(snapshot, partial)
+            snapshot.source_status[name] = status
 
         # After merging raw data, compute derived indicators
         self._apply_analytics(snapshot)

@@ -1,14 +1,87 @@
-<!--
-  Full recommendations page. Extends base.html.
-  TODO: {% extends "base.html" %}
-  TODO: Page heading "Recommendations" with a subtitle explaining what these are
-        (AI-generated suggestions for city planners based on live data)
-  TODO: Filter bar at the top — filter cards by priority (All / High / Medium / Low)
-        and by data source (Bikes / Traffic / Air Quality / Tourism)
-  TODO: Render all recommendation cards using a Jinja2 for loop:
-        {% for rec in recommendations %}
-  TODO: Each card shows: title, full description, priority badge, data source badge,
-        and the underlying data point that triggered the recommendation
-  TODO: Filter controls wired up with simple JS to show/hide cards by data attribute
-  TODO: Data passed in as 'recommendations' variable from recommendations.py
--->
+{% extends "base.html" %}
+{% block title %}Recommendations — Dublin City{% endblock %}
+
+{% block content %}
+
+{% if backend_error %}
+  <div class="alert alert-warning">
+    &#9888; Backend unavailable. ({{ backend_error }})
+  </div>
+{% endif %}
+
+<div class="page-header">
+  <h1>Recommendations</h1>
+  <p class="page-subtitle">Data-driven suggestions for city planners based on live conditions.</p>
+  {% if timestamp %}<span class="last-updated">Updated: {{ timestamp }}</span>{% endif %}
+</div>
+
+<!-- Filter Bar -->
+<div class="filter-bar">
+  <span class="filter-label">Priority:</span>
+  <button class="filter-btn active" data-filter-priority="all">All</button>
+  <button class="filter-btn" data-filter-priority="high">High</button>
+  <button class="filter-btn" data-filter-priority="medium">Medium</button>
+  <button class="filter-btn" data-filter-priority="low">Low</button>
+
+  <span class="filter-label filter-label-sep">Source:</span>
+  <button class="filter-btn active" data-filter-source="all">All</button>
+  <button class="filter-btn" data-filter-source="traffic">Traffic</button>
+  <button class="filter-btn" data-filter-source="bikes">Bikes</button>
+  <button class="filter-btn" data-filter-source="air_quality">Air Quality</button>
+</div>
+
+<!-- Recommendation Cards -->
+{% if recommendations %}
+  <div class="rec-cards-full" id="rec-cards-container">
+    {% for rec in recommendations %}
+      <div class="rec-card-full priority-{{ rec.priority | lower }}"
+           data-priority="{{ rec.priority | lower }}"
+           data-source="{{ rec.source | lower }}">
+        <div class="rec-card-header">
+          <h3 class="rec-title">{{ rec.title }}</h3>
+          <div class="rec-badges">
+            <span class="priority-badge priority-{{ rec.priority | lower }}">{{ rec.priority }}</span>
+            <span class="source-badge">{{ rec.source | replace('_', ' ') | title }}</span>
+          </div>
+        </div>
+        <p class="rec-desc">{{ rec.description }}</p>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <p>&#10003; No recommendations at this time. All city systems are operating normally.</p>
+  </div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll(".filter-btn[data-filter-priority]").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      document.querySelectorAll(".filter-btn[data-filter-priority]").forEach(function(b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      applyFilters();
+    });
+  });
+
+  document.querySelectorAll(".filter-btn[data-filter-source]").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      document.querySelectorAll(".filter-btn[data-filter-source]").forEach(function(b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      applyFilters();
+    });
+  });
+
+  function applyFilters() {
+    var priority = (document.querySelector(".filter-btn[data-filter-priority].active") || {}).dataset.filterPriority || "all";
+    var source = (document.querySelector(".filter-btn[data-filter-source].active") || {}).dataset.filterSource || "all";
+    document.querySelectorAll(".rec-card-full").forEach(function(card) {
+      var matchP = priority === "all" || card.dataset.priority === priority;
+      var matchS = source === "all" || card.dataset.source === source;
+      card.style.display = (matchP && matchS) ? "" : "none";
+    });
+  }
+</script>
+{% endblock %}
