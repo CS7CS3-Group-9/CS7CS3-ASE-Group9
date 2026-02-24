@@ -20,29 +20,20 @@
   var tourismLayer = L.layerGroup().addTo(map);
   var busLayer     = L.layerGroup().addTo(map);
 
-  /* ---- Bike station colour by availability % ---- */
-  function bikeColour(free, total) {
-    if (!total) return "#6b7280";
-    var pct = free / total;
-    if (pct > 0.5) return "#16a34a";
-    if (pct > 0.2) return "#d97706";
-    return "#dc2626";
-  }
+  /* ---- Bike emoji icon ---- */
+  var _bikeIcon = L.divIcon({
+    html: "<div style='font-size:18px;line-height:1'>\uD83D\uDEB2</div>",
+    className: "",
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  });
 
   /* ---- Populate bike layer ---- */
   function populateBikes(stations) {
     bikeLayer.clearLayers();
     if (!stations || !stations.length) return;
     stations.forEach(function (s) {
-      var colour = bikeColour(s.free_bikes, s.total);
-      var marker = L.circleMarker([s.lat, s.lon], {
-        radius: 8,
-        fillColor: colour,
-        color: "#ffffff",
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 0.85,
-      });
+      var marker = L.marker([s.lat, s.lon], { icon: _bikeIcon });
       marker.bindPopup(
         "<strong>" + s.name + "</strong><br>" +
         "<span style='color:#16a34a'>" + s.free_bikes + " bikes</span> &nbsp;|&nbsp; " +
@@ -141,12 +132,19 @@
   }
 
   /* ---- Populate tourism layer ---- */
+  var _tourismIcon = L.divIcon({
+    html: "<div style='font-size:18px;line-height:1'>\uD83C\uDFA1</div>",
+    className: "",
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  });
+
   function populateTourism(tours) {
     tourismLayer.clearLayers();
     if (!tours || !tours.attractions) return;
     tours.attractions.forEach(function (a) {
       if (a.latitude == null || a.longitude == null) return;
-      var marker = L.marker([a.latitude, a.longitude]);
+      var marker = L.marker([a.latitude, a.longitude], { icon: _tourismIcon });
       marker.bindPopup(
         "<strong>" + (a.attraction_name || "Attraction") + "</strong><br>" +
         "<em>" + (a.attraction_type || "").replace(/_/g, " ") + "</em>"
@@ -157,11 +155,7 @@
 
   /* ---- Populate bus layer ---- */
   var _busIcon = L.divIcon({
-    html: "<div style='" +
-          "background:#1d4ed8;color:#fff;border-radius:3px;" +
-          "width:20px;height:20px;display:flex;align-items:center;" +
-          "justify-content:center;font-size:11px;font-weight:700;" +
-          "box-shadow:0 1px 3px rgba(0,0,0,.4)'>B</div>",
+    html: "<div style='font-size:18px;line-height:1'>\uD83D\uDE8C</div>",
     className: "",
     iconSize: [20, 20],
     iconAnchor: [10, 10],
