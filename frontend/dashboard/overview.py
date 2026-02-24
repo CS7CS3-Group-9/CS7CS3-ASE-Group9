@@ -8,6 +8,35 @@ overview_bp = Blueprint("overview", __name__, url_prefix="/dashboard")
 _DUBLIN_LAT = 53.3498
 _DUBLIN_LON = -6.2603
 _BUS_STOP_CACHE = []
+_BUS_NEEDS_THRESHOLD_KM = 0.6
+_BIKE_NEEDS_THRESHOLD_KM = 1.0
+_MAX_NEEDS_MARKERS = 5
+_MIN_NEEDS_MARKERS = 3
+_POPULATION_CENTRES = [
+    {"name": "Smithfield", "lat": 53.3473, "lon": -6.2783, "population_weight": 1.0},
+    {"name": "Docklands", "lat": 53.3469, "lon": -6.2397, "population_weight": 1.0},
+    {"name": "The Liberties", "lat": 53.3430, "lon": -6.2800, "population_weight": 0.95},
+    {"name": "Phibsborough", "lat": 53.3609, "lon": -6.2722, "population_weight": 0.9},
+    {"name": "Ringsend", "lat": 53.3417, "lon": -6.2264, "population_weight": 0.85},
+    {"name": "Inchicore", "lat": 53.3395, "lon": -6.3174, "population_weight": 0.85},
+    {"name": "Drimnagh", "lat": 53.3350, "lon": -6.3128, "population_weight": 0.8},
+    {"name": "Harold's Cross", "lat": 53.3298, "lon": -6.2849, "population_weight": 0.8},
+    {"name": "Rathmines", "lat": 53.3240, "lon": -6.2651, "population_weight": 0.9},
+    {"name": "Drumcondra", "lat": 53.3706, "lon": -6.2527, "population_weight": 0.9},
+    {"name": "Finglas", "lat": 53.3893, "lon": -6.2966, "population_weight": 0.85},
+    {"name": "Crumlin", "lat": 53.3216, "lon": -6.3170, "population_weight": 0.85},
+    {"name": "Raheny", "lat": 53.3803, "lon": -6.1774, "population_weight": 0.85},
+    {"name": "Donnybrook", "lat": 53.3213, "lon": -6.2365, "population_weight": 0.8},
+    {"name": "Cabra", "lat": 53.3659, "lon": -6.2969, "population_weight": 0.85},
+    {"name": "Ballyfermot", "lat": 53.3446, "lon": -6.3540, "population_weight": 0.85},
+    {"name": "Coolock", "lat": 53.3902, "lon": -6.2013, "population_weight": 0.85},
+    {"name": "Terenure", "lat": 53.3097, "lon": -6.2856, "population_weight": 0.8},
+    {"name": "Blanchardstown", "lat": 53.3880, "lon": -6.3755, "population_weight": 1.0},
+    {"name": "Tallaght", "lat": 53.2867, "lon": -6.3731, "population_weight": 1.0},
+    {"name": "Swords", "lat": 53.4597, "lon": -6.2181, "population_weight": 0.9},
+    {"name": "Clondalkin", "lat": 53.3242, "lon": -6.3970, "population_weight": 0.8},
+    {"name": "Balbriggan", "lat": 53.6121, "lon": -6.1833, "population_weight": 0.7},
+]
 
 
 def _parse_radius_km(raw):
@@ -66,6 +95,112 @@ def _build_bike_metrics(stations):
     }
 
 
+def _nearest_distance_km(target_lat, target_lon, points):
+    nearest = None
+    for p in points or []:
+        lat = p.get("lat")
+        lon = p.get("lon")
+        if lat is None or lon is None:
+            continue
+        d = _distance_km(target_lat, target_lon, lat, lon)
+        if nearest is None or d < nearest:
+            nearest = d
+    return nearest
+
+
+def _max_distance_from_centre_km(points):
+    max_d = None
+    for p in points or []:
+        lat = p.get("lat")
+        lon = p.get("lon")
+        if lat is None or lon is None:
+            continue
+        d = _distance_km(_DUBLIN_LAT, _DUBLIN_LON, lat, lon)
+        if max_d is None or d > max_d:
+            max_d = d
+    return max_d
+
+
+def _tracked_overlap_km(bus_stops, bike_stations):
+    max_bus_km = _max_distance_from_centre_km(bus_stops)
+    max_bike_km = _max_distance_from_centre_km(bike_stations)
+    if max_bus_km is not None and max_bike_km is not None:
+        return min(max_bus_km, max_bike_km)
+    return None
+
+
+def _needs_access_areas(kind, bus_stops, bike_stations, radius_km, threshold_km):
+    needs = []
+    candidates = []
+    tracked_km = (
+        _max_distance_from_centre_km(bus_stops) if kind == "bus" else _max_distance_from_centre_km(bike_stations)
+    )
+
+    for c in _POPULATION_CENTRES:
+        centre_from_dublin_km = _distance_km(_DUBLIN_LAT, _DUBLIN_LON, c["lat"], c["lon"])
+        if tracked_km is not None and centre_from_dublin_km > tracked_km:
+            continue
+        bus_km = _nearest_distance_km(c["lat"], c["lon"], bus_stops)
+        bike_km = _nearest_distance_km(c["lat"], c["lon"], bike_stations)
+        if kind == "bus" and bus_km is None:
+            continue
+        if kind == "bike" and bike_km is None:
+            continue
+        if radius_km is not None and not _within_radius_km(c["lat"], c["lon"], radius_km):
+            continue
+        item = {
+            "kind": kind,
+            "name": c["name"],
+            "lat": c["lat"],
+            "lon": c["lon"],
+            "bus_km": bus_km,
+            "bike_km": bike_km,
+            "score": (bus_km * 0.6 + bike_km * 0.4) * c["population_weight"],
+        }
+        candidates.append(item)
+        distance_km = bus_km if kind == "bus" else bike_km
+        if distance_km > threshold_km:
+            needs.append(item)
+
+    # Keep multiple markers visible: fill to a minimum count using top distances.
+    if len(needs) < _MIN_NEEDS_MARKERS and candidates:
+        used = {(n["name"], n["lat"], n["lon"]) for n in needs}
+        remaining = [
+            c
+            for c in sorted(
+                candidates,
+                key=lambda x: x["bus_km"] if kind == "bus" else x["bike_km"],
+                reverse=True,
+            )
+            if (c["name"], c["lat"], c["lon"]) not in used
+        ]
+        take = _MIN_NEEDS_MARKERS - len(needs)
+        needs.extend(remaining[:take])
+
+    needs.sort(key=lambda x: x["bus_km"] if kind == "bus" else x["bike_km"], reverse=True)
+    return needs[:_MAX_NEEDS_MARKERS]
+
+
+def _needs_bus_areas(bus_stops, bike_stations, radius_km):
+    return _needs_access_areas(
+        kind="bus",
+        bus_stops=bus_stops,
+        bike_stations=bike_stations,
+        radius_km=radius_km,
+        threshold_km=_BUS_NEEDS_THRESHOLD_KM,
+    )
+
+
+def _needs_bike_areas(bus_stops, bike_stations, radius_km):
+    return _needs_access_areas(
+        kind="bike",
+        bus_stops=bus_stops,
+        bike_stations=bike_stations,
+        radius_km=radius_km,
+        threshold_km=_BIKE_NEEDS_THRESHOLD_KM,
+    )
+
+
 def _fetch_snapshot(backend_url, radius_km=5):
     try:
         resp = requests.get(
@@ -114,7 +249,14 @@ def _fetch_bike_stations(backend_url):
         return []
 
 
-def _build_recommendations(bikes, traffic, airquality):
+def _build_recommendations(
+    bikes,
+    traffic,
+    airquality,
+    bike_stations=None,
+    bus_stops=None,
+    radius_km=None,
+):
     recs = []
 
     if traffic:
@@ -194,6 +336,77 @@ def _build_recommendations(bikes, traffic, airquality):
                     }
                 )
 
+    needs_bus = _needs_bus_areas(bus_stops or [], bike_stations or [], radius_km)
+    needs_bike = _needs_bike_areas(bus_stops or [], bike_stations or [], radius_km)
+    if needs_bus:
+        top = needs_bus[0]
+        recs.append(
+            {
+                "title": "Add Bus Stop Coverage In Priority Area",
+                "description": (
+                    f"{top['name']} has weak bus access: nearest bus stop is {top['bus_km']:.1f} km away. "
+                    f"Prioritise a new bus stop or route extension in this area."
+                ),
+                "priority": "High",
+                "source": "planning",
+            }
+        )
+        if len(needs_bus) > 1:
+            second = needs_bus[1]
+            recs.append(
+                {
+                    "title": "Second Bus Access Priority",
+                    "description": (
+                        f"Next bus-stop upgrade target: {second['name']} "
+                        f"(nearest bus stop {second['bus_km']:.1f} km)."
+                    ),
+                    "priority": "Medium",
+                    "source": "planning",
+                }
+            )
+
+    if needs_bike:
+        top = needs_bike[0]
+        recs.append(
+            {
+                "title": "Add Bike Station Coverage In Priority Area",
+                "description": (
+                    f"{top['name']} has weak bike access: nearest bike station is {top['bike_km']:.1f} km away. "
+                    "Prioritise a new bike station in this area."
+                ),
+                "priority": "High",
+                "source": "planning",
+            }
+        )
+        if len(needs_bike) > 1:
+            second = needs_bike[1]
+            recs.append(
+                {
+                    "title": "Second Bike Access Priority",
+                    "description": (
+                        f"Next bike-station upgrade target: {second['name']} "
+                        f"(nearest bike station {second['bike_km']:.1f} km)."
+                    ),
+                    "priority": "Medium",
+                    "source": "planning",
+                }
+            )
+
+    if traffic and bikes:
+        if traffic.get("congestion_level") == "high" and bikes.get("available_bikes", 0) < 40:
+            recs.append(
+                {
+                    "title": "Shift Short Trips Away From Cars",
+                    "description": (
+                        "High congestion and low bike supply detected. "
+                        "Temporarily rebalance bikes toward dense commuter corridors "
+                        "and add temporary bus priority where delays are highest."
+                    ),
+                    "priority": "High",
+                    "source": "planning",
+                }
+            )
+
     if not recs:
         recs.append(
             {
@@ -222,7 +435,15 @@ def dashboard():
     tours = snapshot.get("tours")
     timestamp = snapshot.get("timestamp")
     source_status = snapshot.get("source_status", {})
-    recommendations = _build_recommendations(bikes, traffic, airquality)
+    bus_stops = _filter_points_within_radius(_fetch_bus_stops(backend_url), radius_km)
+    recommendations = _build_recommendations(
+        bikes,
+        traffic,
+        airquality,
+        bike_stations=bike_stations,
+        bus_stops=bus_stops,
+        radius_km=radius_km,
+    )
 
     return render_template(
         "dashboard/index.html",
@@ -260,7 +481,12 @@ def dashboard_data():
         bikes,
         snapshot.get("traffic"),
         snapshot.get("airquality"),
+        bike_stations=bike_stations,
+        bus_stops=bus_stops,
+        radius_km=radius_km,
     )
+    needs_bus_areas = _needs_bus_areas(bus_stops, bike_stations, radius_km)
+    needs_bike_areas = _needs_bike_areas(bus_stops, bike_stations, radius_km)
     return jsonify(
         {
             "timestamp": snapshot.get("timestamp"),
@@ -271,6 +497,8 @@ def dashboard_data():
             "tours": snapshot.get("tours"),
             "bike_stations": bike_stations,
             "bus_stops": bus_stops,
+            "needs_bus_areas": needs_bus_areas,
+            "needs_bike_areas": needs_bike_areas,
             "recommendations": recommendations,
             "error": error,
         }

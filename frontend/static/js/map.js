@@ -19,6 +19,8 @@
   var trafficLayer = L.layerGroup().addTo(map);
   var tourismLayer = L.layerGroup().addTo(map);
   var busLayer     = L.layerGroup().addTo(map);
+  var needsBusLayer = L.layerGroup().addTo(map);
+  var needsBikeLayer = L.layerGroup().addTo(map);
 
   function _toRad(deg) {
     return deg * Math.PI / 180;
@@ -200,12 +202,60 @@
     });
   }
 
+  function populateNeedsBus(areas) {
+    needsBusLayer.clearLayers();
+    if (!areas || !areas.length) return;
+    areas.forEach(function (a) {
+      if (a.lat == null || a.lon == null) return;
+      var icon = L.divIcon({
+        html: "<div style='background:#b91c1c;color:#fff;border-radius:50%;" +
+          "width:22px;height:22px;line-height:22px;text-align:center;font-weight:700;" +
+          "box-shadow:0 1px 4px rgba(0,0,0,.35)'>!</div>",
+        className: "",
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+      });
+      L.marker([a.lat, a.lon], { icon: icon })
+        .bindPopup(
+          "<strong>" + (a.name || "Needs bus access") + "</strong><br>" +
+          "Nearest bus stop: <b>" + Number(a.bus_km || 0).toFixed(1) + " km</b><br>" +
+          "Action: add bus stop or extend a route."
+        )
+        .addTo(needsBusLayer);
+    });
+  }
+
+  function populateNeedsBike(areas) {
+    needsBikeLayer.clearLayers();
+    if (!areas || !areas.length) return;
+    areas.forEach(function (a) {
+      if (a.lat == null || a.lon == null) return;
+      var icon = L.divIcon({
+        html: "<div style='background:#1d4ed8;color:#fff;border-radius:50%;" +
+          "width:22px;height:22px;line-height:22px;text-align:center;font-weight:700;" +
+          "box-shadow:0 1px 4px rgba(0,0,0,.35)'>B</div>",
+        className: "",
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+      });
+      L.marker([a.lat, a.lon], { icon: icon })
+        .bindPopup(
+          "<strong>" + (a.name || "Needs bike access") + "</strong><br>" +
+          "Nearest bike station: <b>" + Number(a.bike_km || 0).toFixed(1) + " km</b><br>" +
+          "Action: add bike station nearby."
+        )
+        .addTo(needsBikeLayer);
+    });
+  }
+
   /* ---- Fetch data and refresh all layers ---- */
   function refreshMap(data) {
     populateBikes(data.bike_stations || []);
     populateTraffic(data.traffic || null);
     populateTourism(data.tours || null);
     populateBuses(data.bus_stops || []);
+    populateNeedsBus(data.needs_bus_areas || []);
+    populateNeedsBike(data.needs_bike_areas || []);
   }
 
   function fetchAndRefresh() {
@@ -234,6 +284,8 @@
   wireToggle("toggle-traffic", trafficLayer);
   wireToggle("toggle-tourism", tourismLayer);
   wireToggle("toggle-buses",   busLayer);
+  wireToggle("toggle-needs-bus", needsBusLayer);
+  wireToggle("toggle-needs-bike", needsBikeLayer);
 
   /* ---- Boot ---- */
   fetchAndRefresh();
