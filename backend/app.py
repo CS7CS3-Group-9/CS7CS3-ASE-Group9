@@ -12,6 +12,8 @@ from backend.api.endpoints.traffic import traffic_bp
 from backend.api.endpoints.airquality import airquality_bp
 from backend.api.endpoints.tours import tours_bp
 from backend.api.endpoints.health import health_bp
+from backend.api.endpoints.routing import routing_api_bp
+from backend.api.endpoints.buses import buses_bp
 
 
 def _init_firestore(app: Flask) -> None:
@@ -45,6 +47,8 @@ def create_app() -> Flask:
     app.register_blueprint(tours_bp)
     app.register_blueprint(snapshot_bp)
     app.register_blueprint(health_bp)
+    app.register_blueprint(routing_api_bp)
+    app.register_blueprint(buses_bp)
 
     _init_firestore(app)
 

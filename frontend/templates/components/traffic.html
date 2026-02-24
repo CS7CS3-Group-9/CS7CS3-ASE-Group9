@@ -1,7 +1,51 @@
-<!--
-  Traffic incidents panel.
-  TODO: Display a list of active traffic incidents
-  TODO: Show incident type, location description, severity
-  TODO: If no incidents, show a friendly "No incidents reported" message
-  TODO: Data passed in as 'traffic' variable from overview.py
--->
+<div class="panel-card">
+  <div class="panel-header">
+    <h3>&#128652; Traffic</h3>
+    {% if source_status and source_status.get('traffic') %}
+      <span class="status-badge status-{{ source_status.get('traffic') }}">{{ source_status.get('traffic') }}</span>
+    {% endif %}
+  </div>
+
+  {% if traffic %}
+    <div class="congestion-row">
+      <span class="congestion-label">Congestion:</span>
+      <span class="congestion-badge congestion-{{ traffic.congestion_level | lower }}">
+        {{ traffic.congestion_level | capitalize }}
+      </span>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi-mini">
+        <span class="kpi-value">{{ traffic.total_incidents }}</span>
+        <span class="kpi-label">Incidents</span>
+      </div>
+      <div class="kpi-mini">
+        <span class="kpi-value">{{ traffic.average_speed }} km/h</span>
+        <span class="kpi-label">Avg Speed</span>
+      </div>
+      <div class="kpi-mini">
+        <span class="kpi-value">{{ traffic.total_delay_minutes | int }} min</span>
+        <span class="kpi-label">Total Delay</span>
+      </div>
+    </div>
+
+    {% if traffic.incidents and traffic.incidents | length > 0 %}
+      <ul class="incident-list">
+        {% for inc in traffic.incidents[:5] %}
+          <li class="incident-item severity-{{ inc.severity | lower if inc.severity else 'undefined' }}">
+            <span class="incident-category">{{ inc.category or 'Incident' }}</span>
+            {% if inc.road %}<span class="incident-road">{{ inc.road }}</span>{% endif %}
+            {% if inc.severity %}<span class="incident-severity">{{ inc.severity }}</span>{% endif %}
+          </li>
+        {% endfor %}
+        {% if traffic.incidents | length > 5 %}
+          <li class="incident-more">+{{ traffic.incidents | length - 5 }} more incidents</li>
+        {% endif %}
+      </ul>
+    {% else %}
+      <p class="no-incidents">&#10003; No active incidents reported.</p>
+    {% endif %}
+  {% else %}
+    <p class="no-data">Traffic data unavailable.</p>
+  {% endif %}
+</div>

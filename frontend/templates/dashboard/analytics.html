@@ -1,11 +1,56 @@
-<!--
-  Full analytics page with charts. Extends base.html.
-  TODO: {% extends "base.html" %}
-  TODO: Page heading "Analytics"
-  TODO: Three chart containers (Chart.js canvases):
-        - Air quality over time (line chart) <canvas id="airQualityChart">
-        - Bike availability by station (bar chart) <canvas id="bikeChart">
-        - Traffic incidents by type (donut chart) <canvas id="trafficChart">
-  TODO: Each chart in its own card/panel with a title and last updated timestamp
-  TODO: Charts are populated by dashboard.js on page load using /dashboard/analytics/data
--->
+{% extends "base.html" %}
+{% block title %}Analytics — Dublin City{% endblock %}
+
+{% block content %}
+
+{% if backend_error %}
+  <div class="alert alert-warning">
+    &#9888; Backend unavailable — chart data may be empty. ({{ backend_error }})
+  </div>
+{% endif %}
+
+<div class="page-header">
+  <h1>Analytics</h1>
+  {% if timestamp %}
+    <span class="last-updated">Updated: {{ timestamp }}</span>
+  {% endif %}
+</div>
+
+<div class="charts-grid">
+
+  <!-- Air Quality Chart -->
+  <div class="panel-card chart-card">
+    <div class="panel-header">
+      <h3>&#127807; Air Quality — Pollutant Levels</h3>
+    </div>
+    <canvas id="airQualityChart" height="200"></canvas>
+  </div>
+
+  <!-- Bike Chart -->
+  <div class="panel-card chart-card">
+    <div class="panel-header">
+      <h3>&#128690; Bike Share Status</h3>
+    </div>
+    <canvas id="bikeChart" height="200"></canvas>
+  </div>
+
+  <!-- Traffic Chart -->
+  <div class="panel-card chart-card">
+    <div class="panel-header">
+      <h3>&#128652; Traffic Incidents by Category</h3>
+    </div>
+    <canvas id="trafficChart" height="200"></canvas>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script type="application/json" id="chart-data">{{ chart_data | tojson }}</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script>
+  const _cd = document.getElementById("chart-data");
+  if (_cd) { initCharts(JSON.parse(_cd.textContent)); }
+</script>
+{% endblock %}

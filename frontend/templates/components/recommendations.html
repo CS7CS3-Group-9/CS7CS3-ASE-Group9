@@ -1,9 +1,29 @@
-<!--
-  Recommendations summary panel (used on both dashboard and its own page).
-  TODO: Display recommendation cards — each card shows:
-        title, short description, priority badge (High/Medium/Low), data source
-  TODO: Colour-code priority: red (High), amber (Medium), green (Low)
-  TODO: On the dashboard this shows the top 3 recommendations only
-  TODO: Link to /dashboard/recommendations for the full list
-  TODO: Data passed in as 'recommendations' variable
--->
+<div class="panel-card recommendations-panel">
+  <div class="panel-header">
+    <h3>&#128161; Recommendations</h3>
+    <a href="{{ url_for('recommendations.recommendations') }}" class="view-all-link">View all &rarr;</a>
+  </div>
+
+  {% if recommendations %}
+    <div class="rec-cards">
+      {% for rec in recommendations[:3] %}
+        <div class="rec-card priority-{{ rec.priority | lower }}">
+          <div class="rec-header">
+            <span class="rec-title">{{ rec.title }}</span>
+            <span class="priority-badge priority-{{ rec.priority | lower }}">{{ rec.priority }}</span>
+          </div>
+          <p class="rec-desc">{{ rec.description }}</p>
+          <span class="rec-source">{{ rec.source | replace('_', ' ') | title }}</span>
+        </div>
+      {% endfor %}
+    </div>
+    {% if recommendations | length > 3 %}
+      <p class="rec-overflow">
+        +{{ recommendations | length - 3 }} more &mdash;
+        <a href="{{ url_for('recommendations.recommendations') }}">see full list</a>
+      </p>
+    {% endif %}
+  {% else %}
+    <p class="no-data">No recommendations at this time.</p>
+  {% endif %}
+</div>

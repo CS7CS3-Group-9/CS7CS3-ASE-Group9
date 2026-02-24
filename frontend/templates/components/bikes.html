@@ -1,8 +1,28 @@
-<!--
-  Bike availability panel.
-  TODO: Display a list/table of top 5 stations with lowest availability
-  TODO: Show station name, available bikes, available docks
-  TODO: Colour-code rows: green (>5 bikes), amber (1-5), red (0)
-  TODO: Show last updated timestamp from cache status
-  TODO: Data passed in as 'bikes' variable from overview.py
--->
+<div class="panel-card">
+  <div class="panel-header">
+    <h3>&#128690; Bike Availability</h3>
+    {% if source_status and source_status.get('bikes') %}
+      <span class="status-badge status-{{ source_status.get('bikes') }}">{{ source_status.get('bikes') }}</span>
+    {% endif %}
+  </div>
+
+  {% if bikes %}
+    <div class="kpi-row">
+      <div class="kpi-mini">
+        <span class="kpi-value">{{ bikes.available_bikes }}</span>
+        <span class="kpi-label">Available</span>
+      </div>
+      <div class="kpi-mini">
+        <span class="kpi-value">{{ bikes.available_docks }}</span>
+        <span class="kpi-label">Empty Docks</span>
+      </div>
+      <div class="kpi-mini">
+        <span class="kpi-value">{{ bikes.stations_reporting }}</span>
+        <span class="kpi-label">Stations</span>
+      </div>
+    </div>
+    <p class="panel-note">Individual stations shown on the map, colour-coded by availability.</p>
+  {% else %}
+    <p class="no-data">Bike data unavailable.</p>
+  {% endif %}
+</div>

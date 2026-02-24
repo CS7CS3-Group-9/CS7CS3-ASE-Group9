@@ -47,4 +47,8 @@ jobs:
     - name: Run Caching tests
       run: |
         pytest backend/fallback/tests/ -v
+
+    - name: Run frontend tests
+      run: |
+        pytest frontend/tests/ -v
     
