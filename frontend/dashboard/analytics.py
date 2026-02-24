@@ -43,7 +43,8 @@ def _build_chart_data(snapshot):
 @analytics_bp.get("/")
 def analytics():
     backend_url = current_app.config["BACKEND_API_URL"]
-    snapshot, error = _fetch_snapshot(backend_url)
+    radius_km = current_app.config.get("RADIUS_KM", 5)
+    snapshot, error = _fetch_snapshot(backend_url, radius_km)
     chart_data = _build_chart_data(snapshot)
     return render_template(
         "dashboard/analytics.html",
@@ -56,7 +57,8 @@ def analytics():
 @analytics_bp.get("/data")
 def analytics_data():
     backend_url = current_app.config["BACKEND_API_URL"]
-    snapshot, error = _fetch_snapshot(backend_url)
+    radius_km = current_app.config.get("RADIUS_KM", 5)
+    snapshot, error = _fetch_snapshot(backend_url, radius_km)
     chart_data = _build_chart_data(snapshot)
     chart_data["timestamp"] = snapshot.get("timestamp")
     chart_data["error"] = error

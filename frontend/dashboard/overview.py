@@ -66,7 +66,7 @@ def _build_bike_metrics(stations):
     }
 
 
-def _fetch_snapshot(backend_url, radius_km):
+def _fetch_snapshot(backend_url, radius_km=5):
     try:
         resp = requests.get(
             f"{backend_url}/snapshot",

@@ -8,7 +8,8 @@ recommendations_bp = Blueprint("recommendations", __name__, url_prefix="/dashboa
 @recommendations_bp.get("/")
 def recommendations():
     backend_url = current_app.config["BACKEND_API_URL"]
-    snapshot, error = _fetch_snapshot(backend_url)
+    radius_km = current_app.config.get("RADIUS_KM", 5)
+    snapshot, error = _fetch_snapshot(backend_url, radius_km)
     recs = _build_recommendations(
         snapshot.get("bikes"),
         snapshot.get("traffic"),
