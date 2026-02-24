@@ -19,8 +19,12 @@ SAMPLE_SNAPSHOT = {
     "airquality": {
         "aqi_value": 45,
         "pollutants": {
-            "pm2_5": 5.0, "pm10": 10.0, "nitrogen_dioxide": 15.0,
-            "carbon_monoxide": 0.3, "ozone": 60.0, "sulphur_dioxide": 2.0,
+            "pm2_5": 5.0,
+            "pm10": 10.0,
+            "nitrogen_dioxide": 15.0,
+            "carbon_monoxide": 0.3,
+            "ozone": 60.0,
+            "sulphur_dioxide": 2.0,
         },
     },
     "tours": {"total_attractions": 5, "attractions": []},
@@ -29,14 +33,16 @@ SAMPLE_SNAPSHOT = {
 
 CITYBIKES_RESPONSE = {
     "network": {
-        "stations": [{
-            "name": "Test Station",
-            "latitude": 53.34,
-            "longitude": -6.26,
-            "free_bikes": 5,
-            "empty_slots": 10,
-            "extra": {"slots": 15},
-        }]
+        "stations": [
+            {
+                "name": "Test Station",
+                "latitude": 53.34,
+                "longitude": -6.26,
+                "free_bikes": 5,
+                "empty_slots": 10,
+                "extra": {"slots": 15},
+            }
+        ]
     }
 }
 
@@ -83,10 +89,13 @@ def test_overview_contains_map_data(client):
 
 
 def test_overview_data_endpoint(client):
-    with patch("requests.get", side_effect=[
-        _mock_resp(SAMPLE_SNAPSHOT),
-        _mock_resp(CITYBIKES_RESPONSE),
-    ]):
+    with patch(
+        "requests.get",
+        side_effect=[
+            _mock_resp(SAMPLE_SNAPSHOT),
+            _mock_resp(CITYBIKES_RESPONSE),
+        ],
+    ):
         resp = client.get("/dashboard/data")
     assert resp.status_code == 200
     data = resp.get_json()

@@ -14,6 +14,18 @@
   {% if timestamp %}
     <span class="last-updated" id="last-updated">Updated: {{ timestamp }}</span>
   {% endif %}
+  <div class="radius-control">
+    <label for="radius-km">Radius (km)</label>
+    <input
+      id="radius-km"
+      type="number"
+      min="1"
+      max="50"
+      step="1"
+      value="{{ radius_km | default(5) | int }}"
+    >
+    <button id="radius-apply" type="button">Apply</button>
+  </div>
 </div>
 
 <!-- KPI Indicators Row -->

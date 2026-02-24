@@ -17,8 +17,12 @@ SAMPLE_SNAPSHOT = {
     "airquality": {
         "aqi_value": 45,
         "pollutants": {
-            "pm2_5": 5.0, "pm10": 10.0, "nitrogen_dioxide": 15.0,
-            "carbon_monoxide": 0.3, "ozone": 60.0, "sulphur_dioxide": 2.0,
+            "pm2_5": 5.0,
+            "pm10": 10.0,
+            "nitrogen_dioxide": 15.0,
+            "carbon_monoxide": 0.3,
+            "ozone": 60.0,
+            "sulphur_dioxide": 2.0,
         },
     },
     "source_status": {},

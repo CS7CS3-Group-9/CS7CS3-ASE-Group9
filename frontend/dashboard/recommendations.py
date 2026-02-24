@@ -1,9 +1,7 @@
 from flask import Blueprint, render_template, current_app
 from .overview import _fetch_snapshot, _build_recommendations
 
-recommendations_bp = Blueprint(
-    "recommendations", __name__, url_prefix="/dashboard/recommendations"
-)
+recommendations_bp = Blueprint("recommendations", __name__, url_prefix="/dashboard/recommendations")
 
 
 @recommendations_bp.get("")
