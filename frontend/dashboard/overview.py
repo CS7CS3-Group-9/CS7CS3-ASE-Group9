@@ -1,4 +1,6 @@
+import csv
 import math
+from pathlib import Path
 import requests
 from concurrent.futures import ThreadPoolExecutor
 from flask import Blueprint, render_template, jsonify, current_app, request
@@ -12,7 +14,7 @@ _BUS_NEEDS_THRESHOLD_KM = 0.6
 _BIKE_NEEDS_THRESHOLD_KM = 1.0
 _MAX_NEEDS_MARKERS = 5
 _MIN_NEEDS_MARKERS = 3
-_POPULATION_CENTRES = [
+_POPULATION_CENTRES_FALLBACK = [
     {"name": "Smithfield", "lat": 53.3473, "lon": -6.2783, "population_weight": 1.0},
     {"name": "Docklands", "lat": 53.3469, "lon": -6.2397, "population_weight": 1.0},
     {"name": "The Liberties", "lat": 53.3430, "lon": -6.2800, "population_weight": 0.95},
@@ -37,6 +39,76 @@ _POPULATION_CENTRES = [
     {"name": "Clondalkin", "lat": 53.3242, "lon": -6.3970, "population_weight": 0.8},
     {"name": "Balbriggan", "lat": 53.6121, "lon": -6.1833, "population_weight": 0.7},
 ]
+_POPULATION_CENTRES_CACHE = None
+_MAX_POPULATION_CENTRES = 5000
+
+
+def _load_population_centres_from_csv():
+    repo_root = Path(__file__).resolve().parents[2]
+    csv_path = repo_root / "data" / "historical" / "population_data_with_coords.csv"
+    if not csv_path.exists():
+        return None
+
+    centres_by_name = {}
+    with csv_path.open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        for row in reader:
+            if row.get("BUA_NAME") != "Dublin city and suburbs":
+                continue
+            name = (row.get("ED_ENGLISH") or "").strip()
+            if not name:
+                continue
+            try:
+                lat = float(row.get("Latitude") or "")
+                lon = float(row.get("Longitude") or "")
+                population = float(row.get("T9_1_TT") or 0)
+            except ValueError:
+                continue
+            record = centres_by_name.get(name)
+            if record is None:
+                centres_by_name[name] = {
+                    "name": name,
+                    "lat_sum": lat * population,
+                    "lon_sum": lon * population,
+                    "population": population,
+                }
+            else:
+                record["lat_sum"] += lat * population
+                record["lon_sum"] += lon * population
+                record["population"] += population
+
+    if not centres_by_name:
+        return None
+
+    max_population = max(c["population"] for c in centres_by_name.values())
+    centres = []
+    for record in centres_by_name.values():
+        population = record["population"]
+        if population <= 0:
+            continue
+        centres.append(
+            {
+                "name": record["name"],
+                "lat": record["lat_sum"] / population,
+                "lon": record["lon_sum"] / population,
+                "population_weight": population / max_population,
+            }
+        )
+
+    centres.sort(key=lambda x: x["population_weight"], reverse=True)
+    return centres[:_MAX_POPULATION_CENTRES]
+
+
+def _get_population_centres():
+    global _POPULATION_CENTRES_CACHE
+    if _POPULATION_CENTRES_CACHE is not None:
+        return _POPULATION_CENTRES_CACHE
+
+    centres = _load_population_centres_from_csv()
+    if not centres:
+        centres = list(_POPULATION_CENTRES_FALLBACK)
+    _POPULATION_CENTRES_CACHE = centres
+    return centres
 
 
 def _parse_radius_km(raw):
@@ -136,7 +208,7 @@ def _needs_access_areas(kind, bus_stops, bike_stations, radius_km, threshold_km)
         _max_distance_from_centre_km(bus_stops) if kind == "bus" else _max_distance_from_centre_km(bike_stations)
     )
 
-    for c in _POPULATION_CENTRES:
+    for c in _get_population_centres():
         centre_from_dublin_km = _distance_km(_DUBLIN_LAT, _DUBLIN_LON, c["lat"], c["lon"])
         if tracked_km is not None and centre_from_dublin_km > tracked_km:
             continue
