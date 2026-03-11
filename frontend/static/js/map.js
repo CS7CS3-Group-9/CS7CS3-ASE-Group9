@@ -15,9 +15,27 @@
   }).addTo(map);
 
   /* ---- Layer groups ---- */
-  function _createMarkerLayer(useCluster) {
+  function _makeClusterIcon(cluster, style) {
+    var count = cluster.getChildCount();
+    var size = count < 10 ? 30 : count < 100 ? 38 : 46;
+    var radius = style && style.shape === "circle" ? "50%" : (style && style.radius ? style.radius : "0");
+    var colour = style && style.colour ? style.colour : "#334155";
+    var border = style && style.border ? style.border : "2px solid rgba(255,255,255,.8)";
+    return L.divIcon({
+      html:
+        "<div style='background:" + colour + ";width:" + size + "px;height:" + size +
+        "px;line-height:" + size + "px;border-radius:" + radius + ";border:" + border +
+        ";color:#fff;text-align:center;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.35)'>" +
+        count + "</div>",
+      className: "",
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+    });
+  }
+
+  function _createMarkerLayer(useCluster, clusterStyle) {
     if (useCluster && typeof L.markerClusterGroup === "function") {
-      return L.markerClusterGroup({
+      var options = {
         chunkedLoading: true,
         chunkInterval: 200,
         chunkDelay: 50,
@@ -26,7 +44,13 @@
         animateAddingMarkers: false,
         showCoverageOnHover: false,
         spiderfyOnMaxZoom: false,
-      });
+      };
+      if (clusterStyle) {
+        options.iconCreateFunction = function (cluster) {
+          return _makeClusterIcon(cluster, clusterStyle);
+        };
+      }
+      return L.markerClusterGroup(options);
     }
     return L.layerGroup();
   }
@@ -42,10 +66,10 @@
     });
   }
 
-  var bikeLayer    = _createMarkerLayer(true).addTo(map);
+  var bikeLayer    = _createMarkerLayer(true, { shape: "circle", colour: "#16a34a" }).addTo(map);
   var trafficLayer = _createMarkerLayer(false).addTo(map);
   var tourismLayer = _createMarkerLayer(true).addTo(map);
-  var busLayer     = _createMarkerLayer(true).addTo(map);
+  var busLayer     = _createMarkerLayer(true, { shape: "square", colour: "#2563eb" }).addTo(map);
   var needsBusLayer = _createMarkerLayer(false).addTo(map);
   var needsBikeLayer = _createMarkerLayer(false).addTo(map);
 
@@ -66,23 +90,18 @@
     return bounds.contains([lat, lon]);
   }
 
-  function _dotIcon(colour) {
+  function _emojiIcon(symbol, size) {
     return L.divIcon({
-      html: "<div style='width:6px;height:6px;background:" + colour + ";border-radius:50%'></div>",
+      html: "<div style='font-size:" + size + "px;line-height:1'>" + symbol + "</div>",
       className: "",
-      iconSize: [6, 6],
-      iconAnchor: [3, 3],
+      iconSize: [size + 4, size + 4],
+      iconAnchor: [(size + 4) / 2, (size + 4) / 2],
     });
   }
 
   /* ---- Bike emoji icon ---- */
-  var _bikeIcon = L.divIcon({
-    html: "<div style='font-size:18px;line-height:1'>\uD83D\uDEB2</div>",
-    className: "",
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-  });
-  var _bikeDotIcon = _dotIcon("#16a34a");
+  var _bikeIcon = _emojiIcon("\uD83D\uDEB2", 22);
+  var _bikeDotIcon = _emojiIcon("\uD83D\uDEB2", 16);
 
   /* ---- Populate bike layer ---- */
   function populateBikes(stations) {
@@ -129,6 +148,22 @@
     return _severityColour[(inc.severity || "").toLowerCase()] || "#6b7280";
   }
 
+  function _incidentEmoji(inc) {
+    var cat = (inc.category || "").toLowerCase();
+    if (cat.indexOf("road closed") >= 0 || cat.indexOf("closure") >= 0) return "\u26d4"; // ⛔
+    if (cat.indexOf("accident") >= 0 || cat.indexOf("collision") >= 0) return "\ud83d\udca5"; // 💥
+    if (cat.indexOf("breakdown") >= 0 || cat.indexOf("vehicle") >= 0) return "\ud83d\udd27"; // 🔧
+    if (cat.indexOf("roadworks") >= 0 || cat.indexOf("works") >= 0) return "\ud83d\udea7"; // 🚧
+    if (cat.indexOf("event") >= 0) return "\ud83c\udfab"; // 🎫
+    if (cat.indexOf("flood") >= 0) return "\ud83c\udf0a"; // 🌊
+    if (cat.indexOf("weather") >= 0 || cat.indexOf("storm") >= 0) return "\ud83c\udf27"; // 🌧
+    var sev = (inc.severity || "").toLowerCase();
+    if (sev === "major") return "\ud83d\udd34"; // 🔴
+    if (sev === "moderate") return "\ud83d\udfe0"; // 🟠
+    if (sev === "minor") return "\ud83d\udfe1"; // 🟡
+    return "\u26a0\ufe0f"; // ⚠️
+  }
+
   /* ---- Populate traffic layer — one marker per incident on the actual road ---- */
   function populateTraffic(traffic) {
     trafficLayer.clearLayers();
@@ -140,18 +175,14 @@
     incidents.forEach(function (inc) {
       if (inc.latitude == null || inc.longitude == null) return;
 
-      var colour = _incidentColour(inc);
       var label = inc.category || "Incident";
 
       var icon = L.divIcon({
-        html: "<div style='" +
-              "background:" + colour + ";" +
-              "color:#fff;border-radius:4px;padding:2px 6px;" +
-              "font-size:11px;font-weight:700;white-space:nowrap;" +
-              "box-shadow:0 1px 3px rgba(0,0,0,.4);line-height:1.4'" +
-              ">" + label + "</div>",
+        html: "<div style='font-size:22px;line-height:1'>"
+              + _incidentEmoji(inc) + "</div>",
         className: "",
-        iconAnchor: [0, 8],
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
       });
 
       var delayStr = inc.delay_minutes
@@ -197,13 +228,8 @@
   }
 
   /* ---- Populate tourism layer ---- */
-  var _tourismIcon = L.divIcon({
-    html: "<div style='font-size:18px;line-height:1'>\uD83C\uDFA1</div>",
-    className: "",
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-  });
-  var _tourismDotIcon = _dotIcon("#7c3aed");
+  var _tourismIcon = _emojiIcon("\uD83C\uDFA1", 22);
+  var _tourismDotIcon = _emojiIcon("\uD83C\uDFA1", 16);
 
   function populateTourism(tours) {
     tourismLayer.clearLayers();
@@ -214,28 +240,23 @@
     tours.attractions.forEach(function (a) {
       if (a.latitude == null || a.longitude == null) return;
       if (!_inBounds(bounds, a.latitude, a.longitude)) return;
+      var popup =
+        "<strong>" + (a.attraction_name || "Attraction") + "</strong><br>" +
+        "<em>" + (a.attraction_type || "").replace(/_/g, " ") + "</em>";
       if (fastMode) {
-        markers.push(L.marker([a.latitude, a.longitude], { icon: _tourismDotIcon }));
+        markers.push(L.marker([a.latitude, a.longitude], { icon: _tourismDotIcon }).bindPopup(popup));
         return;
       }
       var marker = L.marker([a.latitude, a.longitude], { icon: _tourismIcon });
-      marker.bindPopup(
-        "<strong>" + (a.attraction_name || "Attraction") + "</strong><br>" +
-        "<em>" + (a.attraction_type || "").replace(/_/g, " ") + "</em>"
-      );
+      marker.bindPopup(popup);
       markers.push(marker);
     });
     _addMarkers(tourismLayer, markers);
   }
 
   /* ---- Populate bus layer ---- */
-  var _busIcon = L.divIcon({
-    html: "<div style='font-size:18px;line-height:1'>\uD83D\uDE8C</div>",
-    className: "",
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-  });
-  var _busDotIcon = _dotIcon("#2563eb");
+  var _busIcon = _emojiIcon("\uD83D\uDE8C", 22);
+  var _busDotIcon = _emojiIcon("\uD83D\uDE8C", 16);
 
   function populateBuses(stops) {
     busLayer.clearLayers();
@@ -250,7 +271,7 @@
         (s.ref ? " <span style='color:#6b7280'>#" + s.ref + "</span>" : "") +
         (s.routes ? "<br><em>" + s.routes + "</em>" : "");
       if (fastMode) {
-        markers.push(L.marker([s.lat, s.lon], { icon: _busDotIcon }));
+        markers.push(L.marker([s.lat, s.lon], { icon: _busDotIcon }).bindPopup(popup));
         return;
       }
       var marker = L.marker([s.lat, s.lon], { icon: _busIcon }).bindPopup(popup);
@@ -363,6 +384,11 @@
         map.removeLayer(layer);
       }
     });
+    if (!el.checked) {
+      map.removeLayer(layer);
+    } else if (!map.hasLayer(layer)) {
+      map.addLayer(layer);
+    }
   }
 
   wireToggle("toggle-bikes",   bikeLayer, function (data) { populateBikes(data.bike_stations || []); });

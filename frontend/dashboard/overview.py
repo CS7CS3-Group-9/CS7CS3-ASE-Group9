@@ -50,7 +50,7 @@ _POPULATION_CENTRES_FALLBACK = [
     {"name": "Balbriggan", "lat": 53.6121, "lon": -6.1833, "population_weight": 0.7},
 ]
 _POPULATION_CENTRES_CACHE = None
-_MAX_POPULATION_CENTRES = 50
+_MAX_POPULATION_CENTRES = 300
 
 
 def _load_population_centres_from_csv():
