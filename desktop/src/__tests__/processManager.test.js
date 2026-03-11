@@ -36,6 +36,7 @@ jest.mock('fs', () => ({
 // Mock net (for port availability checks)
 jest.mock('net', () => {
   const actual = jest.requireActual('net');
+  const { EventEmitter } = require('events');
   return {
     ...actual,
     createServer: jest.fn(() => {

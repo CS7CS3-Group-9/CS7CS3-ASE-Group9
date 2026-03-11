@@ -63,8 +63,6 @@ describe('ConnectivityMonitor', () => {
   // Offline → online transition
   // --------------------------------------------------------------------------
   test('emits "online" when health check succeeds and was previously offline', async () => {
-    mockFetch.mockRejectedValueOnce(new Error('ECONNREFUSED'));
-
     monitor.isOnline = false; // simulate pre-existing offline state
 
     mockFetch.mockResolvedValue({ ok: true });
