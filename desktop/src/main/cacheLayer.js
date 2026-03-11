@@ -168,7 +168,7 @@ class CacheLayer {
    */
   getRouteHistory(limit = 10) {
     const stmt = this._db.prepare(
-      'SELECT * FROM route_history ORDER BY calculated_at DESC LIMIT :limit'
+      'SELECT * FROM route_history ORDER BY calculated_at DESC, id DESC LIMIT :limit'
     );
     stmt.bind({ ':limit': limit });
     const rows = [];
