@@ -150,7 +150,7 @@ app.whenReady().then(async () => {
 
   // Initialise SQLite cache
   const dbPath = path.join(app.getPath('userData'), config.dbFileName);
-  cacheLayer = new CacheLayer(dbPath);
+  cacheLayer = await CacheLayer.create(dbPath);
   log.info('Cache database opened at', dbPath);
 
   // Initialise and register IPC handlers

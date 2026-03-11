@@ -3,24 +3,16 @@
 /**
  * Unit tests for CacheLayer.
  *
- * Uses an in-memory SQLite database (:memory:) so tests are fast and isolated.
+ * Uses an in-memory SQLite database (':memory:') so tests are fast and isolated.
  */
-
-const Database = require('better-sqlite3');
-
-// Mock better-sqlite3 to use an in-memory database for every test
-jest.mock('better-sqlite3', () => {
-  const ActualDatabase = jest.requireActual('better-sqlite3');
-  return jest.fn(() => new ActualDatabase(':memory:'));
-});
 
 const CacheLayer = require('../main/cacheLayer');
 
 describe('CacheLayer', () => {
   let cache;
 
-  beforeEach(() => {
-    cache = new CacheLayer(':memory:');
+  beforeEach(async () => {
+    cache = await CacheLayer.create(':memory:');
   });
 
   afterEach(() => {
@@ -73,15 +65,13 @@ describe('CacheLayer', () => {
       expect(cache.isStale('fresh')).toBe(false);
     });
 
-    test('returns true for an entry with ttl=0', () => {
-      cache.set('instant-stale', { ok: true }, 0);
-      // age will be 0 seconds; 0 > 0 is false but we can test with a 1s TTL
-      // and manually manipulate fetched_at
-      const db = cache._db;
-      db.prepare("UPDATE cache_entries SET fetched_at = fetched_at - 2000 WHERE key = 'instant-stale'").run();
-      cache.set('instant-stale', { ok: true }, 1);
-      db.prepare("UPDATE cache_entries SET fetched_at = fetched_at - 2000 WHERE key = 'instant-stale'").run();
-      expect(cache.isStale('instant-stale')).toBe(true);
+    test('returns true for an entry whose fetched_at is in the past', () => {
+      cache.set('stale-key', { ok: true }, 1);
+      // Wind back fetched_at by 2 seconds so age (2s) exceeds ttl (1s)
+      cache._db.run(
+        "UPDATE cache_entries SET fetched_at = fetched_at - 2000 WHERE key = 'stale-key'"
+      );
+      expect(cache.isStale('stale-key')).toBe(true);
     });
 
     test('returns false for a nonexistent key', () => {
