@@ -241,4 +241,7 @@
 
   /* Expose so dashboard.js can trigger a map refresh after KPI update */
   window._mapRefresh = refreshMap;
+
+  /* Expose map instance for desktop app tile-layer swap (desktop-overlay.js) */
+  window._leafletMap = map;
 })();

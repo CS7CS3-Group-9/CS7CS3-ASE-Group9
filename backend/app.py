@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timezone
 
 from flask import Flask, jsonify, current_app
+from flask_cors import CORS
 import firebase_admin
 from firebase_admin import firestore
 
@@ -14,6 +15,7 @@ from backend.api.endpoints.tours import tours_bp
 from backend.api.endpoints.health import health_bp
 from backend.api.endpoints.routing import routing_api_bp
 from backend.api.endpoints.buses import buses_bp
+from backend.api.endpoints.desktop import desktop_bp
 
 
 def _init_firestore(app: Flask) -> None:
@@ -40,6 +42,20 @@ def _get_firestore_db():
 def create_app() -> Flask:
     app = Flask(__name__)
 
+    # CORS for desktop app: Electron renderer runs at http://localhost:5002
+    # and may also make direct requests from file:// in development.
+    # The web frontend communicates via server-side Python requests (not browser
+    # fetch), so these headers have no effect on it.
+    CORS(
+        app,
+        origins=[
+            "http://localhost:5002",
+            "http://localhost:5001",
+            "file://",
+            "app://.",
+        ],
+    )
+
     app.register_blueprint(example_bp)
     app.register_blueprint(bikes_bp)
     app.register_blueprint(traffic_bp)
@@ -49,6 +65,7 @@ def create_app() -> Flask:
     app.register_blueprint(health_bp)
     app.register_blueprint(routing_api_bp)
     app.register_blueprint(buses_bp)
+    app.register_blueprint(desktop_bp)
 
     _init_firestore(app)
 
