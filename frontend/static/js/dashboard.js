@@ -6,6 +6,13 @@
 
   var REFRESH_INTERVAL = window.REFRESH_INTERVAL || 60000;
   var charts = {};
+  var MAP_LOADING_MIN_MS = 350;
+  var mapLoadingSince = 0;
+  var mapLoadingTimer = null;
+
+  function isVisible() {
+    return document.visibilityState !== "hidden";
+  }
 
   /* ---- KPI helpers ---- */
 
@@ -62,9 +69,31 @@
     if (banner) banner.remove();
   }
 
+  function setMapLoading(isLoading) {
+    var el = document.getElementById("map-loading");
+    if (!el) return;
+    if (isLoading) {
+      if (mapLoadingTimer) {
+        clearTimeout(mapLoadingTimer);
+        mapLoadingTimer = null;
+      }
+      mapLoadingSince = Date.now();
+      el.classList.add("is-visible");
+    } else {
+      var elapsed = Date.now() - mapLoadingSince;
+      var delay = Math.max(0, MAP_LOADING_MIN_MS - elapsed);
+      mapLoadingTimer = setTimeout(function () {
+        el.classList.remove("is-visible");
+        mapLoadingTimer = null;
+      }, delay);
+    }
+  }
+
   /* ---- Fetch dashboard data and update KPIs ---- */
 
-  function fetchDashboardData() {
+  function fetchDashboardData(showLoading) {
+    if (!isVisible()) return;
+    if (showLoading) setMapLoading(true);
     fetch(dashboardDataUrl())
       .then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
@@ -95,6 +124,9 @@
       })
       .catch(function (err) {
         showErrorBanner(err.message);
+      })
+      .then(function () {
+        if (showLoading) setMapLoading(false);
       });
   }
 
@@ -182,6 +214,7 @@
   /* ---- Fetch and refresh charts ---- */
 
   function fetchAndUpdateCharts() {
+    if (!isVisible()) return;
     fetch("/dashboard/analytics/data")
       .then(function (r) { return r.json(); })
       .then(function (data) { initCharts(data); })
@@ -197,7 +230,7 @@
     var radiusApply = document.getElementById("radius-apply");
 
     if (onDashboard) {
-      fetchDashboardData();
+      fetchDashboardData(true);
       setInterval(fetchDashboardData, REFRESH_INTERVAL);
     }
 
@@ -208,13 +241,13 @@
     if (radiusInput && radiusApply) {
       radiusApply.addEventListener("click", function () {
         updateRadiusQueryParam();
-        fetchDashboardData();
+        fetchDashboardData(true);
       });
       radiusInput.addEventListener("keydown", function (e) {
         if (e.key === "Enter") {
           e.preventDefault();
           updateRadiusQueryParam();
-          fetchDashboardData();
+          fetchDashboardData(true);
         }
       });
     }
