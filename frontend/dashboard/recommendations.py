@@ -16,8 +16,8 @@ def recommendations():
     backend_url = current_app.config["BACKEND_API_URL"]
     radius_km = current_app.config.get("RADIUS_KM", 5)
     snapshot, error = _fetch_snapshot(backend_url, radius_km)
-    bike_stations = _filter_points_within_radius(_fetch_bike_stations(backend_url), radius_km)
-    bus_stops = _filter_points_within_radius(_fetch_bus_stops(backend_url), radius_km)
+    bike_stations = _filter_points_within_radius(_fetch_bike_stations(backend_url, radius_km), radius_km)
+    bus_stops = _filter_points_within_radius(_fetch_bus_stops(backend_url, radius_km), radius_km)
     recs = _build_recommendations(
         snapshot.get("bikes"),
         snapshot.get("traffic"),

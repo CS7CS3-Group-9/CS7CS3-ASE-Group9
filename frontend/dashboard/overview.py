@@ -1,5 +1,6 @@
 import csv
 import math
+import time
 from pathlib import Path
 import requests
 from concurrent.futures import ThreadPoolExecutor
@@ -9,7 +10,16 @@ overview_bp = Blueprint("overview", __name__, url_prefix="/dashboard")
 
 _DUBLIN_LAT = 53.3498
 _DUBLIN_LON = -6.2603
-_BUS_STOP_CACHE = []
+_BUS_STOP_CACHE = {}
+_BIKE_STATION_CACHE = {}
+_SNAPSHOT_CACHE = {}
+_NEEDS_CACHE = {}
+_CACHE_TTLS = {
+    "bus_stops": 300.0,
+    "bike_stations": 60.0,
+    "snapshot": 30.0,
+    "needs": 300.0,
+}
 _BUS_NEEDS_THRESHOLD_KM = 0.6
 _BIKE_NEEDS_THRESHOLD_KM = 1.0
 _MAX_NEEDS_MARKERS = 5
@@ -40,7 +50,7 @@ _POPULATION_CENTRES_FALLBACK = [
     {"name": "Balbriggan", "lat": 53.6121, "lon": -6.1833, "population_weight": 0.7},
 ]
 _POPULATION_CENTRES_CACHE = None
-_MAX_POPULATION_CENTRES = 5000
+_MAX_POPULATION_CENTRES = 50
 
 
 def _load_population_centres_from_csv():
@@ -109,6 +119,26 @@ def _get_population_centres():
         centres = list(_POPULATION_CENTRES_FALLBACK)
     _POPULATION_CENTRES_CACHE = centres
     return centres
+
+
+def _cache_get(cache, key, ttl_seconds):
+    entry = cache.get(key)
+    if entry is None:
+        return None
+    if time.time() - entry["timestamp"] > ttl_seconds:
+        return None
+    return entry["data"]
+
+
+def _cache_set(cache, key, data):
+    cache[key] = {"timestamp": time.time(), "data": data}
+
+
+def _cache_get_stale(cache, key):
+    entry = cache.get(key)
+    if entry is None:
+        return None
+    return entry["data"]
 
 
 def _parse_radius_km(raw):
@@ -220,6 +250,13 @@ def _needs_access_areas(kind, bus_stops, bike_stations, radius_km, threshold_km)
             continue
         if radius_km is not None and not _within_radius_km(c["lat"], c["lon"], radius_km):
             continue
+        distance_km = bus_km if kind == "bus" else bike_km
+        if distance_km is None:
+            continue
+        if bus_km is None:
+            bus_km = distance_km
+        if bike_km is None:
+            bike_km = distance_km
         item = {
             "kind": kind,
             "name": c["name"],
@@ -230,7 +267,6 @@ def _needs_access_areas(kind, bus_stops, bike_stations, radius_km, threshold_km)
             "score": (bus_km * 0.6 + bike_km * 0.4) * c["population_weight"],
         }
         candidates.append(item)
-        distance_km = bus_km if kind == "bus" else bike_km
         if distance_km > threshold_km:
             needs.append(item)
 
@@ -273,7 +309,13 @@ def _needs_bike_areas(bus_stops, bike_stations, radius_km):
     )
 
 
-def _fetch_snapshot(backend_url, radius_km=5):
+def _fetch_snapshot(backend_url, radius_km=5, include=None):
+    include = include or ["bikes", "traffic", "airquality", "tours"]
+    cache_key = f"{backend_url}|{radius_km:g}|{','.join(include)}"
+    cached = _cache_get(_SNAPSHOT_CACHE, cache_key, _CACHE_TTLS["snapshot"])
+    if cached is not None:
+        return cached, None
+
     try:
         resp = requests.get(
             f"{backend_url}/snapshot",
@@ -282,43 +324,83 @@ def _fetch_snapshot(backend_url, radius_km=5):
                 ("radius_km", f"{radius_km:g}"),
                 ("lat", f"{_DUBLIN_LAT}"),
                 ("lon", f"{_DUBLIN_LON}"),
-                ("include", "bikes"),
-                ("include", "traffic"),
-                ("include", "airquality"),
-                ("include", "tours"),
+                *[("include", item) for item in include],
             ],
             timeout=30,
         )
         resp.raise_for_status()
-        return resp.json(), None
+        data = resp.json()
+        _cache_set(_SNAPSHOT_CACHE, cache_key, data)
+        return data, None
     except Exception as e:
+        stale = _cache_get_stale(_SNAPSHOT_CACHE, cache_key)
+        if stale is not None:
+            return stale, None
         return {}, str(e)
 
 
-def _fetch_bus_stops(backend_url):
+def _fetch_bus_stops(backend_url, radius_km=None):
     """Fetch Dublin bus stops from the backend."""
+    cache_key = f"{backend_url}|{radius_km or 'default'}"
+    cached = _cache_get(_BUS_STOP_CACHE, cache_key, _CACHE_TTLS["bus_stops"])
+    if cached is not None:
+        return cached
+
     try:
-        resp = requests.get(f"{backend_url}/buses/stops", timeout=20)
+        params = {
+            "lat": f"{_DUBLIN_LAT}",
+            "lon": f"{_DUBLIN_LON}",
+        }
+        if radius_km is not None:
+            params["radius_km"] = f"{radius_km:g}"
+        resp = requests.get(f"{backend_url}/buses/stops", params=params, timeout=20)
         resp.raise_for_status()
         data = resp.json()
         stops = data if isinstance(data, list) else []
         if stops:
-            _BUS_STOP_CACHE.clear()
-            _BUS_STOP_CACHE.extend(stops)
+            _cache_set(_BUS_STOP_CACHE, cache_key, stops)
         return stops
     except Exception:
-        return list(_BUS_STOP_CACHE)
+        stale = _cache_get_stale(_BUS_STOP_CACHE, cache_key)
+        return stale if stale is not None else []
 
 
-def _fetch_bike_stations(backend_url):
+def _fetch_bike_stations(backend_url, radius_km=None):
     """Fetch per-station Dublin Bikes data from the backend."""
+    cache_key = f"{backend_url}|{radius_km or 'default'}"
+    cached = _cache_get(_BIKE_STATION_CACHE, cache_key, _CACHE_TTLS["bike_stations"])
+    if cached is not None:
+        return cached
+
     try:
-        resp = requests.get(f"{backend_url}/bikes/stations", timeout=5)
+        params = {
+            "lat": f"{_DUBLIN_LAT}",
+            "lon": f"{_DUBLIN_LON}",
+        }
+        if radius_km is not None:
+            params["radius_km"] = f"{radius_km:g}"
+        resp = requests.get(f"{backend_url}/bikes/stations", params=params, timeout=5)
         resp.raise_for_status()
         data = resp.json()
-        return data if isinstance(data, list) else []
+        stations = data if isinstance(data, list) else []
+        if stations:
+            _cache_set(_BIKE_STATION_CACHE, cache_key, stations)
+        return stations
     except Exception:
-        return []
+        stale = _cache_get_stale(_BIKE_STATION_CACHE, cache_key)
+        return stale if stale is not None else []
+
+
+def _get_needs_cached(bus_stops, bike_stations, radius_km):
+    key = (radius_km, len(bus_stops), len(bike_stations))
+    cached = _cache_get(_NEEDS_CACHE, key, _CACHE_TTLS["needs"])
+    if cached is not None:
+        return cached["bus"], cached["bike"]
+
+    needs_bus = _needs_bus_areas(bus_stops, bike_stations, radius_km)
+    needs_bike = _needs_bike_areas(bus_stops, bike_stations, radius_km)
+    _cache_set(_NEEDS_CACHE, key, {"bus": needs_bus, "bike": needs_bike})
+    return needs_bus, needs_bike
 
 
 def _build_recommendations(
@@ -408,8 +490,7 @@ def _build_recommendations(
                     }
                 )
 
-    needs_bus = _needs_bus_areas(bus_stops or [], bike_stations or [], radius_km)
-    needs_bike = _needs_bike_areas(bus_stops or [], bike_stations or [], radius_km)
+    needs_bus, needs_bike = _get_needs_cached(bus_stops or [], bike_stations or [], radius_km)
     if needs_bus:
         top = needs_bus[0]
         recs.append(
@@ -497,9 +578,14 @@ def _build_recommendations(
 def dashboard():
     backend_url = current_app.config["BACKEND_API_URL"]
     radius_km = _parse_radius_km(request.args.get("radius_km"))
-    snapshot, error = _fetch_snapshot(backend_url, radius_km)
-    bike_stations = _fetch_bike_stations(backend_url)
-    bike_stations = _filter_points_within_radius(bike_stations, radius_km)
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        f_snapshot = pool.submit(_fetch_snapshot, backend_url, radius_km)
+        f_bike_stations = pool.submit(_fetch_bike_stations, backend_url, radius_km)
+        f_bus_stops = pool.submit(_fetch_bus_stops, backend_url, radius_km)
+
+        snapshot, error = f_snapshot.result()
+        bike_stations = f_bike_stations.result()
+        bus_stops = f_bus_stops.result()
 
     bikes = _build_bike_metrics(bike_stations) or snapshot.get("bikes")
     traffic = snapshot.get("traffic")
@@ -507,7 +593,6 @@ def dashboard():
     tours = snapshot.get("tours")
     timestamp = snapshot.get("timestamp")
     source_status = snapshot.get("source_status", {})
-    bus_stops = _filter_points_within_radius(_fetch_bus_stops(backend_url), radius_km)
     recommendations = _build_recommendations(
         bikes,
         traffic,
@@ -540,25 +625,16 @@ def dashboard_data():
     # Run all three slow fetches in parallel so the page loads faster
     with ThreadPoolExecutor(max_workers=3) as pool:
         f_snapshot = pool.submit(_fetch_snapshot, backend_url, radius_km)
-        f_bike_stations = pool.submit(_fetch_bike_stations, backend_url)
-        f_bus_stops = pool.submit(_fetch_bus_stops, backend_url)
+        f_bike_stations = pool.submit(_fetch_bike_stations, backend_url, radius_km)
+        f_bus_stops = pool.submit(_fetch_bus_stops, backend_url, radius_km)
 
         snapshot, error = f_snapshot.result()
-        bike_stations = _filter_points_within_radius(f_bike_stations.result(), radius_km)
-        bus_stops = _filter_points_within_radius(f_bus_stops.result(), radius_km)
+        bike_stations = f_bike_stations.result()
+        bus_stops = f_bus_stops.result()
 
     bikes = _build_bike_metrics(bike_stations) or snapshot.get("bikes")
 
-    recommendations = _build_recommendations(
-        bikes,
-        snapshot.get("traffic"),
-        snapshot.get("airquality"),
-        bike_stations=bike_stations,
-        bus_stops=bus_stops,
-        radius_km=radius_km,
-    )
-    needs_bus_areas = _needs_bus_areas(bus_stops, bike_stations, radius_km)
-    needs_bike_areas = _needs_bike_areas(bus_stops, bike_stations, radius_km)
+    needs_bus_areas, needs_bike_areas = _get_needs_cached(bus_stops, bike_stations, radius_km)
     return jsonify(
         {
             "timestamp": snapshot.get("timestamp"),
@@ -571,7 +647,6 @@ def dashboard_data():
             "bus_stops": bus_stops,
             "needs_bus_areas": needs_bus_areas,
             "needs_bike_areas": needs_bike_areas,
-            "recommendations": recommendations,
             "error": error,
         }
     )

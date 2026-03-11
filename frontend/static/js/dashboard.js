@@ -7,6 +7,10 @@
   var REFRESH_INTERVAL = window.REFRESH_INTERVAL || 60000;
   var charts = {};
 
+  function isVisible() {
+    return document.visibilityState !== "hidden";
+  }
+
   /* ---- KPI helpers ---- */
 
   function getRadiusKm() {
@@ -65,6 +69,7 @@
   /* ---- Fetch dashboard data and update KPIs ---- */
 
   function fetchDashboardData() {
+    if (!isVisible()) return;
     fetch(dashboardDataUrl())
       .then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
@@ -182,6 +187,7 @@
   /* ---- Fetch and refresh charts ---- */
 
   function fetchAndUpdateCharts() {
+    if (!isVisible()) return;
     fetch("/dashboard/analytics/data")
       .then(function (r) { return r.json(); })
       .then(function (data) { initCharts(data); })

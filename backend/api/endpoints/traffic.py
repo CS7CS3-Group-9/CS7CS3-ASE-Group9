@@ -6,6 +6,8 @@ from backend.adapters.traffic_adapter import TrafficAdapter
 
 traffic_bp = Blueprint("traffic", __name__)
 
+_CACHE_TTL_SECONDS = 120.0
+
 
 @traffic_bp.get("/traffic")
 def get_traffic():
@@ -16,7 +18,13 @@ def get_traffic():
         radius_km = 1.0
 
     service = SnapshotService(
-        adapter_specs=[AdapterCallSpec(adapter=TrafficAdapter(), kwargs={"radius_km": radius_km})]
+        adapter_specs=[
+            AdapterCallSpec(
+                adapter=TrafficAdapter(),
+                kwargs={"radius_km": radius_km},
+                cache_ttl_seconds=_CACHE_TTL_SECONDS,
+            )
+        ]
     )
     snapshot = service.build_snapshot(location=location)
     return jsonify(to_jsonable(snapshot))

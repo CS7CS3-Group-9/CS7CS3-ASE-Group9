@@ -6,6 +6,8 @@ from backend.adapters.airquality_location_adapter import AirQualityLocationAdapt
 
 airquality_bp = Blueprint("airquality", __name__)
 
+_CACHE_TTL_SECONDS = 300.0
+
 
 @airquality_bp.get("/airquality")
 def get_airquality():
@@ -27,6 +29,7 @@ def get_airquality():
             AdapterCallSpec(
                 adapter=AirQualityLocationAdapter(),
                 kwargs={"latitude": latitude, "longitude": longitude},
+                cache_ttl_seconds=_CACHE_TTL_SECONDS,
             )
         ]
     )
