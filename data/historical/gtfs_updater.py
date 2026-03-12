@@ -19,7 +19,7 @@ GTFS_URL = "https://www.transportforireland.ie/transitData/Data/GTFS_Realtime.zi
 
 # Default path matches your folder structure
 # You can override this by passing the path as an argument when running the script.
-DEFAULT_GTFS_DIR = r"C:\Users\Ruby\Documents\GitHub\CS7CS3-ASE-Group9\data\historical\GTFS"
+DEFAULT_GTFS_DIR = r"C:\Users\awals\.vscode\ADV_Software\CS7CS3-ASE-Group9\data\historical\GTFS"
 
 # How long to wait before checking again (seconds).
 # This prevents downloading every time you run the script if nothing changed.

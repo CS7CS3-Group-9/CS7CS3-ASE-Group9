@@ -542,6 +542,7 @@ a:hover { text-decoration: underline; }
 }
 
 .chart-card canvas { display: block; max-width: 100%; }
+.analytics-map-wide { grid-column: span 2; }
 
 /* ============================================================
    Responsive — single column on narrow screens
@@ -556,6 +557,7 @@ a:hover { text-decoration: underline; }
   .kpi-card { flex: 1 1 130px; }
 
   #map { height: 340px; }
+  .analytics-map-wide { grid-column: span 1; }
 }
 
 @media (max-width: 600px) {

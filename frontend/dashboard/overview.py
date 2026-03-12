@@ -66,6 +66,114 @@ def _build_bike_metrics(stations):
     }
 
 
+def _nearest_distance_km(target_lat, target_lon, points):
+    nearest = None
+    for p in points or []:
+        lat = p.get("lat")
+        lon = p.get("lon")
+        if lat is None or lon is None:
+            continue
+        d = _distance_km(target_lat, target_lon, lat, lon)
+        if nearest is None or d < nearest:
+            nearest = d
+    return nearest
+
+
+def _max_distance_from_centre_km(points):
+    max_d = None
+    for p in points or []:
+        lat = p.get("lat")
+        lon = p.get("lon")
+        if lat is None or lon is None:
+            continue
+        d = _distance_km(_DUBLIN_LAT, _DUBLIN_LON, lat, lon)
+        if max_d is None or d > max_d:
+            max_d = d
+    return max_d
+
+
+def _tracked_overlap_km(bus_stops, bike_stations):
+    max_bus_km = _max_distance_from_centre_km(bus_stops)
+    max_bike_km = _max_distance_from_centre_km(bike_stations)
+    if max_bus_km is not None and max_bike_km is not None:
+        return min(max_bus_km, max_bike_km)
+    return None
+
+
+def _needs_access_areas(kind, bus_stops, bike_stations, radius_km, threshold_km):
+    needs = []
+    candidates = []
+    tracked_km = (
+        _max_distance_from_centre_km(bus_stops) if kind == "bus" else _max_distance_from_centre_km(bike_stations)
+    )
+
+    for c in _get_population_centres():
+        centre_from_dublin_km = _distance_km(_DUBLIN_LAT, _DUBLIN_LON, c["lat"], c["lon"])
+        if tracked_km is not None and centre_from_dublin_km > tracked_km:
+            continue
+        bus_km = _nearest_distance_km(c["lat"], c["lon"], bus_stops)
+        bike_km = _nearest_distance_km(c["lat"], c["lon"], bike_stations)
+        if kind == "bus" and bus_km is None:
+            continue
+        if kind == "bike" and bike_km is None:
+            continue
+        if radius_km is not None and not _within_radius_km(c["lat"], c["lon"], radius_km):
+            continue
+        score_bus_km = bus_km if bus_km is not None else (bike_km if bike_km is not None else 0.0)
+        score_bike_km = bike_km if bike_km is not None else (bus_km if bus_km is not None else 0.0)
+        item = {
+            "kind": kind,
+            "name": c["name"],
+            "lat": c["lat"],
+            "lon": c["lon"],
+            "bus_km": bus_km,
+            "bike_km": bike_km,
+            "score": (score_bus_km * 0.6 + score_bike_km * 0.4) * c["population_weight"],
+        }
+        candidates.append(item)
+        distance_km = bus_km if kind == "bus" else bike_km
+        if distance_km > threshold_km:
+            needs.append(item)
+
+    # Keep multiple markers visible: fill to a minimum count using top distances.
+    if len(needs) < _MIN_NEEDS_MARKERS and candidates:
+        used = {(n["name"], n["lat"], n["lon"]) for n in needs}
+        remaining = [
+            c
+            for c in sorted(
+                candidates,
+                key=lambda x: x["bus_km"] if kind == "bus" else x["bike_km"],
+                reverse=True,
+            )
+            if (c["name"], c["lat"], c["lon"]) not in used
+        ]
+        take = _MIN_NEEDS_MARKERS - len(needs)
+        needs.extend(remaining[:take])
+
+    needs.sort(key=lambda x: x["bus_km"] if kind == "bus" else x["bike_km"], reverse=True)
+    return needs[:_MAX_NEEDS_MARKERS]
+
+
+def _needs_bus_areas(bus_stops, bike_stations, radius_km):
+    return _needs_access_areas(
+        kind="bus",
+        bus_stops=bus_stops,
+        bike_stations=bike_stations,
+        radius_km=radius_km,
+        threshold_km=_BUS_NEEDS_THRESHOLD_KM,
+    )
+
+
+def _needs_bike_areas(bus_stops, bike_stations, radius_km):
+    return _needs_access_areas(
+        kind="bike",
+        bus_stops=bus_stops,
+        bike_stations=bike_stations,
+        radius_km=radius_km,
+        threshold_km=_BIKE_NEEDS_THRESHOLD_KM,
+    )
+
+
 def _fetch_snapshot(backend_url, radius_km=5):
     try:
         resp = requests.get(
@@ -79,6 +187,7 @@ def _fetch_snapshot(backend_url, radius_km=5):
                 ("include", "traffic"),
                 ("include", "airquality"),
                 ("include", "tours"),
+                ("include", "buses"),
             ],
             timeout=30,
         )
