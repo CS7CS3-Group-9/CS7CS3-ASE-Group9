@@ -15,12 +15,16 @@
 
   var routeLayer  = L.layerGroup().addTo(map);
   var markerLayer = L.layerGroup().addTo(map);
+  var pinLayer    = L.layerGroup().addTo(map);
 
   /* ---- State ---- */
   var currentMode = "driving";
   var currentType = "quickest";
   var stopCounter = 0;
   var stepsOpen   = false;
+  var pinModeActive = false;
+  var pinA = null;   // {lat, lon}
+  var pinB = null;
 
   /* ====================================================
      Lock button helpers
@@ -221,6 +225,271 @@
   }
 
   /* ====================================================
+     Pin-drop mode
+     ==================================================== */
+
+  var searchModeBtn = document.getElementById("mode-search-btn");
+  var pinModeBtn    = document.getElementById("mode-pin-btn");
+  var searchPanel   = document.getElementById("search-panel");
+  var pinPanel      = document.getElementById("pin-panel");
+  var pinInstructions = document.getElementById("pin-instructions");
+  var pinALabel     = document.getElementById("pin-a-label");
+  var pinBLabel     = document.getElementById("pin-b-label");
+  var pinClearBtn   = document.getElementById("pin-clear-btn");
+  var pinRouteBtn   = document.getElementById("pin-route-btn");
+  var pinError      = document.getElementById("pin-error");
+
+  function _pinIcon(label, bg) {
+    return L.divIcon({
+      html: "<div style='background:" + bg + ";color:#fff;border-radius:50%;" +
+            "width:26px;height:26px;display:flex;align-items:center;" +
+            "justify-content:center;font-weight:700;font-size:14px;" +
+            "border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45)'>" +
+            label + "</div>",
+      className: "",
+      iconAnchor: [13, 13],
+    });
+  }
+
+  function _updatePinUI() {
+    var aSet = pinA !== null;
+    var bSet = pinB !== null;
+    pinALabel.textContent = aSet ? "A: " + pinA.lat.toFixed(4) + ", " + pinA.lon.toFixed(4) : "A: —";
+    pinBLabel.textContent = bSet ? "B: " + pinB.lat.toFixed(4) + ", " + pinB.lon.toFixed(4) : "B: —";
+    pinRouteBtn.disabled  = !(aSet && bSet);
+    if (!aSet) {
+      pinInstructions.innerHTML = "Click the map to place your <strong>start</strong> point (A).";
+    } else if (!bSet) {
+      pinInstructions.innerHTML = "Now click to place your <strong>destination</strong> (B).";
+    } else {
+      pinInstructions.innerHTML = "Both pins set. Press <strong>Get Route</strong>.";
+    }
+  }
+
+  function _clearPins() {
+    pinA = pinB = null;
+    pinLayer.clearLayers();
+    routeLayer.clearLayers();
+    document.getElementById("route-summary").style.display = "none";
+    _updatePinUI();
+    pinError.style.display = "none";
+  }
+
+  function enterPinMode() {
+    pinModeActive = true;
+    pinPanel.style.display   = "block";
+    searchPanel.style.display = "none";
+    pinModeBtn.classList.add("active");
+    searchModeBtn.classList.remove("active");
+    map.getContainer().style.cursor = "crosshair";
+    _updatePinUI();
+  }
+
+  function exitPinMode() {
+    pinModeActive = false;
+    pinPanel.style.display    = "none";
+    searchPanel.style.display = "block";
+    searchModeBtn.classList.add("active");
+    pinModeBtn.classList.remove("active");
+    map.getContainer().style.cursor = "";
+  }
+
+  searchModeBtn.addEventListener("click", exitPinMode);
+  pinModeBtn.addEventListener("click", enterPinMode);
+  pinClearBtn.addEventListener("click", _clearPins);
+
+  map.on("click", function (e) {
+    if (!pinModeActive) return;
+    var lat = e.latlng.lat;
+    var lon = e.latlng.lng;
+    if (pinA === null) {
+      pinA = { lat: lat, lon: lon };
+      L.marker([lat, lon], { icon: _pinIcon("A", "#16a34a"), draggable: true })
+        .on("dragend", function (ev) {
+          pinA = { lat: ev.target.getLatLng().lat, lon: ev.target.getLatLng().lng };
+          _updatePinUI();
+        })
+        .addTo(pinLayer);
+    } else if (pinB === null) {
+      pinB = { lat: lat, lon: lon };
+      L.marker([lat, lon], { icon: _pinIcon("B", "#dc2626"), draggable: true })
+        .on("dragend", function (ev) {
+          pinB = { lat: ev.target.getLatLng().lat, lon: ev.target.getLatLng().lng };
+          _updatePinUI();
+        })
+        .addTo(pinLayer);
+    }
+    _updatePinUI();
+  });
+
+  pinRouteBtn.addEventListener("click", function () {
+    if (!pinA || !pinB) return;
+    pinError.style.display = "none";
+    pinRouteBtn.disabled   = true;
+    pinRouteBtn.textContent = "Routing\u2026";
+
+    var url = "/routing/local-route" +
+      "?from_lat=" + pinA.lat +
+      "&from_lon=" + pinA.lon +
+      "&to_lat="   + pinB.lat +
+      "&to_lon="   + pinB.lon;
+
+    fetch(url)
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        pinRouteBtn.disabled    = false;
+        pinRouteBtn.textContent = "Get Route";
+        if (!res.ok || !res.data.found) {
+          pinError.textContent   = res.data.error || "No route found between those pins.";
+          pinError.style.display = "block";
+          return;
+        }
+        renderPinRoute(res.data);
+      })
+      .catch(function (err) {
+        pinRouteBtn.disabled    = false;
+        pinRouteBtn.textContent = "Get Route";
+        pinError.textContent    = "Request failed: " + err.message;
+        pinError.style.display  = "block";
+      });
+  });
+
+  function renderPinRoute(data) {
+    routeLayer.clearLayers();
+
+    // data.geometry is [[lat, lon], ...]
+    var latlngs = data.geometry;
+    var poly = L.polyline(latlngs, { color: "#2563eb", weight: 5, opacity: 0.85 });
+    routeLayer.addLayer(poly);
+    map.fitBounds(poly.getBounds(), { padding: [40, 40] });
+
+    var distStr = data.total_distance_km >= 1
+      ? data.total_distance_km + " km"
+      : data.total_distance_m + " m";
+    var durMins = Math.round(data.total_actual_time_min);
+    var durStr  = durMins >= 60
+      ? Math.floor(durMins / 60) + " hr " + (durMins % 60) + " min"
+      : durMins + " min";
+
+    var badge = document.getElementById("route-mode-badge");
+    badge.textContent = "Local Route";
+    badge.className   = "route-mode-badge route-mode-badge-driving";
+
+    document.getElementById("route-stats").innerHTML =
+      "<div class='route-stat'>" +
+        "<span class='route-stat-val'>" + durStr  + "</span>" +
+        "<span class='route-stat-lbl'>Duration</span>" +
+      "</div>" +
+      "<div class='route-stat'>" +
+        "<span class='route-stat-val'>" + distStr + "</span>" +
+        "<span class='route-stat-lbl'>Distance</span>" +
+      "</div>";
+
+    var ecoEl = document.getElementById("eco-note");
+    ecoEl.textContent   = "\uD83D\uDDFA\uFE0F Local Dublin road network \u00B7 Congestion: " + (data.congestion_level || "—");
+    ecoEl.style.display = "block";
+
+    document.getElementById("reorder-note").style.display    = "none";
+    document.getElementById("transit-info-note").style.display = "none";
+    document.getElementById("osrm-steps-wrap").style.display   = "block";
+    document.getElementById("transit-legs-wrap").style.display = "none";
+
+    var stepsEl = document.getElementById("route-steps");
+    stepsEl.innerHTML = "";
+    (data.steps || []).forEach(function (s) {
+      var li = document.createElement("li");
+      li.className = "step-item";
+      var dist = s.length_m >= 1000
+        ? (s.length_m / 1000).toFixed(1) + " km"
+        : Math.round(s.length_m) + " m";
+      li.innerHTML =
+        "<span class='step-instruction'>" + esc(s.road || "Continue") + "</span>" +
+        "<span class='step-dist'>" + dist + "</span>";
+      stepsEl.appendChild(li);
+    });
+
+    stepsOpen = false;
+    stepsEl.style.display = "none";
+    if (stepsToggleBtn) stepsToggleBtn.textContent = "Show turn-by-turn \u25BC";
+
+    document.getElementById("route-summary").style.display = "block";
+  }
+
+  /* ====================================================
+     Network debug — boundary + junction nodes
+     ==================================================== */
+
+  var debugLayer  = L.layerGroup().addTo(map);
+  var _nodesLoaded = false;
+  var _nodeMarkers = L.layerGroup();
+
+  // Fixed legend (no tooltip on hover)
+  var _legend = L.control({ position: "bottomleft" });
+  _legend.onAdd = function () {
+    var div = L.DomUtil.create("div", "map-legend");
+    div.innerHTML =
+      "<span class='legend-swatch'></span> Offline routing zone";
+    return div;
+  };
+  _legend.addTo(map);
+
+  // Fetch hull on load (step=9999 returns no nodes, just hull)
+  fetch("/routing/network-nodes?step=9999")
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.hull && data.hull.length > 2) {
+        L.polygon(data.hull, {
+          color: "#f59e0b", weight: 2,
+          fillColor: "#fef3c7", fillOpacity: 0.1,
+          dashArray: "6 4",
+        }).addTo(debugLayer);
+      }
+    })
+    .catch(function () {});
+
+  document.getElementById("show-nodes-cb").addEventListener("change", function () {
+    if (!this.checked) { map.removeLayer(_nodeMarkers); return; }
+    if (_nodesLoaded)  { _nodeMarkers.addTo(map); return; }
+    fetch("/routing/network-nodes?step=5")
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        _nodesLoaded = true;
+        (data.nodes || []).forEach(function (pt) {
+          L.circleMarker(pt, {
+            radius: 3, color: "#2563eb", weight: 1,
+            fillColor: "#93c5fd", fillOpacity: 0.9,
+          }).addTo(_nodeMarkers);
+        });
+        _nodeMarkers.addTo(map);
+      })
+      .catch(function (err) { console.warn("nodes fetch failed:", err); });
+  });
+
+  // Road-edges debug toggle
+  var _edgesLoaded = false;
+  var _edgeLines   = L.layerGroup();
+
+  document.getElementById("show-edges-cb").addEventListener("change", function () {
+    if (!this.checked) { map.removeLayer(_edgeLines); return; }
+    if (_edgesLoaded)  { _edgeLines.addTo(map); return; }
+    fetch("/routing/network-edges?step=10")
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        _edgesLoaded = true;
+        (data.edges || []).forEach(function (e) {
+          var col = e.type === "highway.primary"   ? "#ef4444" :
+                    e.type === "highway.secondary" ? "#f97316" :
+                    e.type === "highway.tertiary"  ? "#eab308" : "#6b7280";
+          var line = L.polyline(e.coords, { color: col, weight: 2, opacity: 0.8 });
+          if (e.name) line.bindTooltip(e.name, { sticky: true });
+          line.addTo(_edgeLines);
+        });
+        _edgeLines.addTo(map);
+      })
+      .catch(function (err) { console.warn("edges fetch failed:", err); });
+  });
+
+  /* ====================================================
      Calculate button
      ==================================================== */
   document.getElementById("calculate-btn").addEventListener("click", function () {
@@ -332,6 +601,9 @@
     var ecoEl = document.getElementById("eco-note");
     if (data.eco_note) {
       ecoEl.textContent   = "\uD83C\uDF31 " + data.eco_note;
+      ecoEl.style.display = "block";
+    } else if (route.local_fallback) {
+      ecoEl.textContent   = "\uD83D\uDDFA\uFE0F Using local Dublin road network (Google routing unavailable)";
       ecoEl.style.display = "block";
     } else {
       ecoEl.style.display = "none";
