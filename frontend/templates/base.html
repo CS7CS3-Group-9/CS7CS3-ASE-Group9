@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Dublin City Dashboard{% endblock %}</title>
 
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet CSS (local — works offline) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet.css') }}" />
 
   <!-- App CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
@@ -34,10 +34,10 @@
     {% block content %}{% endblock %}
   </main>
 
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Leaflet JS (local — works offline) -->
+  <script src="{{ url_for('static', filename='vendor/leaflet.js') }}"></script>
+  <!-- Chart.js (local — works offline) -->
+  <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
 
   {% block scripts %}{% endblock %}
 
