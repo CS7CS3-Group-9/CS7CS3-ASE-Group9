@@ -13,6 +13,8 @@ from backend.dublin_network.network_parser import get_network
 
 traffic_bp = Blueprint("traffic", __name__)
 
+_CACHE_TTL_SECONDS = 120.0
+
 # Module-level singletons — loaded once when the app starts.
 # TrafficPredictor reads all_trips.csv (~500k rows) on first import,
 # so we keep a single instance rather than recreating per request.
@@ -53,7 +55,11 @@ def get_traffic():
 
     service = SnapshotService(
         adapter_specs=[
-            AdapterCallSpec(adapter=TrafficAdapter(), kwargs={"radius_km": radius_km})
+            AdapterCallSpec(
+                adapter=TrafficAdapter(),
+                kwargs={"radius_km": radius_km},
+                cache_ttl_seconds=_CACHE_TTL_SECONDS,
+            )
         ],
         cache=_traffic_cache,
         predictor=_make_predictor_fn(),

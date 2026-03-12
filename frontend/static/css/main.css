@@ -293,7 +293,44 @@ a:hover { text-decoration: underline; }
   user-select: none;
 }
 
+.map-stage {
+  position: relative;
+}
+
+.map-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  background: rgba(15, 23, 42, .28);
+  color: #fff;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+
+.map-loading.is-visible { opacity: 1; }
+
+.map-spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, .4);
+  border-top-color: #fff;
+  animation: map-spin .9s linear infinite;
+}
+
+@keyframes map-spin {
+  to { transform: rotate(360deg); }
+}
+
 #map {
+  position: relative;
+  z-index: 1;
   height: 480px;
   width: 100%;
 }
