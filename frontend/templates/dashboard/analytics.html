@@ -42,6 +42,64 @@
     <canvas id="trafficChart" height="200"></canvas>
   </div>
 
+  <!-- Bus Routes per Stop Chart -->
+  <div class="panel-card chart-card">
+    <div class="panel-header">
+      <h3>&#128652; Buses Serving Each Stop (Top 10)</h3>
+    </div>
+    <canvas id="busChart" height="200"></canvas>
+  </div>
+
+  <!-- Best Wait Times Chart -->
+  <div class="panel-card chart-card">
+    <div class="panel-header">
+      <h3>&#9989; Best Average Wait Times (Top 5)</h3>
+    </div>
+    <canvas id="busWaitBestChart" height="200"></canvas>
+  </div>
+
+  <!-- Worst Wait Times Chart -->
+  <div class="panel-card chart-card">
+    <div class="panel-header">
+      <h3>&#9888; Worst Average Wait Times (Top 5)</h3>
+    </div>
+    <canvas id="busWaitWorstChart" height="200"></canvas>
+  </div>
+
+  <!-- Importance Score Chart -->
+  <div class="panel-card chart-card">
+    <div class="panel-header">
+      <h3>&#11088; Bus Stop Importance (Top 10)</h3>
+    </div>
+    <canvas id="busImportanceChart" height="200"></canvas>
+    <div class="panel-note">Score combines lower wait times (60%) and higher trip counts (40%).</div>
+  </div>
+
+  <!-- Importance Distribution -->
+  <div class="panel-card chart-card">
+    <div class="panel-header">
+      <h3>&#128202; Importance Score Distribution</h3>
+    </div>
+    <canvas id="busImportanceDistChart" height="200"></canvas>
+  </div>
+
+  <!-- Importance CDF -->
+  <div class="panel-card chart-card">
+    <div class="panel-header">
+      <h3>&#128200; Importance Percentiles (CDF)</h3>
+    </div>
+    <canvas id="busImportanceCdfChart" height="200"></canvas>
+  </div>
+
+  <!-- Bus Hubs Map -->
+  <div class="panel-card chart-card analytics-map-wide">
+    <div class="panel-header">
+      <h3>&#128506; Bus Hubs — Trips per Stop (Bubble Map)</h3>
+    </div>
+    <div id="analytics-map" style="height: 480px;"></div>
+    <div class="panel-note">Bubble size indicates trip count; top 500 stops shown.</div>
+  </div>
+
 </div>
 
 {% endblock %}

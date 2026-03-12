@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from flask import Blueprint, jsonify, request, current_app
 
 from backend.api.serializers import to_jsonable
@@ -10,9 +12,12 @@ from backend.adapters.traffic_adapter import TrafficAdapter
 from backend.adapters.airquality_adapter import AirQualityAdapter
 from backend.adapters.tour_adapter import TourAdapter
 from backend.adapters.airquality_location_adapter import AirQualityLocationAdapter
+from backend.adapters.bus_adapter import BusAdapter
 from backend.fallback.cache import AdapterCache
 
 snapshot_bp = Blueprint("snapshot", __name__)
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_GTFS_ROOT = _REPO_ROOT / "data" / "historical"
 
 
 def _get_adapter_cache() -> AdapterCache:
@@ -48,6 +53,9 @@ def build_adapter_specs(
     if "tours" in include:
         specs.append(AdapterCallSpec(adapter=TourAdapter(), kwargs={"radius_km": radius_km}))
 
+    if "buses" in include:
+        specs.append(AdapterCallSpec(adapter=BusAdapter(gtfs_path=_GTFS_ROOT), kwargs={}))
+
     return specs
 
 
@@ -75,7 +83,7 @@ def get_snapshot():
 
     include = request.args.getlist("include")
     if not include:
-        include = ["bikes", "traffic", "airquality", "tours"]
+        include = ["bikes", "traffic", "airquality", "tours", "buses"]
 
     adapter_specs = build_adapter_specs(include, radius_km, latitude, longitude)
     cache = _get_adapter_cache()

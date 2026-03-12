@@ -1,7 +1,8 @@
 import csv
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Set, Dict
+from typing import Set, Dict, Optional
+from zoneinfo import ZoneInfo
 
 from backend.adapters.base_adapter import DataAdapter
 from backend.models.bus_models import BusStop, BusMetrics
@@ -32,7 +33,7 @@ class BusAdapter(DataAdapter):
         frequencies = {}
         if not stop_times_file.exists():
             print(f"[Warning] {stop_times_file} not found. Cannot compute stop frequencies.")
-            return frequencies
+            return {}
 
         print(f"[BusAdapter] Counting stop frequencies from {stop_times_file}...")
         line_count = 0
@@ -48,10 +49,113 @@ class BusAdapter(DataAdapter):
                 if line_count % 1_000_000 == 0:
                     print(f"[BusAdapter] Processed {line_count} stop_times rows...")
 
-        print(f"[BusAdapter] Finished counting. Found frequencies for {len(frequencies)} stops.")
+        print(f"[BusAdapter] Finished counting. Found frequencies for {len(frequencies)} Dublin stops.")
         return frequencies
 
-    def fetch(self, city: str = "dublin") -> MobilitySnapshot:
+    def _parse_gtfs_time_to_seconds(self, raw_time: Optional[str]) -> Optional[int]:
+        if not raw_time:
+            return None
+        parts = raw_time.strip().split(":")
+        if len(parts) != 3:
+            return None
+        try:
+            hours = int(parts[0])
+            minutes = int(parts[1])
+            seconds = int(parts[2])
+        except ValueError:
+            return None
+        if minutes < 0 or minutes >= 60 or seconds < 0 or seconds >= 60:
+            return None
+        return hours * 3600 + minutes * 60 + seconds
+
+    def _count_arrivals_within_hour(
+        self, dublin_stop_ids: Set[str], now_local: Optional[datetime] = None
+    ) -> Dict[str, int]:
+        """
+        Count arrivals within the next hour, per stop_id, using stop_times.txt.
+        Uses GTFS time format (HH:MM:SS), allowing hours > 24.
+        """
+        stop_times_file = self.gtfs_path / "GTFS" / "stop_times.txt"
+        arrivals = {}
+        if not stop_times_file.exists():
+            print(f"[Warning] {stop_times_file} not found. Cannot compute arrivals within hour.")
+            return arrivals
+
+        if now_local is None:
+            try:
+                tz = ZoneInfo("Europe/Dublin")
+            except Exception:
+                tz = timezone.utc
+            now_local = datetime.now(tz)
+        now_sec = now_local.hour * 3600 + now_local.minute * 60 + now_local.second
+        window_end = now_sec + 3600
+
+        print(f"[BusAdapter] Counting arrivals within 1 hour from {stop_times_file}...")
+        line_count = 0
+        with open(stop_times_file, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                line_count += 1
+                stop_id = row.get("stop_id")
+                if stop_id not in dublin_stop_ids:
+                    continue
+                time_raw = row.get("arrival_time") or row.get("departure_time")
+                arrival_sec = self._parse_gtfs_time_to_seconds(time_raw)
+                if arrival_sec is None:
+                    continue
+                if now_sec <= arrival_sec <= window_end:
+                    arrivals[stop_id] = arrivals.get(stop_id, 0) + 1
+
+                if line_count % 1_000_000 == 0:
+                    print(f"[BusAdapter] Processed {line_count} stop_times rows for arrivals...")
+
+        print(f"[BusAdapter] Finished arrivals count. Found data for {len(arrivals)} stops.")
+        return arrivals
+
+    def _compute_average_waits(self, dublin_stop_ids: Set[str]) -> Dict[str, float]:
+        """
+        Compute average wait time between buses for each stop (in minutes),
+        based on arrival_time/departure_time in stop_times.txt.
+        """
+        stop_times_file = self.gtfs_path / "GTFS" / "stop_times.txt"
+        if not stop_times_file.exists():
+            print(f"[Warning] {stop_times_file} not found. Cannot compute average wait times.")
+            return {}
+
+        print(f"[BusAdapter] Computing average waits from {stop_times_file}...")
+        times_by_stop: Dict[str, list[int]] = {}
+        line_count = 0
+        with open(stop_times_file, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                line_count += 1
+                stop_id = row.get("stop_id")
+                if stop_id not in dublin_stop_ids:
+                    continue
+                time_raw = row.get("arrival_time") or row.get("departure_time")
+                t = self._parse_gtfs_time_to_seconds(time_raw)
+                if t is None:
+                    continue
+                times_by_stop.setdefault(stop_id, []).append(t)
+
+                if line_count % 1_000_000 == 0:
+                    print(f"[BusAdapter] Processed {line_count} stop_times rows for waits...")
+
+        avg_waits: Dict[str, float] = {}
+        for stop_id, times in times_by_stop.items():
+            if len(times) < 2:
+                continue
+            times.sort()
+            deltas = [b - a for a, b in zip(times, times[1:]) if b > a]
+            if not deltas:
+                continue
+            avg_waits[stop_id] = round(sum(deltas) / len(deltas) / 60.0, 1)
+
+        print(f"[BusAdapter] Finished average waits. Found data for {len(avg_waits)} stops.")
+        return avg_waits
+
+    def fetch(self, location: str = "dublin", **kwargs) -> MobilitySnapshot:
+        city = location
         print(f"--- Fetching Bus Data for {city} (bounding box filter) ---")
 
         gtfs_dir = self.gtfs_path / "GTFS"
@@ -82,7 +186,15 @@ class BusAdapter(DataAdapter):
 
         # Compute frequencies for the filtered stops
         frequencies = self._count_stop_frequencies(dublin_stop_ids)
+        arrivals_next_hour = self._count_arrivals_within_hour(dublin_stop_ids)
+        avg_waits = self._compute_average_waits(dublin_stop_ids)
 
-        metrics = BusMetrics(stops=all_stops, stop_frequencies=frequencies, total_stops=len(all_stops))
+        metrics = BusMetrics(
+            stops=all_stops,
+            stop_frequencies=frequencies,
+            stop_arrivals_next_hour=arrivals_next_hour,
+            stop_avg_wait_min=avg_waits,
+            total_stops=len(all_stops),
+        )
 
         return MobilitySnapshot(buses=metrics, bikes=None, location=city, timestamp=datetime.now(timezone.utc))

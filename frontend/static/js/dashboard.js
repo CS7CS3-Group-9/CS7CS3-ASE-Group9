@@ -101,6 +101,7 @@
   /* ---- Chart.js initialisation ---- */
 
   function initCharts(data) {
+    initBusHeatMap(data);
     if (typeof Chart === "undefined") return;
 
     var PALETTE = [
@@ -177,6 +178,79 @@
         }
       });
     }
+
+    /* Buses per stop bar chart */
+    var busEl = document.getElementById("busChart");
+    if (busEl && data.bus_chart) {
+      var bsd = data.bus_chart;
+      if (charts.bus) charts.bus.destroy();
+      charts.bus = new Chart(busEl, {
+        type: "bar",
+        data: {
+          labels: bsd.labels,
+          datasets: [{
+            label: "Buses per stop",
+            data: bsd.values,
+            backgroundColor: PALETTE.slice(0, bsd.labels.length),
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, title: { display: true, text: "Buses" } } }
+        }
+      });
+    }
+
+    /* Best wait times bar chart */
+    var bestEl = document.getElementById("busWaitBestChart");
+    if (bestEl && data.bus_wait_best_chart) {
+      var bbest = data.bus_wait_best_chart;
+      if (charts.busWaitBest) charts.busWaitBest.destroy();
+      charts.busWaitBest = new Chart(bestEl, {
+        type: "bar",
+        data: {
+          labels: bbest.labels,
+          datasets: [{
+            label: "Best avg wait (min)",
+            data: bbest.values,
+            backgroundColor: "#16a34a",
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, title: { display: true, text: "Minutes" } } }
+        }
+      });
+    }
+
+    /* Worst wait times bar chart */
+    var worstEl = document.getElementById("busWaitWorstChart");
+    if (worstEl && data.bus_wait_worst_chart) {
+      var bworst = data.bus_wait_worst_chart;
+      if (charts.busWaitWorst) charts.busWaitWorst.destroy();
+      charts.busWaitWorst = new Chart(worstEl, {
+        type: "bar",
+        data: {
+          labels: bworst.labels,
+          datasets: [{
+            label: "Worst avg wait (min)",
+            data: bworst.values,
+            backgroundColor: "#dc2626",
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, title: { display: true, text: "Minutes" } } }
+        }
+      });
+    }
+
   }
 
   /* ---- Fetch and refresh charts ---- */
@@ -186,6 +260,46 @@
       .then(function (r) { return r.json(); })
       .then(function (data) { initCharts(data); })
       .catch(function () {});
+  }
+
+  /* ---- Analytics bus heat map ---- */
+  var analyticsMap = null;
+  var analyticsLayer = null;
+
+  function initBusHeatMap(data) {
+    if (typeof L === "undefined") return;
+    var el = document.getElementById("analytics-map");
+    if (!el) return;
+
+    if (!analyticsMap) {
+      analyticsMap = L.map("analytics-map").setView([53.3498, -6.2603], 12);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+      }).addTo(analyticsMap);
+      analyticsLayer = L.layerGroup().addTo(analyticsMap);
+    }
+
+    var points = (data && data.bus_heatmap) ? data.bus_heatmap : [];
+    analyticsLayer.clearLayers();
+    if (!points.length) return;
+
+    var max = points.reduce(function (m, p) { return p.count > m ? p.count : m; }, 0);
+    points.forEach(function (p) {
+      if (p.lat == null || p.lon == null) return;
+      var ratio = max ? Math.sqrt(p.count / max) : 0;
+      var radius = 4 + ratio * 12;
+      var color = ratio >= 0.66 ? "#dc2626" : ratio >= 0.33 ? "#d97706" : "#16a34a";
+      L.circleMarker([p.lat, p.lon], {
+        radius: radius,
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.6,
+        weight: 1,
+      })
+        .bindPopup("<strong>" + (p.name || "Bus Stop") + "</strong><br>Trips: <b>" + p.count + "</b>")
+        .addTo(analyticsLayer);
+    });
   }
 
   /* ---- Initialise on DOM ready ---- */
@@ -215,6 +329,81 @@
           e.preventDefault();
           updateRadiusQueryParam();
           fetchDashboardData();
+        }
+      });
+    }
+
+    /* Bus stop importance chart */
+    var impEl = document.getElementById("busImportanceChart");
+    if (impEl && data.bus_importance_chart) {
+      var imp = data.bus_importance_chart;
+      if (charts.busImportance) charts.busImportance.destroy();
+      charts.busImportance = new Chart(impEl, {
+        type: "bar",
+        data: {
+          labels: imp.labels,
+          datasets: [{
+            label: "Importance score",
+            data: imp.values,
+            backgroundColor: "#2563eb",
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, title: { display: true, text: "Score" } } }
+        }
+      });
+    }
+
+    /* Importance distribution chart */
+    var impDistEl = document.getElementById("busImportanceDistChart");
+    if (impDistEl && data.bus_importance_dist_chart) {
+      var impd = data.bus_importance_dist_chart;
+      if (charts.busImportanceDist) charts.busImportanceDist.destroy();
+      charts.busImportanceDist = new Chart(impDistEl, {
+        type: "bar",
+        data: {
+          labels: impd.labels,
+          datasets: [{
+            label: "Stops",
+            data: impd.values,
+            backgroundColor: "#0ea5e9",
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, title: { display: true, text: "Stops" } } }
+        }
+      });
+    }
+
+    /* Importance CDF chart */
+    var impCdfEl = document.getElementById("busImportanceCdfChart");
+    if (impCdfEl && data.bus_importance_cdf_chart) {
+      var impc = data.bus_importance_cdf_chart;
+      if (charts.busImportanceCdf) charts.busImportanceCdf.destroy();
+      charts.busImportanceCdf = new Chart(impCdfEl, {
+        type: "line",
+        data: {
+          labels: impc.labels,
+          datasets: [{
+            label: "Score at percentile",
+            data: impc.values,
+            borderColor: "#7c3aed",
+            backgroundColor: "rgba(124,58,237,0.15)",
+            tension: 0.25,
+            fill: true,
+            pointRadius: 2,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, max: 1, title: { display: true, text: "Score" } } }
         }
       });
     }
