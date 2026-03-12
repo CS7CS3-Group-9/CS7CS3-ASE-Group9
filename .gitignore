@@ -1,2 +1,10 @@
 venv/
-backend/__pycache__/
+__pycache__/
+.gitignore
+.env
+*.env
+A3-Big-Picture-Map-02.10.25_V2.pdf
+backend/adapters/adapters_tests/fix_bom.py
+route_map.html
+IndividualEval-Semester1-Group9-OisinPower.doc
+.\claude

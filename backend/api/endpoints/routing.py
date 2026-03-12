@@ -1,5 +1,6 @@
 """
 Backend routing endpoint — uses RoutesAdapter (Google Geocoding + Routes API v2).
+Falls back to the local Dublin SUMO network router when Google is unavailable.
 
 GET /routing/calculate
   stops[]      : repeated, at least 2
@@ -11,7 +12,7 @@ GET /routing/calculate
   arr_time     : ISO datetime string e.g. "2026-02-19T15:00" (optional, transit only)
 """
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from itertools import permutations
 from concurrent.futures import ThreadPoolExecutor
 
@@ -19,6 +20,12 @@ from flask import Blueprint, jsonify, request
 
 from backend.adapters.routes_adapter import RoutesAdapter, _ROUTES_URL
 from backend.models.route_models import RouteRecommendation
+from backend.dublin_network.router import DublinRouter
+from backend.dublin_network.traffic_predictor import TrafficPredictor, _BIN_MINUTES, _BINS_PER_DAY
+
+# Singletons shared with traffic endpoint (network XML parsed only once via get_network())
+_local_router = DublinRouter()
+_local_predictor = TrafficPredictor()
 
 routing_api_bp = Blueprint("routing_api", __name__, url_prefix="/routing")
 
@@ -309,6 +316,64 @@ def _optimize_stop_order(all_coords, g_mode, locked):
 
 
 # ---------------------------------------------------------------------------
+# Nominatim geocoding fallback (OpenStreetMap — no API key required)
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Local Dublin network fallback
+# ---------------------------------------------------------------------------
+
+def _call_local_route(origin_coord, dest_coord):
+    """
+    Fallback routing using the Dublin SUMO road network.
+    Used when Google Routes API is unavailable (no key, network error, etc.).
+    Only supports driving within the Dublin DCC road network.
+    Returns a route dict in the same shape as _call_routes(), or None.
+    """
+    now = datetime.now(timezone.utc)
+    bin_idx = (now.hour * 60 + now.minute) // _BIN_MINUTES % _BINS_PER_DAY
+    edge_loads = dict(_local_predictor._edge_counts[bin_idx])
+    edge_peak = _local_predictor._edge_peak or 1
+
+    result = _local_router.route(
+        from_lat=origin_coord[0],
+        from_lon=origin_coord[1],
+        to_lat=dest_coord[0],
+        to_lon=dest_coord[1],
+        edge_loads=edge_loads,
+        edge_peak=edge_peak,
+    )
+
+    if not result.found:
+        return None
+
+    # Convert geometry from [[lat, lon], ...] to GeoJSON LineString [[lon, lat], ...]
+    geometry = {
+        "type": "LineString",
+        "coordinates": [[pt[1], pt[0]] for pt in result.geometry],
+    }
+
+    steps = [
+        {
+            "instruction": s.road_name or "Continue",
+            "distance_m": round(s.length_m),
+            "duration_s": round(s.actual_time_s),
+        }
+        for s in result.steps
+    ]
+
+    return {
+        "geometry":         geometry,
+        "distance_meters":  round(result.total_distance_m),
+        "distance_km":      result.total_distance_km,
+        "duration_seconds": round(result.total_actual_time_s),
+        "duration_minutes": round(result.total_actual_time_min),
+        "steps":            steps,
+        "local_fallback":   True,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Flask endpoint
 # ---------------------------------------------------------------------------
 
@@ -347,7 +412,7 @@ def calculate():
 
     g_mode = _GOOGLE_MODE.get(effective_mode, "DRIVE")
 
-    # Geocode every stop using RoutesAdapter
+    # Geocode every stop using Google
     geocoded = []
     for raw in stops_raw:
         try:
@@ -399,8 +464,12 @@ def calculate():
 
     try:
         route = _call_routes(ordered_coords, g_mode, dep_time=dep_time)
-    except Exception as e:
-        return jsonify({"error": f"Routing failed: {e}"}), 502
+    except Exception:
+        route = None
+
+    # Fall back to local Dublin network router when Google is unavailable
+    if not route and effective_mode == "driving" and len(ordered_coords) == 2:
+        route = _call_local_route(ordered_coords[0], ordered_coords[-1])
 
     if not route:
         return jsonify({"error": "No route found between those locations."}), 404
