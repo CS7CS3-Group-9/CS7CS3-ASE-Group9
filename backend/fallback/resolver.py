@@ -55,7 +55,7 @@ def _cache_age_seconds(cache: Any, adapter: Any, kwargs: dict) -> Optional[float
 def resolve_with_cache(
     adapter: Any,
     cache: AdapterCache,
-    predictor: Optional[Callable[[Any], Optional[PredictionResult]]] = None,
+    predictor: Optional[Callable[..., Optional[PredictionResult]]] = None,
     max_age_seconds: Optional[float] = None,
     **kwargs,
 ) -> ResolveResult:
@@ -79,8 +79,8 @@ def resolve_with_cache(
 
     # No live or cached data; attempt prediction from cached snapshot if provided
     cached_snapshot = _cache_get_cached(cache, adapter, kwargs)
-    predictor_fn = predictor or predict_snapshot
-    prediction = predictor_fn(cached_snapshot) if cached_snapshot is not None else None
+    predictor_fn = predictor or _default_predictor
+    prediction = _call_predictor(predictor_fn, adapter, cached_snapshot, max_age_seconds)
 
     if prediction is not None:
         return ResolveResult(
@@ -90,3 +90,46 @@ def resolve_with_cache(
         )
 
     return ResolveResult(snapshot=None, status="failed", detail=None)
+
+
+def _default_predictor(
+    adapter: Any,
+    cached_snapshot: Optional[Any],
+    max_age_seconds: Optional[float] = None,
+) -> Optional[PredictionResult]:
+    if max_age_seconds is None:
+        return predict_snapshot(cached_snapshot)
+    return predict_snapshot(cached_snapshot, max_age_seconds=max_age_seconds)
+
+
+def _call_predictor(
+    predictor_fn: Callable[..., Optional[PredictionResult]],
+    adapter: Any,
+    cached_snapshot: Optional[Any],
+    max_age_seconds: Optional[float],
+) -> Optional[PredictionResult]:
+    try:
+        return predictor_fn(adapter, cached_snapshot, max_age_seconds)
+    except TypeError:
+        pass
+    except Exception:
+        return None
+
+    try:
+        return predictor_fn(adapter, cached_snapshot)
+    except TypeError:
+        pass
+    except Exception:
+        return None
+
+    try:
+        if max_age_seconds is not None:
+            return predictor_fn(cached_snapshot, max_age_seconds)
+        return predictor_fn(cached_snapshot)
+    except TypeError:
+        try:
+            return predictor_fn(cached_snapshot)
+        except Exception:
+            return None
+    except Exception:
+        return None

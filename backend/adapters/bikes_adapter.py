@@ -1,5 +1,6 @@
 import requests
 from datetime import datetime
+import os
 from backend.adapters.base_adapter import DataAdapter
 from backend.models.mobility_snapshot import MobilitySnapshot
 from backend.models.bike_models import StationMetrics, BikeMetrics
@@ -11,6 +12,8 @@ class BikesAdapter(DataAdapter):
         return "bikes"
 
     def fetch(self, location="dublin") -> MobilitySnapshot:
+        if os.getenv("FORCE_BIKES_PREDICTION", "").lower() in ("1", "true", "yes"):
+            raise RuntimeError("Forced bikes prediction")
         url = "https://api.citybik.es/v2/networks/dublinbikes"
         response = requests.get(url, timeout=5)
         response.raise_for_status()
