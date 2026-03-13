@@ -128,7 +128,7 @@ class ProcessManager {
           // redirect:'manual' means we get the 302 instantly without waiting for
           // the redirected page (e.g. /dashboard/ which makes slow backend calls).
           // An opaque redirect has status 0, which satisfies status < 500.
-          const resp = await fetch(`http://localhost:${port}/`, {
+          const resp = await fetch(`http://127.0.0.1:${port}/`, {
             signal: AbortSignal.timeout(3000),
             redirect: 'manual',
           });
