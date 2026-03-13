@@ -26,6 +26,73 @@ Then hit:
 http://127.0.0.1:5000/test-firestore
 ```
 
+### Bikes Predictive Fallback (Optional)
+If live bikes data and cache are unavailable, the backend can use the ML model
+artifact to generate predictions for `/bikes` and `/bikes/stations`.
+Set the model path for inference:
+```powershell
+$env:BIKES_MODEL_PATH="backend\ml\artifacts\bikes_model.joblib"
+```
+To force predicted mode for testing (skip the live API):
+```powershell
+$env:FORCE_BIKES_PREDICTION="1"
+```
+Historical-average fallback is disabled.
+
+### ML Model Training (Per-Station)
+Train an ML model from your historical CSV and save an artifact:
+```powershell
+python backend\ml\train_bikes_model.py --input "path\to\march_april_2025.csv"
+```
+Example (adjust to your filename):
+```powershell
+python backend\ml\train_bikes_model.py --input "data\historical\dublin-bikes_station_status_042025.csv"
+```
+To include weather data, provide a CSV with `timestamp` plus any numeric columns:
+```powershell
+python backend\ml\train_bikes_model.py --input "path\to\march_april_2025.csv" --weather "path\to\weather.csv"
+```
+Set the model path for inference:
+```powershell
+$env:BIKES_MODEL_PATH="backend\ml\artifacts\bikes_model.joblib"
+```
+
+### Weather Cache (Optional)
+At runtime, the predictor can read cached weather features to improve accuracy.
+Provide a CSV with `timestamp` and numeric weather columns (e.g. temperature, rain, wind):
+```
+timestamp,temperature,precipitation,wind_speed,weather_code
+2026-03-10T12:00:00+00:00,11.2,0.0,5.5,0
+```
+Set:
+```
+$env:WEATHER_FORECAST_PATH="data\historical\weather_forecast.csv"
+```
+Optional rain adjustment for ML predictions:
+```
+$env:BIKES_WEATHER_ADJUSTMENT="true"
+```
+Automatic forecast refresh (default on):
+```
+$env:WEATHER_AUTO_REFRESH="true"
+$env:WEATHER_REFRESH_HOURS="24"
+```
+Optional location/settings overrides:
+```
+$env:WEATHER_FORECAST_LAT="53.3498"
+$env:WEATHER_FORECAST_LON="-6.2603"
+$env:WEATHER_FORECAST_HOURLY="temperature_2m,rain"
+$env:WEATHER_FORECAST_DAYS="16"
+$env:WEATHER_FORECAST_TIMEZONE="Europe/Dublin"
+```
+
+### Fetch 16-Day Forecast from Open-Meteo
+Use the script below to refresh the cached forecast:
+```powershell
+python scripts\fetch_weather_forecast.py --output "data\historical\weather_forecast.csv"
+```
+Schedule it every 16 days (e.g., Windows Task Scheduler) to keep the cache fresh.
+
 ## Smoke Test
 With the API running in another terminal:
 ```powershell

@@ -31,3 +31,50 @@ def calculate():
         return jsonify({"error": "Routing service timed out. Please try again."}), 504
     except Exception as e:
         return jsonify({"error": f"Routing service unavailable: {e}"}), 502
+
+
+@routing_bp.get("/local-route")
+def local_route():
+    """Proxy pin-drop routing to the backend local route endpoint."""
+    backend_url = current_app.config["BACKEND_API_URL"]
+    try:
+        resp = requests.get(
+            f"{backend_url}/traffic/local-route",
+            params=list(request.args.items(multi=True)),
+            timeout=60,
+        )
+        return jsonify(resp.json()), resp.status_code
+    except requests.exceptions.Timeout:
+        return jsonify({"error": "Routing timed out."}), 504
+    except Exception as e:
+        return jsonify({"error": f"Routing unavailable: {e}"}), 502
+
+
+@routing_bp.get("/network-nodes")
+def network_nodes():
+    """Proxy network node debug data from the backend."""
+    backend_url = current_app.config["BACKEND_API_URL"]
+    try:
+        resp = requests.get(
+            f"{backend_url}/traffic/network-nodes",
+            params=list(request.args.items(multi=True)),
+            timeout=15,
+        )
+        return jsonify(resp.json()), resp.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+
+
+@routing_bp.get("/network-edges")
+def network_edges():
+    """Proxy network edge shapes for coordinate alignment debugging."""
+    backend_url = current_app.config["BACKEND_API_URL"]
+    try:
+        resp = requests.get(
+            f"{backend_url}/traffic/network-edges",
+            params=list(request.args.items(multi=True)),
+            timeout=15,
+        )
+        return jsonify(resp.json()), resp.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502

@@ -29,6 +29,7 @@ class AdapterCallSpec:
 
     adapter: Any
     kwargs: Dict[str, Any]
+    cache_ttl_seconds: float | None = None
 
 
 class SnapshotService:
@@ -44,7 +45,7 @@ class SnapshotService:
         adapters: Iterable[Any] | None = None,
         adapter_specs: Iterable[AdapterCallSpec] | None = None,
         cache: AdapterCache | None = None,
-        predictor: Callable[[Any], Optional[Any]] | None = None,
+        predictor: Callable[..., Optional[Any]] | None = None,
     ):
         """
         Provide either:
@@ -72,9 +73,9 @@ class SnapshotService:
 
         adapter_list = list(self._iter_adapters_with_kwargs())
 
-        def _fetch_one(adapter_kwargs: Tuple[Any, Dict]) -> Tuple[str, Any, str]:
+        def _fetch_one(adapter_kwargs: Tuple[Any, Dict, float | None]) -> Tuple[str, Any, str]:
             """Fetch a single adapter; returns (name, partial_snapshot, status)."""
-            adapter, kwargs = adapter_kwargs
+            adapter, kwargs, ttl_seconds = adapter_kwargs
             name = self._safe_source_name(adapter)
             if self._cache is None:
                 try:
@@ -88,6 +89,7 @@ class SnapshotService:
                         adapter,
                         self._cache,
                         predictor=self._predictor,
+                        max_age_seconds=ttl_seconds,
                         location=location,
                         **kwargs,
                     )
@@ -110,13 +112,13 @@ class SnapshotService:
 
         return snapshot
 
-    def _iter_adapters_with_kwargs(self) -> Iterable[Tuple[Any, Dict[str, Any]]]:
+    def _iter_adapters_with_kwargs(self) -> Iterable[Tuple[Any, Dict[str, Any], float | None]]:
         if self._adapter_specs:
             for spec in self._adapter_specs:
-                yield spec.adapter, spec.kwargs
+                yield spec.adapter, spec.kwargs, spec.cache_ttl_seconds
         else:
             for adapter in self._adapters:
-                yield adapter, {}
+                yield adapter, {}, None
 
     def _safe_source_name(self, adapter: Any) -> str:
         try:

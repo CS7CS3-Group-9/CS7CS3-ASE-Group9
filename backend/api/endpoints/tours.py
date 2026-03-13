@@ -8,6 +8,8 @@ from backend.adapters.tour_adapter import TourAdapter
 
 tours_bp = Blueprint("tours", __name__)
 
+_CACHE_TTL_SECONDS = 600.0
+
 
 @tours_bp.get("/tours")
 def get_tours():
@@ -19,6 +21,14 @@ def get_tours():
         radius_km = 1.0
     radius_km = max(0.1, min(radius_km, 50.0))
 
-    service = SnapshotService(adapter_specs=[AdapterCallSpec(adapter=TourAdapter(), kwargs={"radius_km": radius_km})])
+    service = SnapshotService(
+        adapter_specs=[
+            AdapterCallSpec(
+                adapter=TourAdapter(),
+                kwargs={"radius_km": radius_km},
+                cache_ttl_seconds=_CACHE_TTL_SECONDS,
+            )
+        ]
+    )
     snapshot = service.build_snapshot(location=location)
     return jsonify(to_jsonable(snapshot))
