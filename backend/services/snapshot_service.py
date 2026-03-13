@@ -39,7 +39,7 @@ class SnapshotService:
         adapters: Iterable[Any] | None = None,
         adapter_specs: Iterable[AdapterCallSpec] | None = None,
         cache: AdapterCache | None = None,
-        predictor: Callable[[Any], Optional[Any]] | None = None,
+        predictor: Callable[..., Optional[Any]] | None = None,
     ):
         """
         Provide either:
