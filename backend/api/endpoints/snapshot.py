@@ -11,8 +11,16 @@ from backend.adapters.airquality_adapter import AirQualityAdapter
 from backend.adapters.tour_adapter import TourAdapter
 from backend.adapters.airquality_location_adapter import AirQualityLocationAdapter
 from backend.fallback.cache import AdapterCache
+from backend.fallback.predictors import default_predictor
 
 snapshot_bp = Blueprint("snapshot", __name__)
+
+_CACHE_TTLS = {
+    "bikes": 60.0,
+    "traffic": 120.0,
+    "airquality": 300.0,
+    "tours": 600.0,
+}
 
 
 def _get_adapter_cache() -> AdapterCache:
@@ -32,21 +40,40 @@ def build_adapter_specs(
     specs: list[AdapterCallSpec] = []
 
     if "bikes" in include:
-        specs.append(AdapterCallSpec(adapter=BikesAdapter(), kwargs={}))
+        specs.append(
+            AdapterCallSpec(
+                adapter=BikesAdapter(),
+                kwargs={},
+                cache_ttl_seconds=_CACHE_TTLS["bikes"],
+            )
+        )
 
     if "traffic" in include:
-        specs.append(AdapterCallSpec(adapter=TrafficAdapter(), kwargs={"radius_km": radius_km}))
+        specs.append(
+            AdapterCallSpec(
+                adapter=TrafficAdapter(),
+                kwargs={"radius_km": radius_km},
+                cache_ttl_seconds=_CACHE_TTLS["traffic"],
+            )
+        )
 
     if "airquality" in include:
         specs.append(
             AdapterCallSpec(
                 adapter=AirQualityLocationAdapter(),
                 kwargs={"latitude": latitude, "longitude": longitude},
+                cache_ttl_seconds=_CACHE_TTLS["airquality"],
             )
         )
 
     if "tours" in include:
-        specs.append(AdapterCallSpec(adapter=TourAdapter(), kwargs={"radius_km": radius_km}))
+        specs.append(
+            AdapterCallSpec(
+                adapter=TourAdapter(),
+                kwargs={"radius_km": radius_km},
+                cache_ttl_seconds=_CACHE_TTLS["tours"],
+            )
+        )
 
     return specs
 
@@ -79,7 +106,7 @@ def get_snapshot():
 
     adapter_specs = build_adapter_specs(include, radius_km, latitude, longitude)
     cache = _get_adapter_cache()
-    service = SnapshotService(adapter_specs=adapter_specs, cache=cache)
+    service = SnapshotService(adapter_specs=adapter_specs, cache=cache, predictor=default_predictor)
     snapshot = service.build_snapshot(location=location)
 
     return jsonify(to_jsonable(snapshot))

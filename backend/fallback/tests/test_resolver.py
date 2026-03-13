@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from backend.fallback.resolver import choose_snapshot, resolve_with_cache
 from backend.fallback.cache import AdapterCache
+from backend.fallback.predictor import PredictionResult
 from backend.models.mobility_snapshot import MobilitySnapshot
 
 
@@ -90,3 +91,26 @@ def test_resolve_with_cache_failed():
     result = resolve_with_cache(FailingAdapter(), cache)
     assert result.status == "failed"
     assert result.snapshot is None
+
+
+def test_resolve_with_cache_predicted_without_cache():
+    class DummyCache:
+        def fetch_with_fallback(self, adapter, **kwargs):
+            return None, "failed"
+
+        def get_cached(self, name):
+            return None
+
+    def predictor(adapter, cached_snapshot):
+        return PredictionResult(
+            snapshot={"bikes": 10},
+            generated_at=datetime.now(timezone.utc),
+            based_on=None,
+            confidence=0.4,
+            reason="test",
+        )
+
+    cache = DummyCache()
+    result = resolve_with_cache(FailingAdapter(), cache, predictor=predictor)
+    assert result.status == "predicted"
+    assert result.snapshot == {"bikes": 10}
