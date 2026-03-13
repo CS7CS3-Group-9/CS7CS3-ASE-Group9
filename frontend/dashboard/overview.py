@@ -310,12 +310,11 @@ def _needs_bike_areas(bus_stops, bike_stations, radius_km):
 
 
 def _fetch_snapshot(backend_url, radius_km=5, include=None):
-    include = include or ["bikes", "traffic", "airquality", "tours"]
+    include = include or ["bikes", "traffic", "airquality", "tours", "buses"]
     cache_key = f"{backend_url}|{radius_km:g}|{','.join(include)}"
     cached = _cache_get(_SNAPSHOT_CACHE, cache_key, _CACHE_TTLS["snapshot"])
     if cached is not None:
         return cached, None
-
     try:
         resp = requests.get(
             f"{backend_url}/snapshot",

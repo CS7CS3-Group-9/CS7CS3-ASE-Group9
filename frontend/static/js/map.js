@@ -269,7 +269,10 @@
       var popup =
         "<strong>" + s.name + "</strong>" +
         (s.ref ? " <span style='color:#6b7280'>#" + s.ref + "</span>" : "") +
-        (s.routes ? "<br><em>" + s.routes + "</em>" : "");
+        (s.routes ? "<br><em>" + s.routes + "</em>" : "") +
+        (s.arrivals_next_hour != null
+          ? "<br><span>Arrivals next hour: <b>" + s.arrivals_next_hour + "</b></span>"
+          : "");
       if (fastMode) {
         markers.push(L.marker([s.lat, s.lon], { icon: _busDotIcon }).bindPopup(popup));
         return;
