@@ -5,7 +5,11 @@
  * All port numbers, TTLs, and tuneable constants live here.
  */
 module.exports = {
-  // Ports used by the embedded Flask processes
+  // Cloud frontend URL — when reachable this is loaded directly (no local Flask startup).
+  // Set via CLOUD_URL env var or hardcode below.
+  cloudUrl: process.env.CLOUD_URL || 'http://ase-citydash-board.duckdns.org',
+
+  // Ports used by the embedded Flask processes (local / offline fallback)
   backendPort: 5001,
   frontendPort: 5002,
 

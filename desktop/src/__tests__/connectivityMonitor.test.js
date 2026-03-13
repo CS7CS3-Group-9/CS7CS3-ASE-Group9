@@ -25,7 +25,7 @@ describe('ConnectivityMonitor', () => {
     global.fetch = mockFetch;
     global.AbortSignal = { timeout: jest.fn(() => ({})) };
 
-    monitor = new ConnectivityMonitor(5001, 30_000);
+    monitor = new ConnectivityMonitor('http://127.0.0.1:5001/health', 30_000);
   });
 
   afterEach(() => {

@@ -143,6 +143,40 @@ function createWindow() {
 }
 
 // --------------------------------------------------------------------------
+// Probe a URL — resolves true if it returns any non-5xx response
+// --------------------------------------------------------------------------
+async function probeUrl(url, timeoutMs = 5000) {
+  try {
+    const resp = await fetch(url, {
+      signal: AbortSignal.timeout(timeoutMs),
+      redirect: 'manual',
+    });
+    return resp.status === 0 || resp.status < 500;
+  } catch (_) {
+    return false;
+  }
+}
+
+// --------------------------------------------------------------------------
+// Wire up the connectivity monitor (shared between cloud and local modes)
+// --------------------------------------------------------------------------
+function startConnectivityMonitor(healthUrl) {
+  connectivityMonitor = new ConnectivityMonitor(healthUrl, config.connectivityPollIntervalMs);
+  connectivityMonitor.on('offline', ({ cachedAt }) => {
+    log.warn('Connectivity lost — entering offline mode');
+    if (win) win.webContents.send('connectivity:change', { online: false, cachedAt });
+    if (trayManager) trayManager.setStatus('offline');
+  });
+  connectivityMonitor.on('online', () => {
+    log.info('Connectivity restored — returning to online mode');
+    if (win) win.webContents.send('connectivity:change', { online: true });
+    if (trayManager) trayManager.setStatus('online');
+    runBackgroundSync();
+  });
+  connectivityMonitor.start();
+}
+
+// --------------------------------------------------------------------------
 // App lifecycle
 // --------------------------------------------------------------------------
 app.whenReady().then(async () => {
@@ -156,41 +190,58 @@ app.whenReady().then(async () => {
   // Initialise and register IPC handlers
   registerIpcHandlers(ipcMain, cacheLayer);
 
-  // Start Flask processes
   processManager = new ProcessManager(config);
-  try {
-    await processManager.startBackend();
-    log.info('Backend process ready on port', config.backendPort);
-    await processManager.startFrontend();
-    log.info('Frontend process ready on port', config.frontendPort);
-  } catch (err) {
-    log.error('Failed to start Flask processes:', err.message);
-    dialog.showErrorBox(
-      'Startup Error',
-      `Could not start the application server:\n\n${err.message}\n\nPlease check the logs at ${log.transports.file.getFile().path}`
-    );
-    app.quit();
-    return;
+
+  const cloudReachable = config.cloudUrl && await probeUrl(config.cloudUrl);
+
+  if (cloudReachable) {
+    // -----------------------------------------------------------------------
+    // CLOUD MODE — load cloud frontend instantly, warm cache in background
+    // -----------------------------------------------------------------------
+    log.info('Cloud reachable — loading cloud frontend');
+    win = createWindow();
+    win.loadURL(config.cloudUrl);
+
+    // Start local backend silently in background for cache warming only.
+    // Failures are non-fatal — offline cache just won't be refreshed.
+    processManager.startBackend()
+      .then(() => {
+        log.info('Background backend ready — starting cache sync');
+        runBackgroundSync();
+        syncTimer = setInterval(runBackgroundSync, config.backgroundSyncIntervalMs);
+      })
+      .catch(err => log.warn('Background backend unavailable (cache warming skipped):', err.message));
+
+    startConnectivityMonitor(`${config.cloudUrl}/health`);
+
+  } else {
+    // -----------------------------------------------------------------------
+    // LOCAL MODE — start Flask processes then load local frontend
+    // -----------------------------------------------------------------------
+    log.info('Cloud unreachable — starting local Flask processes');
+    try {
+      await processManager.startBackend();
+      log.info('Backend process ready on port', config.backendPort);
+      await processManager.startFrontend();
+      log.info('Frontend process ready on port', config.frontendPort);
+    } catch (err) {
+      log.error('Failed to start Flask processes:', err.message);
+      dialog.showErrorBox(
+        'Startup Error',
+        `Could not start the application server:\n\n${err.message}\n\nPlease check the logs at ${log.transports.file.getFile().path}`
+      );
+      app.quit();
+      return;
+    }
+
+    win = createWindow();
+    win.loadURL(`http://localhost:${config.frontendPort}`);
+
+    startConnectivityMonitor(`http://127.0.0.1:${config.backendPort}/health`);
+
+    await runBackgroundSync();
+    syncTimer = setInterval(runBackgroundSync, config.backgroundSyncIntervalMs);
   }
-
-  // Create the browser window
-  win = createWindow();
-  win.loadURL(`http://localhost:${config.frontendPort}`);
-
-  // Start connectivity monitor
-  connectivityMonitor = new ConnectivityMonitor(config.backendPort, config.connectivityPollIntervalMs);
-  connectivityMonitor.on('offline', ({ cachedAt }) => {
-    log.warn('Backend unreachable — entering offline mode');
-    if (win) win.webContents.send('connectivity:change', { online: false, cachedAt });
-    if (trayManager) trayManager.setStatus('offline');
-  });
-  connectivityMonitor.on('online', () => {
-    log.info('Backend reachable — returning to online mode');
-    if (win) win.webContents.send('connectivity:change', { online: true });
-    if (trayManager) trayManager.setStatus('online');
-    runBackgroundSync();
-  });
-  connectivityMonitor.start();
 
   // Tray icon (optional — silently skipped if no display or icon is missing)
   try {
@@ -201,16 +252,11 @@ app.whenReady().then(async () => {
     trayManager = null;
   }
 
-  // Run initial background sync
-  await runBackgroundSync();
-
-  // Schedule periodic background sync
-  syncTimer = setInterval(runBackgroundSync, config.backgroundSyncIntervalMs);
-
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       win = createWindow();
-      win.loadURL(`http://localhost:${config.frontendPort}`);
+      const url = cloudReachable ? config.cloudUrl : `http://localhost:${config.frontendPort}`;
+      win.loadURL(url);
     }
   });
 });

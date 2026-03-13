@@ -14,12 +14,12 @@ const log = require('electron-log');
  */
 class ConnectivityMonitor extends EventEmitter {
   /**
-   * @param {number} backendPort       Port the Flask backend listens on.
+   * @param {string} healthUrl         Full URL to poll (e.g. 'http://127.0.0.1:5001/health').
    * @param {number} pollIntervalMs    How often to poll (ms).
    */
-  constructor(backendPort, pollIntervalMs) {
+  constructor(healthUrl, pollIntervalMs) {
     super();
-    this.backendPort = backendPort;
+    this.healthUrl = healthUrl;
     this.pollIntervalMs = pollIntervalMs;
     this.isOnline = true;   // optimistic initial state
     this._timer = null;
@@ -49,7 +49,7 @@ class ConnectivityMonitor extends EventEmitter {
   // --------------------------------------------------------------------------
 
   async _poll() {
-    const url = `http://localhost:${this.backendPort}/health`;
+    const url = this.healthUrl;
     let reachable = false;
 
     try {
