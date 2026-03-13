@@ -158,6 +158,7 @@ async function probeUrl(url, timeoutMs = 5000) {
 }
 
 // --------------------------------------------------------------------------
+<<<<<<< Updated upstream
 // Wire up the connectivity monitor (shared between cloud and local modes)
 // --------------------------------------------------------------------------
 function startConnectivityMonitor(healthUrl) {
@@ -174,6 +175,12 @@ function startConnectivityMonitor(healthUrl) {
     runBackgroundSync();
   });
   connectivityMonitor.start();
+=======
+// Send an IPC message after the next page load completes
+// --------------------------------------------------------------------------
+function sendAfterLoad(webContents, channel, payload) {
+  webContents.once('did-finish-load', () => webContents.send(channel, payload));
+>>>>>>> Stashed changes
 }
 
 // --------------------------------------------------------------------------
@@ -193,6 +200,7 @@ app.whenReady().then(async () => {
   processManager = new ProcessManager(config);
 
   const cloudReachable = config.cloudUrl && await probeUrl(config.cloudUrl);
+<<<<<<< Updated upstream
 
   if (cloudReachable) {
     // -----------------------------------------------------------------------
@@ -213,6 +221,66 @@ app.whenReady().then(async () => {
       .catch(err => log.warn('Background backend unavailable (cache warming skipped):', err.message));
 
     startConnectivityMonitor(`${config.cloudUrl}/health`);
+=======
+  const localFrontendUrl = `http://127.0.0.1:${config.frontendPort}`;
+
+  win = createWindow();
+
+  if (cloudReachable) {
+    // -----------------------------------------------------------------------
+    // CLOUD MODE — load cloud URL instantly, start local processes in background
+    // for cache warming and mid-session offline fallback.
+    // -----------------------------------------------------------------------
+    log.info('Cloud reachable — loading cloud frontend');
+    win.loadURL(config.cloudUrl);
+
+    let localReady = false;
+
+    processManager.startBackend()
+      .then(() => {
+        runBackgroundSync();
+        syncTimer = setInterval(runBackgroundSync, config.backgroundSyncIntervalMs);
+        return processManager.startFrontend();
+      })
+      .then(() => {
+        localReady = true;
+        log.info('Local processes ready — offline fallback available');
+        // If we already went offline while waiting, switch now
+        if (connectivityMonitor && !connectivityMonitor.isOnline && win) {
+          win.loadURL(localFrontendUrl);
+          sendAfterLoad(win.webContents, 'connectivity:change', {
+            online: false, cachedAt: Date.now(),
+          });
+        }
+      })
+      .catch(err => log.warn('Background local processes unavailable:', err.message));
+
+    connectivityMonitor = new ConnectivityMonitor(
+      `${config.cloudUrl}/health`,
+      config.connectivityPollIntervalMs
+    );
+    connectivityMonitor.on('offline', ({ cachedAt }) => {
+      log.warn('Cloud unreachable — entering offline mode');
+      if (trayManager) trayManager.setStatus('offline');
+      if (localReady && win) {
+        // Switch to local frontend; notify after it loads
+        win.loadURL(localFrontendUrl);
+        sendAfterLoad(win.webContents, 'connectivity:change', { online: false, cachedAt });
+      } else {
+        // Local not ready yet — overlay on current page handles it
+        if (win) win.webContents.send('connectivity:change', { online: false, cachedAt });
+      }
+    });
+    connectivityMonitor.on('online', () => {
+      log.info('Cloud reachable again — switching back to cloud frontend');
+      if (trayManager) trayManager.setStatus('online');
+      if (win) {
+        win.loadURL(config.cloudUrl);
+        sendAfterLoad(win.webContents, 'connectivity:change', { online: true });
+      }
+      runBackgroundSync();
+    });
+>>>>>>> Stashed changes
 
   } else {
     // -----------------------------------------------------------------------
@@ -234,15 +302,40 @@ app.whenReady().then(async () => {
       return;
     }
 
+<<<<<<< Updated upstream
     win = createWindow();
     win.loadURL(`http://localhost:${config.frontendPort}`);
 
     startConnectivityMonitor(`http://127.0.0.1:${config.backendPort}/health`);
+=======
+    win.loadURL(localFrontendUrl);
+
+    connectivityMonitor = new ConnectivityMonitor(
+      `http://127.0.0.1:${config.backendPort}/health`,
+      config.connectivityPollIntervalMs
+    );
+    connectivityMonitor.on('offline', ({ cachedAt }) => {
+      log.warn('Backend unreachable — entering offline mode');
+      if (win) win.webContents.send('connectivity:change', { online: false, cachedAt });
+      if (trayManager) trayManager.setStatus('offline');
+    });
+    connectivityMonitor.on('online', () => {
+      log.info('Backend reachable — returning to online mode');
+      if (win) win.webContents.send('connectivity:change', { online: true });
+      if (trayManager) trayManager.setStatus('online');
+      runBackgroundSync();
+    });
+>>>>>>> Stashed changes
 
     await runBackgroundSync();
     syncTimer = setInterval(runBackgroundSync, config.backgroundSyncIntervalMs);
   }
 
+<<<<<<< Updated upstream
+=======
+  connectivityMonitor.start();
+
+>>>>>>> Stashed changes
   // Tray icon (optional — silently skipped if no display or icon is missing)
   try {
     trayManager = new TrayManager(config, win, () => runBackgroundSync());
@@ -255,7 +348,13 @@ app.whenReady().then(async () => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       win = createWindow();
+<<<<<<< Updated upstream
       const url = cloudReachable ? config.cloudUrl : `http://localhost:${config.frontendPort}`;
+=======
+      const url = (cloudReachable && connectivityMonitor.isOnline)
+        ? config.cloudUrl
+        : localFrontendUrl;
+>>>>>>> Stashed changes
       win.loadURL(url);
     }
   });
