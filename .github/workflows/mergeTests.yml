@@ -21,6 +21,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install pytest pycodestyle flask requests
+        pip install -r backend/requirements.txt
         cd thin_slice/example_route_app
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     
@@ -51,4 +52,7 @@ jobs:
     - name: Run frontend tests
       run: |
         pytest frontend/tests/ -v
-    
+
+    - name: Run Dublin network tests
+      run: |
+        pytest backend/dublin_network/tests/ -v
