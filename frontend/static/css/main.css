@@ -230,6 +230,37 @@ a:hover { text-decoration: underline; }
 
 .panel-header h3 { font-size: 1rem; font-weight: 600; }
 
+.map-legend {
+  background: rgba(255,255,255,.88);
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: .4rem .7rem;
+  font-size: .8rem;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  pointer-events: none;
+}
+.legend-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 12px;
+  background: #fef3c7;
+  border: 2px dashed #f59e0b;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.debug-toggle-label {
+  font-size: .8rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  cursor: pointer;
+}
+
 .panel-note { font-size: .8rem; color: var(--text-muted); margin-top: .5rem; }
 
 .no-data {
@@ -262,7 +293,44 @@ a:hover { text-decoration: underline; }
   user-select: none;
 }
 
+.map-stage {
+  position: relative;
+}
+
+.map-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  background: rgba(15, 23, 42, .28);
+  color: #fff;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+
+.map-loading.is-visible { opacity: 1; }
+
+.map-spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, .4);
+  border-top-color: #fff;
+  animation: map-spin .9s linear infinite;
+}
+
+@keyframes map-spin {
+  to { transform: rotate(360deg); }
+}
+
 #map {
+  position: relative;
+  z-index: 1;
   height: 480px;
   width: 100%;
 }
@@ -726,6 +794,67 @@ a:hover { text-decoration: underline; }
 
 .btn-primary:hover { background: #1d4ed8; }
 .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+
+.btn-secondary {
+  width: 100%;
+  padding: .55rem 1rem;
+  background: #f1f5f9;
+  color: #374151;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius);
+  font-size: .95rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: .5rem;
+  transition: background .15s;
+}
+.btn-secondary:hover { background: #e2e8f0; }
+
+/* Input mode switcher (Search / Drop Pins) */
+.input-mode-row {
+  display: flex;
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+.input-mode-btn {
+  flex: 1;
+  padding: .45rem .5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius);
+  background: #f8fafc;
+  color: #64748b;
+  font-size: .875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.input-mode-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* Pin-drop panel */
+.pin-instructions {
+  font-size: .875rem;
+  color: #374151;
+  margin: 0 0 .75rem;
+}
+.pin-coords-row {
+  display: flex;
+  gap: .5rem;
+  margin-bottom: .75rem;
+}
+.pin-coord-badge {
+  flex: 1;
+  padding: .35rem .6rem;
+  border-radius: var(--radius);
+  font-size: .8rem;
+  font-weight: 600;
+  text-align: center;
+}
+.pin-a { background: #dcfce7; color: #15803d; }
+.pin-b { background: #fee2e2; color: #b91c1c; }
 
 /* Route result summary */
 .route-summary { display: none; }

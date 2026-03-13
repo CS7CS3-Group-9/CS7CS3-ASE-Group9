@@ -16,6 +16,27 @@
     <div class="panel-card">
       <div class="panel-header"><h3>&#128205; Plan Journey</h3></div>
 
+      <!-- Mode switcher: address search vs pin drop -->
+      <div class="input-mode-row">
+        <button class="input-mode-btn active" id="mode-search-btn">&#128269; Search</button>
+        <button class="input-mode-btn"        id="mode-pin-btn">&#128392; Drop Pins</button>
+      </div>
+
+      <!-- Pin-drop panel (hidden by default) -->
+      <div id="pin-panel" style="display:none">
+        <p class="pin-instructions" id="pin-instructions">Click the map to place your <strong>start</strong> point (A).</p>
+        <div class="pin-coords-row">
+          <span class="pin-coord-badge pin-a" id="pin-a-label">A: —</span>
+          <span class="pin-coord-badge pin-b" id="pin-b-label">B: —</span>
+        </div>
+        <button id="pin-clear-btn" class="btn-secondary">&#10005; Clear pins</button>
+        <button id="pin-route-btn" class="btn-primary" disabled>Get Route</button>
+        <p id="pin-error" class="route-error" style="display:none"></p>
+      </div>
+
+      <!-- Search panel (hidden when pin mode is active) -->
+      <div id="search-panel">
+
       <!-- Master optimise toggle -->
       <div class="optimise-toggle-row" id="optimise-toggle-row">
         <label class="optimise-toggle-label">
@@ -98,6 +119,8 @@
 
       <button id="calculate-btn" class="btn-primary">Calculate Route</button>
       <p id="route-error" class="route-error" style="display:none"></p>
+
+      </div><!-- end #search-panel -->
     </div>
 
     <!-- Route summary (shown after calculation) -->
@@ -131,7 +154,13 @@
   <!-- ===== Map ===== -->
   <div class="routing-map-col">
     <div class="panel-card map-wrapper">
-      <div class="panel-header"><h3>&#128506; Route Map</h3></div>
+      <div class="panel-header">
+        <h3>&#128506; Route Map</h3>
+        <span style="display:flex;gap:.75rem">
+          <label class="debug-toggle-label"><input type="checkbox" id="show-nodes-cb"> Nodes</label>
+          <label class="debug-toggle-label"><input type="checkbox" id="show-edges-cb"> Roads</label>
+        </span>
+      </div>
       <div id="routing-map"></div>
     </div>
   </div>

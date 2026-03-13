@@ -52,4 +52,7 @@ jobs:
     - name: Run frontend tests
       run: |
         pytest frontend/tests/ -v
-    
+
+    - name: Run Dublin network tests
+      run: |
+        pytest backend/dublin_network/tests/ -v

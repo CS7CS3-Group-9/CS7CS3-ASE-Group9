@@ -11,5 +11,17 @@
   <label class="layer-toggle">
     <input type="checkbox" id="toggle-buses" checked> &#128652; Bus Stops
   </label>
+  <label class="layer-toggle">
+    <input type="checkbox" id="toggle-needs-bus" checked> &#9888; Needs Bus Access
+  </label>
+  <label class="layer-toggle">
+    <input type="checkbox" id="toggle-needs-bike" checked> &#128690; Needs Bike Access
+  </label>
 </div>
-<div id="map"></div>
+<div class="map-stage">
+  <div id="map"></div>
+  <div class="map-loading" id="map-loading" role="status" aria-live="polite">
+    <div class="map-spinner" aria-hidden="true"></div>
+    <div>Loading indicators...</div>
+  </div>
+</div>
