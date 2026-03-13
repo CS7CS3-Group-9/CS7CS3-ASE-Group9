@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 from backend.adapters.base_adapter import DataAdapter
 from backend.models.bus_models import BusStop, BusMetrics
+from backend.analytics.bus_analytics import compute_average_waits_from_stop_times
 from backend.models.mobility_snapshot import MobilitySnapshot
 
 
@@ -112,48 +113,6 @@ class BusAdapter(DataAdapter):
         print(f"[BusAdapter] Finished arrivals count. Found data for {len(arrivals)} stops.")
         return arrivals
 
-    def _compute_average_waits(self, dublin_stop_ids: Set[str]) -> Dict[str, float]:
-        """
-        Compute average wait time between buses for each stop (in minutes),
-        based on arrival_time/departure_time in stop_times.txt.
-        """
-        stop_times_file = self.gtfs_path / "GTFS" / "stop_times.txt"
-        if not stop_times_file.exists():
-            print(f"[Warning] {stop_times_file} not found. Cannot compute average wait times.")
-            return {}
-
-        print(f"[BusAdapter] Computing average waits from {stop_times_file}...")
-        times_by_stop: Dict[str, list[int]] = {}
-        line_count = 0
-        with open(stop_times_file, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                line_count += 1
-                stop_id = row.get("stop_id")
-                if stop_id not in dublin_stop_ids:
-                    continue
-                time_raw = row.get("arrival_time") or row.get("departure_time")
-                t = self._parse_gtfs_time_to_seconds(time_raw)
-                if t is None:
-                    continue
-                times_by_stop.setdefault(stop_id, []).append(t)
-
-                if line_count % 1_000_000 == 0:
-                    print(f"[BusAdapter] Processed {line_count} stop_times rows for waits...")
-
-        avg_waits: Dict[str, float] = {}
-        for stop_id, times in times_by_stop.items():
-            if len(times) < 2:
-                continue
-            times.sort()
-            deltas = [b - a for a, b in zip(times, times[1:]) if b > a]
-            if not deltas:
-                continue
-            avg_waits[stop_id] = round(sum(deltas) / len(deltas) / 60.0, 1)
-
-        print(f"[BusAdapter] Finished average waits. Found data for {len(avg_waits)} stops.")
-        return avg_waits
-
     def fetch(self, location: str = "dublin", **kwargs) -> MobilitySnapshot:
         city = location
         print(f"--- Fetching Bus Data for {city} (bounding box filter) ---")
@@ -187,7 +146,18 @@ class BusAdapter(DataAdapter):
         # Compute frequencies for the filtered stops
         frequencies = self._count_stop_frequencies(dublin_stop_ids)
         arrivals_next_hour = self._count_arrivals_within_hour(dublin_stop_ids)
-        avg_waits = self._compute_average_waits(dublin_stop_ids)
+        stop_times_file = self.gtfs_path / "GTFS" / "stop_times.txt"
+        if stop_times_file.exists():
+            print(f"[BusAdapter] Computing average waits from {stop_times_file}...")
+        else:
+            print(f"[Warning] {stop_times_file} not found. Cannot compute average wait times.")
+        avg_waits = compute_average_waits_from_stop_times(
+            stop_times_file=stop_times_file,
+            dublin_stop_ids=dublin_stop_ids,
+            parse_time_fn=self._parse_gtfs_time_to_seconds,
+        )
+        if avg_waits:
+            print(f"[BusAdapter] Finished average waits. Found data for {len(avg_waits)} stops.")
 
         metrics = BusMetrics(
             stops=all_stops,

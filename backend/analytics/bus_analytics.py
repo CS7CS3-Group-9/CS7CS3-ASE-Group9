@@ -147,6 +147,44 @@ def get_importance_scores(
     return scores, top
 
 
+def compute_average_waits_from_stop_times(stop_times_file, dublin_stop_ids, parse_time_fn) -> Dict[str, float]:
+    """
+    Compute average wait time between buses for each stop (in minutes),
+    based on arrival_time/departure_time in stop_times.txt.
+    """
+    if not stop_times_file.exists():
+        return {}
+
+    times_by_stop: Dict[str, list[int]] = {}
+    line_count = 0
+    with open(stop_times_file, "r", encoding="utf-8") as f:
+        import csv
+
+        reader = csv.DictReader(f)
+        for row in reader:
+            line_count += 1
+            stop_id = row.get("stop_id")
+            if stop_id not in dublin_stop_ids:
+                continue
+            time_raw = row.get("arrival_time") or row.get("departure_time")
+            t = parse_time_fn(time_raw)
+            if t is None:
+                continue
+            times_by_stop.setdefault(stop_id, []).append(t)
+
+    avg_waits: Dict[str, float] = {}
+    for stop_id, times in times_by_stop.items():
+        if len(times) < 2:
+            continue
+        times.sort()
+        deltas = [b - a for a, b in zip(times, times[1:]) if b > a]
+        if not deltas:
+            continue
+        avg_waits[stop_id] = round(sum(deltas) / len(deltas) / 60.0, 1)
+
+    return avg_waits
+
+
 def detect_low_frequency_stops(metrics: BusMetrics, threshold: int = 10) -> List[Dict[str, Any]]:
     """Detect stops with frequency below the threshold."""
     low_freq = []
