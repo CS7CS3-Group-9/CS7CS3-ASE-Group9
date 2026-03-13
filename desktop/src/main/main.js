@@ -158,6 +158,13 @@ async function probeUrl(url, timeoutMs = 5000) {
 }
 
 // --------------------------------------------------------------------------
+// Send an IPC message after the next page load completes
+// --------------------------------------------------------------------------
+function sendAfterLoad(webContents, channel, payload) {
+  webContents.once('did-finish-load', () => webContents.send(channel, payload));
+}
+
+// --------------------------------------------------------------------------
 <<<<<<< Updated upstream
 // Wire up the connectivity monitor (shared between cloud and local modes)
 // --------------------------------------------------------------------------
@@ -200,28 +207,6 @@ app.whenReady().then(async () => {
   processManager = new ProcessManager(config);
 
   const cloudReachable = config.cloudUrl && await probeUrl(config.cloudUrl);
-<<<<<<< Updated upstream
-
-  if (cloudReachable) {
-    // -----------------------------------------------------------------------
-    // CLOUD MODE — load cloud frontend instantly, warm cache in background
-    // -----------------------------------------------------------------------
-    log.info('Cloud reachable — loading cloud frontend');
-    win = createWindow();
-    win.loadURL(config.cloudUrl);
-
-    // Start local backend silently in background for cache warming only.
-    // Failures are non-fatal — offline cache just won't be refreshed.
-    processManager.startBackend()
-      .then(() => {
-        log.info('Background backend ready — starting cache sync');
-        runBackgroundSync();
-        syncTimer = setInterval(runBackgroundSync, config.backgroundSyncIntervalMs);
-      })
-      .catch(err => log.warn('Background backend unavailable (cache warming skipped):', err.message));
-
-    startConnectivityMonitor(`${config.cloudUrl}/health`);
-=======
   const localFrontendUrl = `http://127.0.0.1:${config.frontendPort}`;
 
   win = createWindow();
@@ -263,11 +248,9 @@ app.whenReady().then(async () => {
       log.warn('Cloud unreachable — entering offline mode');
       if (trayManager) trayManager.setStatus('offline');
       if (localReady && win) {
-        // Switch to local frontend; notify after it loads
         win.loadURL(localFrontendUrl);
         sendAfterLoad(win.webContents, 'connectivity:change', { online: false, cachedAt });
       } else {
-        // Local not ready yet — overlay on current page handles it
         if (win) win.webContents.send('connectivity:change', { online: false, cachedAt });
       }
     });
@@ -280,7 +263,6 @@ app.whenReady().then(async () => {
       }
       runBackgroundSync();
     });
->>>>>>> Stashed changes
 
   } else {
     // -----------------------------------------------------------------------
@@ -302,12 +284,6 @@ app.whenReady().then(async () => {
       return;
     }
 
-<<<<<<< Updated upstream
-    win = createWindow();
-    win.loadURL(`http://localhost:${config.frontendPort}`);
-
-    startConnectivityMonitor(`http://127.0.0.1:${config.backendPort}/health`);
-=======
     win.loadURL(localFrontendUrl);
 
     connectivityMonitor = new ConnectivityMonitor(
@@ -325,17 +301,13 @@ app.whenReady().then(async () => {
       if (trayManager) trayManager.setStatus('online');
       runBackgroundSync();
     });
->>>>>>> Stashed changes
 
     await runBackgroundSync();
     syncTimer = setInterval(runBackgroundSync, config.backgroundSyncIntervalMs);
   }
 
-<<<<<<< Updated upstream
-=======
   connectivityMonitor.start();
 
->>>>>>> Stashed changes
   // Tray icon (optional — silently skipped if no display or icon is missing)
   try {
     trayManager = new TrayManager(config, win, () => runBackgroundSync());
@@ -348,13 +320,9 @@ app.whenReady().then(async () => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       win = createWindow();
-<<<<<<< Updated upstream
-      const url = cloudReachable ? config.cloudUrl : `http://localhost:${config.frontendPort}`;
-=======
       const url = (cloudReachable && connectivityMonitor.isOnline)
         ? config.cloudUrl
         : localFrontendUrl;
->>>>>>> Stashed changes
       win.loadURL(url);
     }
   });
