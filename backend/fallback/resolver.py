@@ -41,7 +41,7 @@ def choose_snapshot(
 def resolve_with_cache(
     adapter: Any,
     cache: AdapterCache,
-    predictor: Optional[Callable[[Any], Optional[PredictionResult]]] = None,
+    predictor: Optional[Callable[[Any, Optional[Any]], Optional[PredictionResult]]] = None,
     **kwargs,
 ) -> ResolveResult:
     """
@@ -53,8 +53,8 @@ def resolve_with_cache(
 
     # No live or cached data; attempt prediction from cached snapshot if provided
     cached_snapshot = cache.get_cached(adapter.source_name())
-    predictor_fn = predictor or predict_snapshot
-    prediction = predictor_fn(cached_snapshot) if cached_snapshot is not None else None
+    predictor_fn = predictor or _default_predictor
+    prediction = _call_predictor(predictor_fn, adapter, cached_snapshot)
 
     if prediction is not None:
         return ResolveResult(
@@ -64,3 +64,21 @@ def resolve_with_cache(
         )
 
     return ResolveResult(snapshot=None, status="failed", detail=None)
+
+
+def _default_predictor(adapter: Any, cached_snapshot: Optional[Any]) -> Optional[PredictionResult]:
+    return predict_snapshot(cached_snapshot)
+
+
+def _call_predictor(
+    predictor_fn: Callable[..., Optional[PredictionResult]],
+    adapter: Any,
+    cached_snapshot: Optional[Any],
+) -> Optional[PredictionResult]:
+    try:
+        return predictor_fn(adapter, cached_snapshot)
+    except TypeError:
+        # Backwards-compatible path: predictor expects only cached_snapshot
+        return predictor_fn(cached_snapshot)
+    except Exception:
+        return None

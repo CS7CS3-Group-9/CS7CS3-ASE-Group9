@@ -11,6 +11,7 @@ from backend.adapters.airquality_adapter import AirQualityAdapter
 from backend.adapters.tour_adapter import TourAdapter
 from backend.adapters.airquality_location_adapter import AirQualityLocationAdapter
 from backend.fallback.cache import AdapterCache
+from backend.fallback.predictors import default_predictor
 
 snapshot_bp = Blueprint("snapshot", __name__)
 
@@ -79,7 +80,7 @@ def get_snapshot():
 
     adapter_specs = build_adapter_specs(include, radius_km, latitude, longitude)
     cache = _get_adapter_cache()
-    service = SnapshotService(adapter_specs=adapter_specs, cache=cache)
+    service = SnapshotService(adapter_specs=adapter_specs, cache=cache, predictor=default_predictor)
     snapshot = service.build_snapshot(location=location)
 
     return jsonify(to_jsonable(snapshot))

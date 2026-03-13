@@ -14,6 +14,7 @@ from backend.api.endpoints.tours import tours_bp
 from backend.api.endpoints.health import health_bp
 from backend.api.endpoints.routing import routing_api_bp
 from backend.api.endpoints.buses import buses_bp
+from backend.ml.weather_features import refresh_weather_if_needed
 
 
 def _init_firestore(app: Flask) -> None:
@@ -51,6 +52,10 @@ def create_app() -> Flask:
     app.register_blueprint(buses_bp)
 
     _init_firestore(app)
+    try:
+        refresh_weather_if_needed()
+    except Exception:
+        pass
 
     @app.route("/test-firestore")
     def test_firestore():
