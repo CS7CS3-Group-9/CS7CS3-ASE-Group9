@@ -79,15 +79,6 @@ def _build_chart_data(snapshot):
     wait_best_chart = {"labels": best_labels, "values": best_values}
     wait_worst_chart = {"labels": worst_labels, "values": worst_values}
 
-    importance = buses.get("top_importance_stops") or []
-    if importance:
-        imp_labels = [s.get("name", s.get("stop_id", "Stop")) for s in importance]
-        imp_values = [s.get("score", 0) for s in importance]
-    else:
-        imp_labels = ["No Data"]
-        imp_values = [0]
-    importance_chart = {"labels": imp_labels, "values": imp_values}
-
     # Importance distribution (all stops)
     scores = list((buses.get("stop_importance_scores") or {}).values())
     if scores:
@@ -98,26 +89,11 @@ def _build_chart_data(snapshot):
             counts[idx] += 1
         dist_labels = [f"{bins[i]:.1f}-{bins[i+1]:.1f}" for i in range(10)]
         dist_values = counts
-
-        # CDF (percentile curve)
-        sorted_scores = sorted(scores)
-        cdf_labels = [f"{i*10}%" for i in range(0, 11)]
-        cdf_values = []
-        n = len(sorted_scores)
-        for p in range(0, 11):
-            if n == 1:
-                cdf_values.append(round(sorted_scores[0], 3))
-            else:
-                idx = int(round((p / 10) * (n - 1)))
-                cdf_values.append(round(sorted_scores[idx], 3))
     else:
         dist_labels = ["No Data"]
         dist_values = [0]
-        cdf_labels = ["No Data"]
-        cdf_values = [0]
 
-    importance_dist_chart = {"labels": dist_labels, "values": dist_values}
-    importance_cdf_chart = {"labels": cdf_labels, "values": cdf_values}
+    importance_hist_chart = {"labels": dist_labels, "values": dist_values}
 
     # Bus heatmap data (limit size for frontend performance)
     heat_points = []
@@ -150,9 +126,7 @@ def _build_chart_data(snapshot):
         "bus_wait_chart": wait_chart,
         "bus_wait_best_chart": wait_best_chart,
         "bus_wait_worst_chart": wait_worst_chart,
-        "bus_importance_chart": importance_chart,
-        "bus_importance_dist_chart": importance_dist_chart,
-        "bus_importance_cdf_chart": importance_cdf_chart,
+        "bus_importance_hist_chart": importance_hist_chart,
         "bus_heatmap": heat_points,
     }
 

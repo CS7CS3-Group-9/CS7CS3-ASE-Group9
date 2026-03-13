@@ -16,10 +16,18 @@
   {% endif %}
 </div>
 
+<div class="analytics-filter">
+  <span class="filter-label">Filter:</span>
+  <label class="filter-toggle"><input type="checkbox" data-analytics-filter="air" checked> Air Quality</label>
+  <label class="filter-toggle"><input type="checkbox" data-analytics-filter="bike" checked> Bikes</label>
+  <label class="filter-toggle"><input type="checkbox" data-analytics-filter="traffic" checked> Traffic</label>
+  <label class="filter-toggle"><input type="checkbox" data-analytics-filter="bus" checked> Buses</label>
+</div>
+
 <div class="charts-grid">
 
   <!-- Air Quality Chart -->
-  <div class="panel-card chart-card">
+  <div class="panel-card chart-card" data-analytics-group="air">
     <div class="panel-header">
       <h3>&#127807; Air Quality — Pollutant Levels</h3>
     </div>
@@ -27,7 +35,7 @@
   </div>
 
   <!-- Bike Chart -->
-  <div class="panel-card chart-card">
+  <div class="panel-card chart-card" data-analytics-group="bike">
     <div class="panel-header">
       <h3>&#128690; Bike Share Status</h3>
     </div>
@@ -35,7 +43,7 @@
   </div>
 
   <!-- Traffic Chart -->
-  <div class="panel-card chart-card">
+  <div class="panel-card chart-card" data-analytics-group="traffic">
     <div class="panel-header">
       <h3>&#128652; Traffic Incidents by Category</h3>
     </div>
@@ -43,7 +51,7 @@
   </div>
 
   <!-- Bus Routes per Stop Chart -->
-  <div class="panel-card chart-card">
+  <div class="panel-card chart-card" data-analytics-group="bus">
     <div class="panel-header">
       <h3>&#128652; Buses Serving Each Stop (Top 10)</h3>
     </div>
@@ -51,7 +59,7 @@
   </div>
 
   <!-- Best Wait Times Chart -->
-  <div class="panel-card chart-card">
+  <div class="panel-card chart-card" data-analytics-group="bus">
     <div class="panel-header">
       <h3>&#9989; Best Average Wait Times (Top 5)</h3>
     </div>
@@ -59,40 +67,23 @@
   </div>
 
   <!-- Worst Wait Times Chart -->
-  <div class="panel-card chart-card">
+  <div class="panel-card chart-card" data-analytics-group="bus">
     <div class="panel-header">
       <h3>&#9888; Worst Average Wait Times (Top 5)</h3>
     </div>
     <canvas id="busWaitWorstChart" height="200"></canvas>
   </div>
 
-  <!-- Importance Score Chart -->
-  <div class="panel-card chart-card">
+  <!-- Importance Histogram -->
+  <div class="panel-card chart-card" data-analytics-group="bus">
     <div class="panel-header">
-      <h3>&#11088; Bus Stop Importance (Top 10)</h3>
+      <h3>&#128202; Importance Score Histogram</h3>
     </div>
-    <canvas id="busImportanceChart" height="200"></canvas>
-    <div class="panel-note">Score combines lower wait times (60%) and higher trip counts (40%).</div>
-  </div>
-
-  <!-- Importance Distribution -->
-  <div class="panel-card chart-card">
-    <div class="panel-header">
-      <h3>&#128202; Importance Score Distribution</h3>
-    </div>
-    <canvas id="busImportanceDistChart" height="200"></canvas>
-  </div>
-
-  <!-- Importance CDF -->
-  <div class="panel-card chart-card">
-    <div class="panel-header">
-      <h3>&#128200; Importance Percentiles (CDF)</h3>
-    </div>
-    <canvas id="busImportanceCdfChart" height="200"></canvas>
+    <canvas id="busImportanceHistChart" height="200"></canvas>
   </div>
 
   <!-- Bus Hubs Map -->
-  <div class="panel-card chart-card analytics-map-wide">
+  <div class="panel-card chart-card analytics-map-wide" data-analytics-group="bus">
     <div class="panel-header">
       <h3>&#128506; Bus Hubs — Trips per Stop (Bubble Map)</h3>
     </div>
@@ -106,9 +97,18 @@
 
 {% block scripts %}
 <script type="application/json" id="chart-data">{{ chart_data | tojson }}</script>
-<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 <script>
   const _cd = document.getElementById("chart-data");
-  if (_cd) { initCharts(JSON.parse(_cd.textContent)); }
+  function _tryInitCharts() {
+    if (!_cd) return;
+    if (typeof window.initCharts !== "function") return;
+    window.initCharts(JSON.parse(_cd.textContent));
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", _tryInitCharts);
+  } else {
+    _tryInitCharts();
+  }
+  setTimeout(_tryInitCharts, 0);
 </script>
 {% endblock %}

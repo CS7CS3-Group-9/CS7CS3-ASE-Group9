@@ -6,6 +6,9 @@
 
   var REFRESH_INTERVAL = window.REFRESH_INTERVAL || 60000;
   var charts = {};
+  window._dashboardJsVersion = "analytics-importance-v1";
+  var _jsVersionEl = document.getElementById("js-version");
+  if (_jsVersionEl) _jsVersionEl.textContent = window._dashboardJsVersion;
 
   /* ---- KPI helpers ---- */
 
@@ -251,6 +254,37 @@
       });
     }
 
+    /* Importance histogram chart */
+    var impHistEl = document.getElementById("busImportanceHistChart");
+    if (impHistEl && data.bus_importance_hist_chart) {
+      var imph = data.bus_importance_hist_chart;
+      var _impHistLen = document.getElementById("imp-hist-len");
+      if (_impHistLen) _impHistLen.textContent = String((imph.values || []).length);
+      var _impHistSize = document.getElementById("imp-hist-size");
+      if (_impHistSize) _impHistSize.textContent = impHistEl.width + "x" + impHistEl.height;
+      if (charts.busImportanceHist) charts.busImportanceHist.destroy();
+      charts.busImportanceHist = new Chart(impHistEl, {
+        type: "bar",
+        data: {
+          labels: imph.labels,
+          datasets: [{
+            label: "Stops",
+            data: imph.values,
+            backgroundColor: "#0ea5e9",
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { title: { display: true, text: "Importance score bucket" } },
+            y: { beginAtZero: true, title: { display: true, text: "Stops" } }
+          }
+        }
+      });
+    }
+
   }
 
   /* ---- Fetch and refresh charts ---- */
@@ -302,6 +336,29 @@
     });
   }
 
+  /* ---- Analytics filters ---- */
+  function wireAnalyticsFilters() {
+    var filters = Array.prototype.slice.call(document.querySelectorAll("[data-analytics-filter]"));
+    if (!filters.length) return;
+
+    function applyFilters() {
+      var enabled = {};
+      filters.forEach(function (f) { enabled[f.dataset.analyticsFilter] = f.checked; });
+      var cards = document.querySelectorAll("[data-analytics-group]");
+      cards.forEach(function (card) {
+        var group = card.dataset.analyticsGroup;
+        var show = enabled[group] !== false;
+        card.style.display = show ? "" : "none";
+      });
+      if (analyticsMap) {
+        setTimeout(function () { analyticsMap.invalidateSize(); }, 50);
+      }
+    }
+
+    filters.forEach(function (f) { f.addEventListener("change", applyFilters); });
+    applyFilters();
+  }
+
   /* ---- Initialise on DOM ready ---- */
 
   function init() {
@@ -317,6 +374,7 @@
 
     if (onAnalytics) {
       setInterval(fetchAndUpdateCharts, REFRESH_INTERVAL);
+      wireAnalyticsFilters();
     }
 
     if (radiusInput && radiusApply) {
@@ -333,80 +391,6 @@
       });
     }
 
-    /* Bus stop importance chart */
-    var impEl = document.getElementById("busImportanceChart");
-    if (impEl && data.bus_importance_chart) {
-      var imp = data.bus_importance_chart;
-      if (charts.busImportance) charts.busImportance.destroy();
-      charts.busImportance = new Chart(impEl, {
-        type: "bar",
-        data: {
-          labels: imp.labels,
-          datasets: [{
-            label: "Importance score",
-            data: imp.values,
-            backgroundColor: "#2563eb",
-            borderRadius: 4,
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, title: { display: true, text: "Score" } } }
-        }
-      });
-    }
-
-    /* Importance distribution chart */
-    var impDistEl = document.getElementById("busImportanceDistChart");
-    if (impDistEl && data.bus_importance_dist_chart) {
-      var impd = data.bus_importance_dist_chart;
-      if (charts.busImportanceDist) charts.busImportanceDist.destroy();
-      charts.busImportanceDist = new Chart(impDistEl, {
-        type: "bar",
-        data: {
-          labels: impd.labels,
-          datasets: [{
-            label: "Stops",
-            data: impd.values,
-            backgroundColor: "#0ea5e9",
-            borderRadius: 4,
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, title: { display: true, text: "Stops" } } }
-        }
-      });
-    }
-
-    /* Importance CDF chart */
-    var impCdfEl = document.getElementById("busImportanceCdfChart");
-    if (impCdfEl && data.bus_importance_cdf_chart) {
-      var impc = data.bus_importance_cdf_chart;
-      if (charts.busImportanceCdf) charts.busImportanceCdf.destroy();
-      charts.busImportanceCdf = new Chart(impCdfEl, {
-        type: "line",
-        data: {
-          labels: impc.labels,
-          datasets: [{
-            label: "Score at percentile",
-            data: impc.values,
-            borderColor: "#7c3aed",
-            backgroundColor: "rgba(124,58,237,0.15)",
-            tension: 0.25,
-            fill: true,
-            pointRadius: 2,
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, max: 1, title: { display: true, text: "Score" } } }
-        }
-      });
-    }
   }
 
   if (document.readyState === "loading") {
