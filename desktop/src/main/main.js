@@ -165,32 +165,6 @@ function sendAfterLoad(webContents, channel, payload) {
 }
 
 // --------------------------------------------------------------------------
-<<<<<<< Updated upstream
-// Wire up the connectivity monitor (shared between cloud and local modes)
-// --------------------------------------------------------------------------
-function startConnectivityMonitor(healthUrl) {
-  connectivityMonitor = new ConnectivityMonitor(healthUrl, config.connectivityPollIntervalMs);
-  connectivityMonitor.on('offline', ({ cachedAt }) => {
-    log.warn('Connectivity lost — entering offline mode');
-    if (win) win.webContents.send('connectivity:change', { online: false, cachedAt });
-    if (trayManager) trayManager.setStatus('offline');
-  });
-  connectivityMonitor.on('online', () => {
-    log.info('Connectivity restored — returning to online mode');
-    if (win) win.webContents.send('connectivity:change', { online: true });
-    if (trayManager) trayManager.setStatus('online');
-    runBackgroundSync();
-  });
-  connectivityMonitor.start();
-=======
-// Send an IPC message after the next page load completes
-// --------------------------------------------------------------------------
-function sendAfterLoad(webContents, channel, payload) {
-  webContents.once('did-finish-load', () => webContents.send(channel, payload));
->>>>>>> Stashed changes
-}
-
-// --------------------------------------------------------------------------
 // App lifecycle
 // --------------------------------------------------------------------------
 app.whenReady().then(async () => {
