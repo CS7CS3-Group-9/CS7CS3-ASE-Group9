@@ -535,6 +535,33 @@ a:hover { text-decoration: underline; }
 /* ============================================================
    Analytics Charts
    ============================================================ */
+.analytics-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: .5rem .75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.analytics-filter .filter-label {
+  font-size: .85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.analytics-filter .filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  cursor: pointer;
+  user-select: none;
+}
+
 .charts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
