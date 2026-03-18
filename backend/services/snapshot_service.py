@@ -9,7 +9,7 @@ from backend.models.mobility_snapshot import MobilitySnapshot
 
 # Import analytics you already have (adjust names if yours differ)
 from backend.analytics.traffic_analytics import build_traffic_metrics
-from backend.analytics.airquality_analytics import overall_air_quality_level
+from backend.analytics.airquality_analytics import overall_air_quality_level, build_wait_time_exposure
 from backend.analytics.bus_analytics import (
     get_top_served_stops,
     get_wait_time_summary,
@@ -203,6 +203,13 @@ class SnapshotService:
                 scores, top_scores = get_importance_scores(snapshot.buses, weight_wait=0.6, weight_trips=0.4)
                 snapshot.buses.stop_importance_scores = scores
                 snapshot.buses.top_importance_stops = top_scores
+
+                if snapshot.airquality is not None:
+                    exposure = build_wait_time_exposure(snapshot.buses, snapshot.airquality, pollutant_key="pm2_5")
+                    snapshot.buses.wait_exposure_top = exposure.get("top", [])
+                    snapshot.buses.wait_exposure_stats = exposure.get("stats", {})
+                    snapshot.buses.wait_exposure_metric = exposure.get("metric", {})
+                    snapshot.buses.wait_exposure_by_stop = exposure.get("by_stop", {})
             except Exception:
                 pass
 

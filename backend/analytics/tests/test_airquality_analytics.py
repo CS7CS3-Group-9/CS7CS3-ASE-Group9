@@ -1,10 +1,12 @@
 import pytest
 from backend.models.airquality_models import PollutantLevels, AirQualityMetrics
+from backend.models.bus_models import BusMetrics, BusStop
 from backend.analytics.airquality_analytics import (
     categorise_aqi,
     check_pollutant_safety,
     overall_air_quality_level,
     count_unsafe_pollutants,
+    build_wait_time_exposure,
 )
 
 
@@ -90,6 +92,37 @@ def test_overall_air_quality_high_due_to_aqi():
     )
     metrics = AirQualityMetrics(aqi_value=150, pollutants=pollutants)
     assert overall_air_quality_level(metrics) == "high"
+
+
+def test_wait_time_exposure_uses_pollutant_when_available():
+    pollutants = PollutantLevels(
+        pm2_5=10, pm10=5, nitrogen_dioxide=2, carbon_monoxide=0.5, ozone=20, sulphur_dioxide=1, units={"pm2_5": "ug/m3"}
+    )
+    air = AirQualityMetrics(aqi_value=80, pollutants=pollutants)
+    buses = BusMetrics(
+        stops=[BusStop("A", "Stop A", 0.0, 0.0), BusStop("B", "Stop B", 0.0, 0.0)],
+        stop_avg_wait_min={"A": 5, "B": 12},
+    )
+
+    exposure = build_wait_time_exposure(buses, air, pollutant_key="pm2_5", top_n=2)
+    assert exposure["metric"]["type"] == "pollutant"
+    assert exposure["metric"]["value"] == 10
+    assert exposure["by_stop"]["A"] == 50.0
+    assert exposure["by_stop"]["B"] == 120.0
+    assert exposure["top"][0]["stop_id"] == "B"
+
+
+def test_wait_time_exposure_falls_back_to_aqi():
+    air = AirQualityMetrics(aqi_value=42, pollutants=None)
+    buses = BusMetrics(
+        stops=[BusStop("A", "Stop A", 0.0, 0.0)],
+        stop_avg_wait_min={"A": 10},
+    )
+
+    exposure = build_wait_time_exposure(buses, air, pollutant_key="pm2_5", top_n=1)
+    assert exposure["metric"]["type"] == "aqi"
+    assert exposure["metric"]["value"] == 42
+    assert exposure["by_stop"]["A"] == 420.0
 
 
 def test_overall_air_quality_high_due_to_many_unsafe_pollutants():
