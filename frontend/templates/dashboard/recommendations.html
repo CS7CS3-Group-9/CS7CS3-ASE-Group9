@@ -3,16 +3,10 @@
 
 {% block content %}
 
-{% if backend_error %}
-  <div class="alert alert-warning">
-    &#9888; Backend unavailable. ({{ backend_error }})
-  </div>
-{% endif %}
-
 <div class="page-header">
   <h1>Recommendations</h1>
   <p class="page-subtitle">Data-driven suggestions for city planners based on live conditions.</p>
-  {% if timestamp %}<span class="last-updated">Updated: {{ timestamp }}</span>{% endif %}
+  <span class="last-updated" id="rec-last-updated" style="display:none"></span>
 </div>
 
 <!-- Filter Bar -->
@@ -31,57 +25,81 @@
 </div>
 
 <!-- Recommendation Cards -->
-{% if recommendations %}
-  <div class="rec-cards-full" id="rec-cards-container">
-    {% for rec in recommendations %}
-      <div class="rec-card-full priority-{{ rec.priority | lower }}"
-           data-priority="{{ rec.priority | lower }}"
-           data-source="{{ rec.source | lower }}">
-        <div class="rec-card-header">
-          <h3 class="rec-title">{{ rec.title }}</h3>
-          <div class="rec-badges">
-            <span class="priority-badge priority-{{ rec.priority | lower }}">{{ rec.priority }}</span>
-            <span class="source-badge">{{ rec.source | replace('_', ' ') | title }}</span>
-          </div>
-        </div>
-        <p class="rec-desc">{{ rec.description }}</p>
-      </div>
-    {% endfor %}
-  </div>
-{% else %}
-  <div class="empty-state">
-    <p>&#10003; No recommendations at this time. All city systems are operating normally.</p>
-  </div>
-{% endif %}
+<div id="rec-cards-container" class="rec-cards-full">
+  <p class="no-data" id="rec-loading">Loading recommendations&hellip;</p>
+</div>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
-  document.querySelectorAll(".filter-btn[data-filter-priority]").forEach(function(btn) {
-    btn.addEventListener("click", function() {
-      document.querySelectorAll(".filter-btn[data-filter-priority]").forEach(function(b) { b.classList.remove("active"); });
-      btn.classList.add("active");
-      applyFilters();
-    });
-  });
+  (function () {
+    var container = document.getElementById("rec-cards-container");
+    var lastUpdatedEl = document.getElementById("rec-last-updated");
 
-  document.querySelectorAll(".filter-btn[data-filter-source]").forEach(function(btn) {
-    btn.addEventListener("click", function() {
-      document.querySelectorAll(".filter-btn[data-filter-source]").forEach(function(b) { b.classList.remove("active"); });
-      btn.classList.add("active");
-      applyFilters();
+    document.querySelectorAll(".filter-btn[data-filter-priority]").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        document.querySelectorAll(".filter-btn[data-filter-priority]").forEach(function(b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        applyFilters();
+      });
     });
-  });
 
-  function applyFilters() {
-    var priority = (document.querySelector(".filter-btn[data-filter-priority].active") || {}).dataset.filterPriority || "all";
-    var source = (document.querySelector(".filter-btn[data-filter-source].active") || {}).dataset.filterSource || "all";
-    document.querySelectorAll(".rec-card-full").forEach(function(card) {
-      var matchP = priority === "all" || card.dataset.priority === priority;
-      var matchS = source === "all" || card.dataset.source === source;
-      card.style.display = (matchP && matchS) ? "" : "none";
+    document.querySelectorAll(".filter-btn[data-filter-source]").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        document.querySelectorAll(".filter-btn[data-filter-source]").forEach(function(b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        applyFilters();
+      });
     });
-  }
+
+    function applyFilters() {
+      var priority = (document.querySelector(".filter-btn[data-filter-priority].active") || {}).dataset.filterPriority || "all";
+      var source = (document.querySelector(".filter-btn[data-filter-source].active") || {}).dataset.filterSource || "all";
+      document.querySelectorAll(".rec-card-full").forEach(function(card) {
+        var matchP = priority === "all" || card.dataset.priority === priority;
+        var matchS = source === "all" || card.dataset.source === source;
+        card.style.display = (matchP && matchS) ? "" : "none";
+      });
+    }
+
+    function renderRecs(recs, timestamp, error) {
+      if (error) {
+        container.innerHTML = '<div class="alert alert-warning">&#9888; Backend unavailable. (' + error + ')</div>';
+        return;
+      }
+      if (!recs || recs.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>&#10003; No recommendations at this time. All city systems are operating normally.</p></div>';
+        return;
+      }
+      var html = "";
+      recs.forEach(function(rec) {
+        var p = (rec.priority || "").toLowerCase();
+        var s = (rec.source || "").toLowerCase();
+        var sourceLabel = s.replace(/_/g, " ").replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+        html += '<div class="rec-card-full priority-' + p + '" data-priority="' + p + '" data-source="' + s + '">';
+        html += '<div class="rec-card-header">';
+        html += '<h3 class="rec-title">' + rec.title + '</h3>';
+        html += '<div class="rec-badges">';
+        html += '<span class="priority-badge priority-' + p + '">' + rec.priority + '</span>';
+        html += '<span class="source-badge">' + sourceLabel + '</span>';
+        html += '</div></div>';
+        html += '<p class="rec-desc">' + rec.description + '</p>';
+        html += '</div>';
+      });
+      container.innerHTML = html;
+      if (timestamp && lastUpdatedEl) {
+        var d = new Date(timestamp);
+        lastUpdatedEl.textContent = "Updated: " + d.toLocaleTimeString();
+        lastUpdatedEl.style.display = "";
+      }
+      applyFilters();
+    }
+
+    fetch("/dashboard/recommendations/data")
+      .then(function(r) { return r.json(); })
+      .then(function(data) { renderRecs(data.recommendations, data.timestamp, data.error); })
+      .catch(function(err) { renderRecs(null, null, err.message); });
+  })();
 </script>
 {% endblock %}

@@ -121,6 +121,9 @@
         if (window._mapRefresh && typeof window._mapRefresh === "function") {
           window._mapRefresh(data);
         }
+        if (window._recStripRefresh && typeof window._recStripRefresh === "function") {
+          window._recStripRefresh(data.recommendations);
+        }
       })
       .catch(function (err) {
         showErrorBanner(err.message);
@@ -235,6 +238,7 @@
     }
 
     if (onAnalytics) {
+      fetchAndUpdateCharts();
       setInterval(fetchAndUpdateCharts, REFRESH_INTERVAL);
     }
 

@@ -3,27 +3,41 @@
     <h3>&#128161; Recommendations</h3>
     <a href="{{ url_for('recommendations.recommendations') }}" class="view-all-link">View all &rarr;</a>
   </div>
-
-  {% if recommendations %}
-    <div class="rec-cards">
-      {% for rec in recommendations[:3] %}
-        <div class="rec-card priority-{{ rec.priority | lower }}">
-          <div class="rec-header">
-            <span class="rec-title">{{ rec.title }}</span>
-            <span class="priority-badge priority-{{ rec.priority | lower }}">{{ rec.priority }}</span>
-          </div>
-          <p class="rec-desc">{{ rec.description }}</p>
-          <span class="rec-source">{{ rec.source | replace('_', ' ') | title }}</span>
-        </div>
-      {% endfor %}
-    </div>
-    {% if recommendations | length > 3 %}
-      <p class="rec-overflow">
-        +{{ recommendations | length - 3 }} more &mdash;
-        <a href="{{ url_for('recommendations.recommendations') }}">see full list</a>
-      </p>
-    {% endif %}
-  {% else %}
-    <p class="no-data">No recommendations at this time.</p>
-  {% endif %}
+  <div id="rec-strip-content">
+    <p class="no-data">Loading&hellip;</p>
+  </div>
 </div>
+
+<script>
+  (function () {
+    var _recStripRefresh = function (recs) {
+      var el = document.getElementById("rec-strip-content");
+      if (!el) return;
+      if (!recs || recs.length === 0) {
+        el.innerHTML = '<p class="no-data">No recommendations at this time.</p>';
+        return;
+      }
+      var shown = recs.slice(0, 3);
+      var html = '<div class="rec-cards">';
+      shown.forEach(function (rec) {
+        var p = (rec.priority || "").toLowerCase();
+        var s = (rec.source || "").toLowerCase();
+        var sourceLabel = s.replace(/_/g, " ").replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+        html += '<div class="rec-card priority-' + p + '">';
+        html += '<div class="rec-header">';
+        html += '<span class="rec-title">' + rec.title + '</span>';
+        html += '<span class="priority-badge priority-' + p + '">' + rec.priority + '</span>';
+        html += '</div>';
+        html += '<p class="rec-desc">' + rec.description + '</p>';
+        html += '<span class="rec-source">' + sourceLabel + '</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+      if (recs.length > 3) {
+        html += '<p class="rec-overflow">+' + (recs.length - 3) + ' more &mdash; <a href="{{ url_for("recommendations.recommendations") }}">see full list</a></p>';
+      }
+      el.innerHTML = html;
+    };
+    window._recStripRefresh = _recStripRefresh;
+  })();
+</script>

@@ -42,15 +42,11 @@ def _build_chart_data(snapshot):
 @analytics_bp.get("")
 @analytics_bp.get("/")
 def analytics():
-    backend_url = current_app.config["BACKEND_API_URL"]
-    radius_km = current_app.config.get("RADIUS_KM", 5)
-    snapshot, error = _fetch_snapshot(backend_url, radius_km)
-    chart_data = _build_chart_data(snapshot)
     return render_template(
         "dashboard/analytics.html",
-        chart_data=chart_data,
-        timestamp=snapshot.get("timestamp"),
-        backend_error=error,
+        chart_data={},
+        timestamp=None,
+        backend_error=None,
     )
 
 
