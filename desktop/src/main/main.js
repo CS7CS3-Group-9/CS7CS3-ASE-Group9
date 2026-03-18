@@ -173,7 +173,7 @@ app.whenReady().then(async () => {
 
   processManager = new ProcessManager(config);
 
-  const cloudReachable = config.cloudUrl && await probeUrl(config.cloudUrl);
+  const cloudReachable = config.cloudUrl && await probeUrl(config.cloudUrl, 10_000);
   const localFrontendUrl = `http://127.0.0.1:${config.frontendPort}`;
 
   win = createWindow();

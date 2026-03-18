@@ -46,7 +46,7 @@ class ProcessManager {
   // Determine Python executable
   // --------------------------------------------------------------------------
   _findPython() {
-    for (const cmd of ['python3', 'python']) {
+    for (const cmd of ['python3', 'python', 'py']) {
       try {
         const out = execSync(`${cmd} --version 2>&1`, { timeout: 3000 }).toString();
         const match = out.match(/Python (\d+)\.(\d+)/);
