@@ -12,7 +12,19 @@
             <span class="rec-title">{{ rec.title }}</span>
             <span class="priority-badge priority-{{ rec.priority | lower }}">{{ rec.priority }}</span>
           </div>
-          <p class="rec-desc">{{ rec.description }}</p>
+          {% if rec.get('description') %}
+            <p class="rec-desc">{{ rec.get('description') }}</p>
+          {% endif %}
+          {% if rec.get('items') %}
+            <ul class="rec-items">
+              {% for item in rec.get('items')[:3] %}
+                <li>{{ item }}</li>
+              {% endfor %}
+              {% if rec.get('items') | length > 3 %}
+                <li class="rec-items-more">+{{ rec.get('items') | length - 3 }} more</li>
+              {% endif %}
+            </ul>
+          {% endif %}
           <span class="rec-source">{{ rec.source | replace('_', ' ') | title }}</span>
         </div>
       {% endfor %}

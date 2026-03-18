@@ -44,7 +44,16 @@
             <span class="source-badge">{{ rec.source | replace('_', ' ') | title }}</span>
           </div>
         </div>
-        <p class="rec-desc">{{ rec.description }}</p>
+        {% if rec.get('description') %}
+          <p class="rec-desc">{{ rec.get('description') }}</p>
+        {% endif %}
+        {% if rec.get('items') %}
+          <ul class="rec-items">
+            {% for item in rec.get('items') %}
+              <li>{{ item }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
       </div>
     {% endfor %}
   </div>
