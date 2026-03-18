@@ -134,6 +134,7 @@
 
   function initCharts(data) {
     initBusHeatMap(data);
+    initBikeHeatMap(data);
     if (typeof Chart === "undefined") return;
 
     var PALETTE = [
@@ -329,6 +330,8 @@
   /* ---- Analytics bus heat map ---- */
   var analyticsMap = null;
   var analyticsLayer = null;
+  var analyticsBikeMap = null;
+  var analyticsBikeLayer = null;
 
   function initBusHeatMap(data) {
     if (typeof L === "undefined") return;
@@ -366,6 +369,53 @@
     });
   }
 
+  /* ---- Analytics bike availability heat map ---- */
+  function initBikeHeatMap(data) {
+    if (typeof L === "undefined") return;
+    var el = document.getElementById("analytics-bike-map");
+    if (!el) return;
+
+    if (!analyticsBikeMap) {
+      analyticsBikeMap = L.map("analytics-bike-map").setView([53.3498, -6.2603], 13);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+      }).addTo(analyticsBikeMap);
+      analyticsBikeLayer = L.layerGroup().addTo(analyticsBikeMap);
+    }
+
+    var points = (data && data.bike_heatmap) ? data.bike_heatmap : [];
+    analyticsBikeLayer.clearLayers();
+    if (!points.length) return;
+
+    points.forEach(function (p) {
+      if (p.lat == null || p.lon == null) return;
+      var availability = Number(p.availability);
+      if (!Number.isFinite(availability)) return;
+      var intensity = Math.max(0, Math.min(1, 1 - availability));
+      var radius = 60 + intensity * 200;
+      var opacity = 0.12 + intensity * 0.45;
+      var color = "#16a34a";
+      if (availability <= 0.2) {
+        color = "#dc2626";
+      } else if (availability <= 0.6) {
+        color = "#f97316";
+      }
+      L.circle([p.lat, p.lon], {
+        radius: radius,
+        color: color,
+        weight: 1,
+        fillColor: color,
+        fillOpacity: opacity,
+      })
+        .bindPopup(
+          "<strong>" + (p.name || "Station") + "</strong><br>" +
+          "Bikes: <b>" + Math.round(p.free_bikes || 0) + "</b> / " + Math.round(p.total || 0)
+        )
+        .addTo(analyticsBikeLayer);
+    });
+  }
+
   /* ---- Analytics filters ---- */
   function wireAnalyticsFilters() {
     var filters = Array.prototype.slice.call(document.querySelectorAll("[data-analytics-filter]"));
@@ -382,6 +432,9 @@
       });
       if (analyticsMap) {
         setTimeout(function () { analyticsMap.invalidateSize(); }, 50);
+      }
+      if (analyticsBikeMap) {
+        setTimeout(function () { analyticsBikeMap.invalidateSize(); }, 50);
       }
     }
 
