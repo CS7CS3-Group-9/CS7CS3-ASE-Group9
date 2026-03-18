@@ -251,6 +251,10 @@ a:hover { text-decoration: underline; }
   border-radius: 2px;
   flex-shrink: 0;
 }
+.heatmap-legend { margin-top: .6rem; pointer-events: auto; }
+.legend-heat-high { background: #dc2626; border-color: #dc2626; }
+.legend-heat-mid { background: #f97316; border-color: #f97316; }
+.legend-heat-low { background: #16a34a; border-color: #16a34a; }
 
 .debug-toggle-label {
   font-size: .8rem;
@@ -334,6 +338,7 @@ a:hover { text-decoration: underline; }
   height: 480px;
   width: 100%;
 }
+
 
 /* ============================================================
    Status Badges
@@ -511,6 +516,13 @@ a:hover { text-decoration: underline; }
 .priority-low    { background: var(--ok-bg);        color: var(--ok); }
 
 .rec-desc { font-size: .83rem; color: var(--text-muted); margin-bottom: .4rem; }
+.rec-items {
+  margin: .35rem 0 .4rem 1.1rem;
+  color: var(--text-muted);
+  font-size: .8rem;
+}
+.rec-items li { margin-bottom: .2rem; }
+.rec-items-more { list-style: none; color: var(--text-muted); font-size: .75rem; margin-left: -1.1rem; }
 .rec-source { font-size: .75rem; color: var(--text-muted); text-transform: capitalize; }
 .rec-overflow { font-size: .8rem; margin-top: .6rem; color: var(--text-muted); }
 
