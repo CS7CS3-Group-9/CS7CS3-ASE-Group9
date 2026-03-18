@@ -54,7 +54,7 @@ class ConnectivityMonitor extends EventEmitter {
 
     try {
       const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
-      reachable = resp.ok;
+      reachable = resp.status === 0 || resp.status < 500;
     } catch (_) {
       reachable = false;
     }

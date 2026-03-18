@@ -158,13 +158,6 @@ async function probeUrl(url, timeoutMs = 5000) {
 }
 
 // --------------------------------------------------------------------------
-// Send an IPC message after the next page load completes
-// --------------------------------------------------------------------------
-function sendAfterLoad(webContents, channel, payload) {
-  webContents.once('did-finish-load', () => webContents.send(channel, payload));
-}
-
-// --------------------------------------------------------------------------
 // App lifecycle
 // --------------------------------------------------------------------------
 app.whenReady().then(async () => {
@@ -193,26 +186,14 @@ app.whenReady().then(async () => {
     log.info('Cloud reachable — loading cloud frontend');
     win.loadURL(config.cloudUrl);
 
-    let localReady = false;
-
+    // Start local backend in background for cache warming only.
     processManager.startBackend()
       .then(() => {
         runBackgroundSync();
         syncTimer = setInterval(runBackgroundSync, config.backgroundSyncIntervalMs);
-        return processManager.startFrontend();
+        log.info('Local backend ready — cache warming active');
       })
-      .then(() => {
-        localReady = true;
-        log.info('Local processes ready — offline fallback available');
-        // If we already went offline while waiting, switch now
-        if (connectivityMonitor && !connectivityMonitor.isOnline && win) {
-          win.loadURL(localFrontendUrl);
-          sendAfterLoad(win.webContents, 'connectivity:change', {
-            online: false, cachedAt: Date.now(),
-          });
-        }
-      })
-      .catch(err => log.warn('Background local processes unavailable:', err.message));
+      .catch(err => log.warn('Local backend unavailable (cache warming disabled):', err.message));
 
     connectivityMonitor = new ConnectivityMonitor(
       `${config.cloudUrl}/health`,
@@ -221,20 +202,13 @@ app.whenReady().then(async () => {
     connectivityMonitor.on('offline', ({ cachedAt }) => {
       log.warn('Cloud unreachable — entering offline mode');
       if (trayManager) trayManager.setStatus('offline');
-      if (localReady && win) {
-        win.loadURL(localFrontendUrl);
-        sendAfterLoad(win.webContents, 'connectivity:change', { online: false, cachedAt });
-      } else {
-        if (win) win.webContents.send('connectivity:change', { online: false, cachedAt });
-      }
+      // Stay on the cloud page — the overlay intercepts API calls and serves from cache.
+      if (win) win.webContents.send('connectivity:change', { online: false, cachedAt });
     });
     connectivityMonitor.on('online', () => {
-      log.info('Cloud reachable again — switching back to cloud frontend');
+      log.info('Cloud reachable again — returning to online mode');
       if (trayManager) trayManager.setStatus('online');
-      if (win) {
-        win.loadURL(config.cloudUrl);
-        sendAfterLoad(win.webContents, 'connectivity:change', { online: true });
-      }
+      if (win) win.webContents.send('connectivity:change', { online: true });
       runBackgroundSync();
     });
 
