@@ -12,6 +12,7 @@ GET /routing/calculate
   arr_time     : ISO datetime string e.g. "2026-02-19T15:00" (optional, transit only)
 """
 import re
+import requests
 from datetime import datetime, timezone
 from itertools import permutations
 from concurrent.futures import ThreadPoolExecutor
@@ -319,6 +320,31 @@ def _optimize_stop_order(all_coords, g_mode, locked):
 # Nominatim geocoding fallback (OpenStreetMap — no API key required)
 # ---------------------------------------------------------------------------
 
+_NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+
+
+def _geocode_nominatim(address: str):
+    """
+    Geocode a free-text address using Nominatim (OpenStreetMap).
+    No API key required — works fully offline within the Dublin box.
+    Returns (lat, lon, display_name) like RoutesAdapter.geocode().
+    """
+    needs_city = not any(kw in address.lower() for kw in ("dublin", "ireland"))
+    query = address + ", Dublin, Ireland" if needs_city else address
+    resp = requests.get(
+        _NOMINATIM_URL,
+        params={"q": query, "format": "json", "limit": 1},
+        headers={"User-Agent": "DublinCityMobilityApp/1.0"},
+        timeout=8,
+    )
+    resp.raise_for_status()
+    results = resp.json()
+    if not results:
+        raise RuntimeError(f"Nominatim: no results for '{address}'")
+    r = results[0]
+    return float(r["lat"]), float(r["lon"]), r.get("display_name", address)
+
+
 # ---------------------------------------------------------------------------
 # Local Dublin network fallback
 # ---------------------------------------------------------------------------
@@ -412,13 +438,16 @@ def calculate():
 
     g_mode = _GOOGLE_MODE.get(effective_mode, "DRIVE")
 
-    # Geocode every stop using Google
+    # Geocode every stop — Google first, Nominatim (OSM) fallback
     geocoded = []
     for raw in stops_raw:
         try:
             lat, lon, display = _adapter.geocode(raw)
         except Exception:
-            return jsonify({"error": f'Could not find location: "{raw}"'}), 400
+            try:
+                lat, lon, display = _geocode_nominatim(raw)
+            except Exception:
+                return jsonify({"error": f'Could not find location: "{raw}"'}), 400
         geocoded.append({"name": display, "lat": lat, "lon": lon, "input": raw})
 
     all_coords = [(g["lat"], g["lon"]) for g in geocoded]
