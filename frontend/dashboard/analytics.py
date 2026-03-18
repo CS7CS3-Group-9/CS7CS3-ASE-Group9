@@ -79,6 +79,35 @@ def _build_chart_data(snapshot):
     wait_best_chart = {"labels": best_labels, "values": best_values}
     wait_worst_chart = {"labels": worst_labels, "values": worst_values}
 
+    exposure_by_stop = buses.get("wait_exposure_by_stop") or {}
+    exposure_metric = buses.get("wait_exposure_metric") or {}
+    stop_waits = buses.get("stop_avg_wait_min") or {}
+    stops = buses.get("stops") or []
+    stop_names = {s.get("stop_id"): s.get("name") for s in stops}
+    stop_coords = {s.get("stop_id"): (s.get("lat"), s.get("longitude") or s.get("lon")) for s in stops}
+    exposure_points = []
+    for stop_id, exposure in exposure_by_stop.items():
+        wait_min = stop_waits.get(stop_id)
+        coords = stop_coords.get(stop_id) or (None, None)
+        if wait_min is None or coords[0] is None or coords[1] is None:
+            continue
+        exposure_points.append(
+            {
+                "stop_id": stop_id,
+                "name": stop_names.get(stop_id, stop_id),
+                "lat": round(coords[0], 6),
+                "lon": round(coords[1], 6),
+                "avg_wait_min": round(wait_min, 2),
+                "exposure": round(exposure, 2),
+            }
+        )
+    exposure_points.sort(key=lambda p: p["exposure"], reverse=True)
+    exposure_points = exposure_points[:20]
+    bus_wait_exposure_points = {
+        "points": exposure_points,
+        "metric": exposure_metric,
+    }
+
     # Importance distribution (all stops)
     scores = list((buses.get("stop_importance_scores") or {}).values())
     if scores:
@@ -126,6 +155,7 @@ def _build_chart_data(snapshot):
         "bus_wait_chart": wait_chart,
         "bus_wait_best_chart": wait_best_chart,
         "bus_wait_worst_chart": wait_worst_chart,
+        "bus_wait_exposure_points": bus_wait_exposure_points,
         "bus_importance_hist_chart": importance_hist_chart,
         "bus_heatmap": heat_points,
     }

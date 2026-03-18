@@ -32,6 +32,10 @@ class BusMetrics:
     wait_time_counts: Dict[str, int] = field(default_factory=dict)  # good/ok/poor counts
     wait_time_best: List[Dict[str, Any]] = field(default_factory=list)  # derived analytics (lowest waits)
     wait_time_worst: List[Dict[str, Any]] = field(default_factory=list)  # derived analytics (highest waits)
+    wait_exposure_top: List[Dict[str, Any]] = field(default_factory=list)  # derived analytics (highest exposure)
+    wait_exposure_stats: Dict[str, Any] = field(default_factory=dict)  # derived analytics (summary stats)
+    wait_exposure_metric: Dict[str, Any] = field(default_factory=dict)  # derived analytics (metric metadata)
+    wait_exposure_by_stop: Dict[str, float] = field(default_factory=dict)  # stop_id -> exposure value
     top_importance_stops: List[Dict[str, Any]] = field(default_factory=list)  # derived analytics
     total_stops: int = 0
     total_routes: int = 0
