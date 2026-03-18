@@ -1239,3 +1239,238 @@ a:hover { text-decoration: underline; }
 
   #routing-map { height: 360px; }
 }
+
+/* ============================================================
+   Fleet Efficiency — top tab switcher
+   ============================================================ */
+.routing-top-tabs {
+  display: flex;
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+.routing-top-tab {
+  padding: .5rem 1.2rem;
+  border: 2px solid var(--border, #e2e8f0);
+  border-radius: var(--radius, 8px);
+  background: #fff;
+  font-weight: 600;
+  font-size: .9rem;
+  cursor: pointer;
+  color: var(--text-muted, #64748b);
+  transition: background .15s, color .15s, border-color .15s;
+}
+.routing-top-tab.active {
+  background: var(--primary, #3b82f6);
+  border-color: var(--primary, #3b82f6);
+  color: #fff;
+}
+
+/* ============================================================
+   Fleet stop rows
+   ============================================================ */
+.fleet-stop-row {
+  display: flex;
+  gap: .4rem;
+  margin-bottom: .4rem;
+  align-items: center;
+}
+.fleet-stop-row .form-input { flex: 1; }
+.fleet-stop-remove {
+  flex-shrink: 0;
+  width: 1.8rem;
+  height: 1.8rem;
+  border: none;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #dc2626;
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.fleet-stop-remove:hover { background: #fca5a5; }
+
+/* ============================================================
+   Fleet score badge
+   ============================================================ */
+.fleet-score-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: .8rem;
+}
+.fleet-score-badge {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #fff;
+  background: #94a3b8;
+  flex-shrink: 0;
+}
+.fleet-score-badge.score-high { background: #16a34a; }
+.fleet-score-badge.score-mid  { background: #d97706; }
+.fleet-score-badge.score-low  { background: #dc2626; }
+.fleet-score-label {
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  font-size: .9rem;
+}
+
+/* ============================================================
+   Fleet meta / suggestions / vehicle cards
+   ============================================================ */
+.fleet-meta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: .85rem;
+  color: var(--text-muted, #64748b);
+  margin-bottom: .8rem;
+}
+.fleet-meta span::before { content: "• "; }
+
+.fleet-suggestions {
+  background: #f8fafc;
+  border-radius: var(--radius, 8px);
+  padding: .7rem .9rem;
+  margin-bottom: .8rem;
+  font-size: .85rem;
+}
+.fleet-suggestions strong { display: block; margin-bottom: .35rem; }
+.fleet-suggestions ul { margin: 0; padding-left: 1.2rem; }
+.fleet-suggestions li { margin-bottom: .25rem; }
+
+.fleet-vehicle-card {
+  border-left: 4px solid #94a3b8;
+  background: #f8fafc;
+  border-radius: 0 var(--radius, 8px) var(--radius, 8px) 0;
+  padding: .6rem .9rem;
+  margin-bottom: .5rem;
+}
+.fleet-vehicle-title {
+  font-weight: 700;
+  font-size: .9rem;
+  margin-bottom: .2rem;
+}
+.fleet-vehicle-stats {
+  font-size: .8rem;
+  color: var(--text-muted, #64748b);
+  margin-bottom: .3rem;
+}
+.fleet-vehicle-stops {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: .82rem;
+}
+.fleet-vehicle-stops li { margin-bottom: .1rem; }
+
+/* Fleet pin-drop rows */
+.fleet-pin-row { background: #f0f4ff; border-radius: var(--radius, 8px); padding: .25rem .4rem; }
+.fleet-pin-label { flex: 1; font-size: .83rem; color: #4338ca; font-weight: 500; }
+
+/* ============================================================
+   Fleet — sub-tabs
+   ============================================================ */
+.fleet-sub-tabs {
+  display: flex;
+  gap: .4rem;
+  margin-bottom: .8rem;
+}
+.fleet-sub-tab {
+  flex: 1;
+  padding: .45rem .6rem;
+  border: 2px solid var(--border, #e2e8f0);
+  border-radius: var(--radius, 8px);
+  background: #fff;
+  font-weight: 600;
+  font-size: .82rem;
+  cursor: pointer;
+  color: var(--text-muted, #64748b);
+  transition: background .15s, color .15s, border-color .15s;
+}
+.fleet-sub-tab.active {
+  background: var(--primary, #3b82f6);
+  border-color: var(--primary, #3b82f6);
+  color: #fff;
+}
+
+/* ============================================================
+   Fleet — config row (vehicles + mode side by side)
+   ============================================================ */
+.fleet-config-row {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: .8rem;
+  flex-wrap: wrap;
+}
+.fleet-config-row .form-group { margin: 0; }
+
+/* ============================================================
+   Fleet — depot start/end rows
+   ============================================================ */
+.fleet-depot-section { margin-bottom: .8rem; }
+.fleet-depot-row {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: .35rem;
+}
+.fleet-depot-label {
+  flex-shrink: 0;
+  width: 7.5rem;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+}
+.fleet-depot-row .form-input { flex: 1; }
+.fleet-pin-depot-btn {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius, 8px);
+  background: #fff;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+.fleet-pin-depot-btn.pinning { background: #eff6ff; border-color: var(--primary,#3b82f6); }
+.fleet-depot-hint { font-size: .8rem; color: var(--primary,#3b82f6); margin: .2rem 0 0; }
+
+/* ============================================================
+   Fleet — vehicle cards (build/analyse input)
+   ============================================================ */
+.fleet-vc {
+  border-left: 4px solid #94a3b8;
+  border-radius: 0 var(--radius,8px) var(--radius,8px) 0;
+  background: #f8fafc;
+  padding: .6rem .75rem;
+  margin-bottom: .6rem;
+}
+.fleet-vc-header {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: .4rem;
+  flex-wrap: wrap;
+}
+.fleet-vc-title { font-weight: 700; font-size: .88rem; flex: 1; }
+.fleet-vc-pin-btn {
+  padding: .18rem .5rem;
+  border: 1px solid var(--border,#e2e8f0);
+  border-radius: var(--radius,8px);
+  background: #fff;
+  font-size: .78rem;
+  cursor: pointer;
+}
+.fleet-vc-pin-btn.pinning {
+  background: #eff6ff;
+  border-color: var(--primary,#3b82f6);
+  color: var(--primary,#3b82f6);
+  font-weight: 600;
+}
