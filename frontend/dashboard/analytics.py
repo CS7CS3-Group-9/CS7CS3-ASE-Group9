@@ -1,6 +1,6 @@
 import requests
 from flask import Blueprint, render_template, jsonify, current_app
-from .overview import _fetch_snapshot
+from .overview import _fetch_snapshot, _fetch_bike_stations
 
 analytics_bp = Blueprint("analytics", __name__, url_prefix="/dashboard/analytics")
 
@@ -131,13 +131,45 @@ def _build_chart_data(snapshot):
     }
 
 
+def _build_bike_heatmap_points(stations, limit=400):
+    points = []
+    for s in stations or []:
+        lat = s.get("lat")
+        lon = s.get("lon")
+        if lat is None or lon is None:
+            continue
+        total = s.get("total") or s.get("capacity")
+        try:
+            total = float(total)
+            free = float(s.get("free_bikes", 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        if total <= 0:
+            continue
+        availability = free / total if total else 0.0
+        points.append(
+            {
+                "name": s.get("name") or s.get("station_id"),
+                "lat": lat,
+                "lon": lon,
+                "free_bikes": free,
+                "total": total,
+                "availability": availability,
+            }
+        )
+    points.sort(key=lambda x: x["availability"])
+    return points[:limit]
+
+
 @analytics_bp.get("")
 @analytics_bp.get("/")
 def analytics():
     backend_url = current_app.config["BACKEND_API_URL"]
     radius_km = current_app.config.get("RADIUS_KM", 5)
     snapshot, error = _fetch_snapshot(backend_url, radius_km)
+    stations = _fetch_bike_stations(backend_url, radius_km)
     chart_data = _build_chart_data(snapshot)
+    chart_data["bike_heatmap"] = _build_bike_heatmap_points(stations)
     return render_template(
         "dashboard/analytics.html",
         chart_data=chart_data,
@@ -151,7 +183,9 @@ def analytics_data():
     backend_url = current_app.config["BACKEND_API_URL"]
     radius_km = current_app.config.get("RADIUS_KM", 5)
     snapshot, error = _fetch_snapshot(backend_url, radius_km)
+    stations = _fetch_bike_stations(backend_url, radius_km)
     chart_data = _build_chart_data(snapshot)
+    chart_data["bike_heatmap"] = _build_bike_heatmap_points(stations)
     chart_data["timestamp"] = snapshot.get("timestamp")
     chart_data["error"] = error
     return jsonify(chart_data)
