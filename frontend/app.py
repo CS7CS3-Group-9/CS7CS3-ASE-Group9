@@ -25,6 +25,12 @@ def create_app(config_class=Config):
     def index():
         return redirect(url_for("overview.dashboard"))
 
+    @app.after_request
+    def add_cache_headers(response):
+        if response.content_type.startswith("text/html"):
+            response.headers["Cache-Control"] = "private, max-age=30"
+        return response
+
     return app
 
 

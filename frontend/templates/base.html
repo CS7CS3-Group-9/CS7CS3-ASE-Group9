@@ -12,6 +12,12 @@
 
   <!-- App CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+
+  <!-- Prefetch other tabs so switching feels instant -->
+  <link rel="prefetch" href="{{ url_for('overview.dashboard') }}">
+  <link rel="prefetch" href="{{ url_for('analytics.analytics') }}">
+  <link rel="prefetch" href="{{ url_for('recommendations.recommendations') }}">
+  <link rel="prefetch" href="{{ url_for('routing.routing') }}">
 </head>
 <body>
 
