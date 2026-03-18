@@ -100,6 +100,9 @@
       .then(function(r) { return r.json(); })
       .then(function(data) { renderRecs(data.recommendations, data.timestamp, data.error); })
       .catch(function(err) { renderRecs(null, null, err.message); });
+
+    // Expose for Electron overlay cache-seed
+    window._recPageRender = renderRecs;
   })();
 </script>
 {% endblock %}

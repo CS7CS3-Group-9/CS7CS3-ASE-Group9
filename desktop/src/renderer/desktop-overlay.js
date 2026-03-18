@@ -231,6 +231,63 @@
   }
 
   // --------------------------------------------------------------------------
+  // Cache seed — populate the current page with cached data immediately,
+  // so the user sees something useful before the real fetch completes.
+  // --------------------------------------------------------------------------
+  async function _initCacheSeed() {
+    var onDashboard      = document.getElementById('kpi-bikes') !== null;
+    var onAnalytics      = document.getElementById('airQualityChart') !== null;
+    var onRecommendations = document.getElementById('rec-cards-container') !== null && !onDashboard;
+
+    if (onDashboard) {
+      var data = await _buildDashboardData();
+      if (!data.bikes && !data.traffic && !data.airquality) return; // cache empty
+
+      var setKpi = function (id, value) {
+        var el = document.getElementById(id);
+        if (el && value != null) el.textContent = value;
+      };
+      if (data.bikes) {
+        setKpi('kpi-bikes', data.bikes.available_bikes);
+      }
+      if (data.traffic) {
+        var cong = data.traffic.congestion_level || '';
+        setKpi('kpi-traffic', cong.charAt(0).toUpperCase() + cong.slice(1));
+        setKpi('kpi-incidents', data.traffic.total_incidents);
+      }
+      if (data.airquality) {
+        var aqi = data.airquality.aqi_value;
+        setKpi('kpi-aqi', aqi != null ? Math.round(aqi * 10) / 10 : '\u2014');
+      }
+      if (data.tours) {
+        setKpi('kpi-tours', data.tours.total_attractions);
+      }
+      if (data.timestamp) {
+        var tsEl = document.getElementById('last-updated');
+        if (tsEl) tsEl.textContent = 'Updated: ' + new Date(data.timestamp).toLocaleTimeString();
+      }
+      if (window._mapRefresh) window._mapRefresh(data);
+      if (window._recStripRefresh) window._recStripRefresh(data.recommendations);
+    }
+
+    if (onAnalytics && window.initCharts) {
+      var analyticsData = await _buildAnalyticsData();
+      if (analyticsData && analyticsData.air_quality_chart) {
+        window.initCharts(analyticsData);
+      }
+    }
+
+    if (onRecommendations) {
+      var dashData = await _buildDashboardData();
+      if (dashData.bikes || dashData.traffic || dashData.airquality) {
+        if (window._recPageRender) {
+          window._recPageRender(dashData.recommendations, dashData.timestamp, null);
+        }
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
   // Fetch interceptor
   // --------------------------------------------------------------------------
   window.fetch = async function (url, options) {
@@ -326,6 +383,9 @@
   if (window.electronAPI) {
     _unsubscribe = window.electronAPI.onConnectivityChange(_onConnectivityChange);
     _initTileCaching();
+    // Seed the page immediately with cached data so the user sees something
+    // before the real network fetch completes (~10s).
+    _initCacheSeed().catch(function () {});
   }
 
   // Clean up listeners if the page unloads (e.g. navigation within SPA)
