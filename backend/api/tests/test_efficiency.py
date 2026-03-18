@@ -199,10 +199,12 @@ class TestScore:
         assert distances[0] > 0
 
     def test_empty_vehicle_penalises_score(self):
-        coords = [(53.33, -6.26), (53.34, -6.27)]
+        # 4 stops, 2 vehicles: fully utilised (2 stops each) vs one empty vehicle
+        coords = [(53.33, -6.26), (53.34, -6.27), (53.35, -6.28), (53.36, -6.29)]
         d = _dist_matrix(coords)
-        score_with_empty, _ = _score([[0, 1], []], d)
-        score_balanced, _   = _score([[0], [1]], d)
+        score_with_empty, _ = _score([[0, 1, 2, 3], []], d)
+        score_balanced, _   = _score([[0, 1], [2, 3]], d)
+        # balanced utilisation (20 pts) beats half-utilised (10 pts)
         assert score_with_empty < score_balanced
 
     def test_single_vehicle_single_stop(self):
