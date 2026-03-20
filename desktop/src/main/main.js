@@ -135,6 +135,17 @@ function createWindow() {
 
   win.webContents.on('did-finish-load', () => {
     injectOverlay(win.webContents);
+    // If we're currently offline, tell the freshly-loaded page immediately.
+    // Without this, a page navigated to while offline starts with _offline=false
+    // and its fetch calls hit the real network instead of the cache.
+    if (connectivityMonitor && !connectivityMonitor.isOnline) {
+      setTimeout(() => {
+        if (win) win.webContents.send('connectivity:change', {
+          online: false,
+          cachedAt: connectivityMonitor._cachedAt,
+        });
+      }, 300);
+    }
   });
 
   win.on('closed', () => { win = null; });
