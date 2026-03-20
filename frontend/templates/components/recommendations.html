@@ -3,9 +3,47 @@
     <h3>&#128161; Recommendations</h3>
     <a href="{{ url_for('recommendations.recommendations') }}" class="view-all-link">View all &rarr;</a>
   </div>
+<<<<<<< HEAD
   <div id="rec-strip-content">
     <p class="no-data">Loading&hellip;</p>
   </div>
+=======
+
+  {% if recommendations %}
+    <div class="rec-cards">
+      {% for rec in recommendations[:3] %}
+        <div class="rec-card priority-{{ rec.priority | lower }}">
+          <div class="rec-header">
+            <span class="rec-title">{{ rec.title }}</span>
+            <span class="priority-badge priority-{{ rec.priority | lower }}">{{ rec.priority }}</span>
+          </div>
+          {% if rec.get('description') %}
+            <p class="rec-desc">{{ rec.get('description') }}</p>
+          {% endif %}
+          {% if rec.get('items') %}
+            <ul class="rec-items">
+              {% for item in rec.get('items')[:3] %}
+                <li>{{ item }}</li>
+              {% endfor %}
+              {% if rec.get('items') | length > 3 %}
+                <li class="rec-items-more">+{{ rec.get('items') | length - 3 }} more</li>
+              {% endif %}
+            </ul>
+          {% endif %}
+          <span class="rec-source">{{ rec.source | replace('_', ' ') | title }}</span>
+        </div>
+      {% endfor %}
+    </div>
+    {% if recommendations | length > 3 %}
+      <p class="rec-overflow">
+        +{{ recommendations | length - 3 }} more &mdash;
+        <a href="{{ url_for('recommendations.recommendations') }}">see full list</a>
+      </p>
+    {% endif %}
+  {% else %}
+    <p class="no-data">No recommendations at this time.</p>
+  {% endif %}
+>>>>>>> ea64ea4b9269550cb7dfbe7f39e310426d094566
 </div>
 
 <script>

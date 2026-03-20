@@ -14,6 +14,7 @@ from backend.api.endpoints.airquality import airquality_bp
 from backend.api.endpoints.tours import tours_bp
 from backend.api.endpoints.health import health_bp
 from backend.api.endpoints.routing import routing_api_bp
+from backend.api.endpoints.efficiency import efficiency_bp
 from backend.api.endpoints.buses import buses_bp
 from backend.api.endpoints.desktop import desktop_bp
 from backend.ml.weather_features import refresh_weather_if_needed
@@ -65,6 +66,7 @@ def create_app() -> Flask:
     app.register_blueprint(snapshot_bp)
     app.register_blueprint(health_bp)
     app.register_blueprint(routing_api_bp)
+    app.register_blueprint(efficiency_bp)
     app.register_blueprint(buses_bp)
     app.register_blueprint(desktop_bp)
 

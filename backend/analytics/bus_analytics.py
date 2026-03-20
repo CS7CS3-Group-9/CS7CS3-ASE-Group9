@@ -24,6 +24,167 @@ def get_stop_frequencies(metrics: BusMetrics) -> Dict[str, int]:
     return metrics.stop_frequencies
 
 
+def get_top_served_stops(metrics: BusMetrics, top_n: int = 10) -> List[Dict[str, Any]]:
+    """
+    Return top N stops by stop_times frequency (proxy for buses serving stop).
+    """
+    if not metrics.stops:
+        return []
+    stop_names = {s.stop_id: s.name for s in metrics.stops}
+    counts = metrics.stop_frequencies or {}
+    ranked = sorted(counts.items(), key=lambda x: x[1], reverse=True)
+    top = ranked[: max(0, top_n)]
+    return [{"stop_id": stop_id, "name": stop_names.get(stop_id, stop_id), "buses": count} for stop_id, count in top]
+
+
+def _wait_category(avg_wait_min: float) -> str:
+    if avg_wait_min < 8:
+        return "good"
+    if avg_wait_min <= 23:
+        return "ok"
+    return "poor"
+
+
+def get_wait_time_summary(metrics: BusMetrics, top_n: int = 10) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
+    """
+    Return top N worst stops by average wait time and counts by category.
+    """
+    if not metrics.stop_avg_wait_min:
+        return [], {"good": 0, "ok": 0, "poor": 0}
+
+    stop_names = {s.stop_id: s.name for s in metrics.stops}
+    ranked = sorted(metrics.stop_avg_wait_min.items(), key=lambda x: x[1], reverse=True)
+    top = ranked[: max(0, top_n)]
+    summary = []
+    counts = {"good": 0, "ok": 0, "poor": 0}
+    for stop_id, avg_min in metrics.stop_avg_wait_min.items():
+        counts[_wait_category(avg_min)] += 1
+    for stop_id, avg_min in top:
+        summary.append(
+            {
+                "stop_id": stop_id,
+                "name": stop_names.get(stop_id, stop_id),
+                "avg_wait_min": avg_min,
+                "category": _wait_category(avg_min),
+            }
+        )
+    return summary, counts
+
+
+def get_wait_time_extremes(metrics: BusMetrics, n: int = 5) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """
+    Return (best, worst) lists by average wait time.
+    Best = lowest waits, Worst = highest waits.
+    """
+    if not metrics.stop_avg_wait_min:
+        return [], []
+
+    stop_names = {s.stop_id: s.name for s in metrics.stops}
+    ranked = sorted(metrics.stop_avg_wait_min.items(), key=lambda x: x[1])
+    best_raw = ranked[: max(0, n)]
+    worst_raw = list(reversed(ranked))[: max(0, n)]
+
+    def _pack(items):
+        return [
+            {
+                "stop_id": stop_id,
+                "name": stop_names.get(stop_id, stop_id),
+                "avg_wait_min": avg_min,
+                "category": _wait_category(avg_min),
+            }
+            for stop_id, avg_min in items
+        ]
+
+    return _pack(best_raw), _pack(worst_raw)
+
+
+def get_importance_scores(
+    metrics: BusMetrics, weight_wait: float = 0.6, weight_trips: float = 0.4
+) -> Tuple[Dict[str, float], List[Dict[str, Any]]]:
+    """
+    Compute importance score per stop using:
+      score = weight_wait * (1 - normalized_wait) + weight_trips * normalized_trips
+    Lower wait = better, higher trips = better.
+    """
+    waits = metrics.stop_avg_wait_min or {}
+    trips = metrics.stop_frequencies or {}
+    if not waits or not trips:
+        return {}, []
+
+    # Normalize waits and trips to [0,1]
+    wait_vals = list(waits.values())
+    trip_vals = list(trips.values())
+    min_wait, max_wait = min(wait_vals), max(wait_vals)
+    min_trip, max_trip = min(trip_vals), max(trip_vals)
+
+    def _norm(v, vmin, vmax):
+        if vmax <= vmin:
+            return 0.0
+        return (v - vmin) / (vmax - vmin)
+
+    scores: Dict[str, float] = {}
+    stop_names = {s.stop_id: s.name for s in metrics.stops}
+    for stop_id, trip_count in trips.items():
+        if stop_id not in waits:
+            continue
+        wait = waits[stop_id]
+        n_wait = _norm(wait, min_wait, max_wait)
+        n_trip = _norm(trip_count, min_trip, max_trip)
+        score = weight_wait * (1.0 - n_wait) + weight_trips * n_trip
+        scores[stop_id] = round(score, 3)
+
+    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:10]
+    top = [
+        {
+            "stop_id": stop_id,
+            "name": stop_names.get(stop_id, stop_id),
+            "score": score,
+            "avg_wait_min": waits.get(stop_id),
+            "trip_count": trips.get(stop_id),
+        }
+        for stop_id, score in ranked
+    ]
+    return scores, top
+
+
+def compute_average_waits_from_stop_times(stop_times_file, dublin_stop_ids, parse_time_fn) -> Dict[str, float]:
+    """
+    Compute average wait time between buses for each stop (in minutes),
+    based on arrival_time/departure_time in stop_times.txt.
+    """
+    if not stop_times_file.exists():
+        return {}
+
+    times_by_stop: Dict[str, list[int]] = {}
+    line_count = 0
+    with open(stop_times_file, "r", encoding="utf-8") as f:
+        import csv
+
+        reader = csv.DictReader(f)
+        for row in reader:
+            line_count += 1
+            stop_id = row.get("stop_id")
+            if stop_id not in dublin_stop_ids:
+                continue
+            time_raw = row.get("arrival_time") or row.get("departure_time")
+            t = parse_time_fn(time_raw)
+            if t is None:
+                continue
+            times_by_stop.setdefault(stop_id, []).append(t)
+
+    avg_waits: Dict[str, float] = {}
+    for stop_id, times in times_by_stop.items():
+        if len(times) < 2:
+            continue
+        times.sort()
+        deltas = [b - a for a, b in zip(times, times[1:]) if b > a]
+        if not deltas:
+            continue
+        avg_waits[stop_id] = round(sum(deltas) / len(deltas) / 60.0, 1)
+
+    return avg_waits
+
+
 def detect_low_frequency_stops(metrics: BusMetrics, threshold: int = 10) -> List[Dict[str, Any]]:
     """Detect stops with frequency below the threshold."""
     low_freq = []

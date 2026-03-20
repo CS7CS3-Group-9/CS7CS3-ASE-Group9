@@ -48,6 +48,10 @@ def test_fetch_dublin_stops_only():
 
     assert hasattr(metrics, "stop_frequencies")
     assert isinstance(metrics.stop_frequencies, dict)
+    assert hasattr(metrics, "stop_arrivals_next_hour")
+    assert isinstance(metrics.stop_arrivals_next_hour, dict)
+    assert hasattr(metrics, "stop_avg_wait_min")
+    assert isinstance(metrics.stop_avg_wait_min, dict)
     # At least one stop should have a frequency > 0 (assuming stop_times exists)
     if metrics.stops:
         any_freq = any(metrics.stop_frequencies.get(stop.stop_id, 0) > 0 for stop in metrics.stops)

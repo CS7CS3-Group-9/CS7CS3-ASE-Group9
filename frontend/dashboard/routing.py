@@ -65,6 +65,23 @@ def network_nodes():
         return jsonify({"error": str(e)}), 502
 
 
+@routing_bp.post("/efficiency")
+def efficiency():
+    """Proxy fleet efficiency requests to the backend."""
+    backend_url = current_app.config["BACKEND_API_URL"]
+    try:
+        resp = requests.post(
+            f"{backend_url}/routing/efficiency",
+            json=request.get_json(force=True),
+            timeout=60,
+        )
+        return jsonify(resp.json()), resp.status_code
+    except requests.exceptions.Timeout:
+        return jsonify({"error": "Efficiency service timed out."}), 504
+    except Exception as e:
+        return jsonify({"error": f"Efficiency service unavailable: {e}"}), 502
+
+
 @routing_bp.get("/network-edges")
 def network_edges():
     """Proxy network edge shapes for coordinate alignment debugging."""

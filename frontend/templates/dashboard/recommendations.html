@@ -25,9 +25,43 @@
 </div>
 
 <!-- Recommendation Cards -->
+<<<<<<< HEAD
 <div id="rec-cards-container" class="rec-cards-full">
   <p class="no-data" id="rec-loading">Loading recommendations&hellip;</p>
 </div>
+=======
+{% if recommendations %}
+  <div class="rec-cards-full" id="rec-cards-container">
+    {% for rec in recommendations %}
+      <div class="rec-card-full priority-{{ rec.priority | lower }}"
+           data-priority="{{ rec.priority | lower }}"
+           data-source="{{ rec.source | lower }}">
+        <div class="rec-card-header">
+          <h3 class="rec-title">{{ rec.title }}</h3>
+          <div class="rec-badges">
+            <span class="priority-badge priority-{{ rec.priority | lower }}">{{ rec.priority }}</span>
+            <span class="source-badge">{{ rec.source | replace('_', ' ') | title }}</span>
+          </div>
+        </div>
+        {% if rec.get('description') %}
+          <p class="rec-desc">{{ rec.get('description') }}</p>
+        {% endif %}
+        {% if rec.get('items') %}
+          <ul class="rec-items">
+            {% for item in rec.get('items') %}
+              <li>{{ item }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <p>&#10003; No recommendations at this time. All city systems are operating normally.</p>
+  </div>
+{% endif %}
+>>>>>>> ea64ea4b9269550cb7dfbe7f39e310426d094566
 
 {% endblock %}
 
