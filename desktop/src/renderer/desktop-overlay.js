@@ -46,7 +46,7 @@
     _banner.id = 'electron-offline-banner';
     Object.assign(_banner.style, {
       position:        'fixed',
-      top:             '0',
+      bottom:          '0',
       left:            '0',
       right:           '0',
       zIndex:          '99999',
@@ -59,7 +59,7 @@
       alignItems:      'center',
       justifyContent:  'space-between',
       gap:             '12px',
-      boxShadow:       '0 2px 4px rgba(0,0,0,0.3)',
+      boxShadow:       '0 -2px 4px rgba(0,0,0,0.3)',
     });
 
     var msgSpan = document.createElement('span');
