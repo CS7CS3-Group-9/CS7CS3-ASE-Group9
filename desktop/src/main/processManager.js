@@ -43,6 +43,31 @@ class ProcessManager {
   }
 
   // --------------------------------------------------------------------------
+  // Load variables from project-root .env file (best-effort, no package needed)
+  // --------------------------------------------------------------------------
+  _loadDotenv() {
+    const envPath = path.join(this._projectRoot, '.env');
+    if (!fs.existsSync(envPath)) return {};
+    const result = {};
+    for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx < 0) continue;
+      const key = trimmed.slice(0, eqIdx).trim();
+      let val = trimmed.slice(eqIdx + 1).trim();
+      // Strip surrounding quotes (single or double)
+      if (val.length >= 2 &&
+          ((val[0] === '"' && val[val.length - 1] === '"') ||
+           (val[0] === "'" && val[val.length - 1] === "'"))) {
+        val = val.slice(1, -1);
+      }
+      result[key] = val;
+    }
+    return result;
+  }
+
+  // --------------------------------------------------------------------------
   // Determine Python executable
   // --------------------------------------------------------------------------
   _findPython() {
@@ -154,8 +179,10 @@ class ProcessManager {
   async startBackend() {
     this.config.backendPort = await this._findFreePort(this.config.backendPort);
     const { cmd, args, cwd } = this._resolveBackendCommand();
+    const dotenvVars = this._loadDotenv();
     const env = {
-      ...process.env,
+      ...dotenvVars,          // .env file provides defaults
+      ...process.env,         // system env takes priority
       ENABLE_FIRESTORE: 'false',
       PORT: String(this.config.backendPort),
       FLASK_APP: 'backend.app:create_app',
