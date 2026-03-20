@@ -38,7 +38,7 @@ const leafletOfflinePath = path.join(
 async function runBackgroundSync() {
   if (!connectivityMonitor || !connectivityMonitor.isOnline) return;
   try {
-    const url = `http://localhost:${config.backendPort}/desktop/cache-warmup`;
+    const url = `http://127.0.0.1:${config.backendPort}/desktop/cache-warmup`;
     const resp = await fetch(url, { signal: AbortSignal.timeout(30_000) });
     if (!resp.ok) return;
     const data = await resp.json();
@@ -186,26 +186,58 @@ app.whenReady().then(async () => {
     log.info('Cloud reachable — loading cloud frontend');
     win.loadURL(config.cloudUrl);
 
-    // Start local backend in background for cache warming only.
+    let localFrontendReady = false;
+    let _currentlyOffline = false;
+
+    // Intercept tab-link navigations:
+    //  - When offline: block cloud navigations (prevent ERR_NAME_NOT_RESOLVED),
+    //    redirect to local frontend if it's ready.
+    //  - When online + local ready: redirect to local for faster tab switching.
+    win.webContents.on('will-navigate', (event, url) => {
+      try {
+        const cloudOrigin = new URL(config.cloudUrl).origin;
+        const target = new URL(url);
+        if (target.origin !== cloudOrigin) return; // not a cloud link, allow
+
+        if (_currentlyOffline) {
+          event.preventDefault();
+          if (localFrontendReady) {
+            win.loadURL(localFrontendUrl + target.pathname + target.search);
+          }
+          // else: block silently — overlay banner is already visible
+        } else if (localFrontendReady && target.pathname !== '/' && target.pathname !== '') {
+          event.preventDefault();
+          win.loadURL(localFrontendUrl + target.pathname + target.search);
+        }
+      } catch (_) {}
+    });
+
+    // Start local backend then frontend in background.
     processManager.startBackend()
       .then(() => {
         runBackgroundSync();
         syncTimer = setInterval(runBackgroundSync, config.backgroundSyncIntervalMs);
         log.info('Local backend ready — cache warming active');
+        return processManager.startFrontend();
       })
-      .catch(err => log.warn('Local backend unavailable (cache warming disabled):', err.message));
+      .then(() => {
+        localFrontendReady = true;
+        log.info('Local frontend ready — tab navigation using local server');
+      })
+      .catch(err => log.warn('Local processes unavailable (offline tab switching limited):', err.message));
 
     connectivityMonitor = new ConnectivityMonitor(
       `${config.cloudUrl}/health`,
       config.connectivityPollIntervalMs
     );
     connectivityMonitor.on('offline', ({ cachedAt }) => {
+      _currentlyOffline = true;
       log.warn('Cloud unreachable — entering offline mode');
       if (trayManager) trayManager.setStatus('offline');
-      // Stay on the cloud page — the overlay intercepts API calls and serves from cache.
       if (win) win.webContents.send('connectivity:change', { online: false, cachedAt });
     });
     connectivityMonitor.on('online', () => {
+      _currentlyOffline = false;
       log.info('Cloud reachable again — returning to online mode');
       if (trayManager) trayManager.setStatus('online');
       if (win) win.webContents.send('connectivity:change', { online: true });

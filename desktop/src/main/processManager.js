@@ -169,7 +169,7 @@ class ProcessManager {
     const { cmd, args, cwd } = this._resolveFrontendCommand();
     const env = {
       ...process.env,
-      BACKEND_API_URL: `http://localhost:${this.config.backendPort}`,
+      BACKEND_API_URL: `http://127.0.0.1:${this.config.backendPort}`,
       PORT: String(this.config.frontendPort),
       FLASK_APP: 'app:create_app',
       SECRET_KEY: `desktop-${Date.now()}`,
