@@ -19,9 +19,23 @@ log.transports.console.level = 'debug';
 let win = null;
 let processManager = null;
 let cacheLayer = null;
-let connectivityMonitor = null;
+let cloudMonitor = null;
+let internetMonitor = null;
 let trayManager = null;
 let syncTimer = null;
+
+// --------------------------------------------------------------------------
+// Mode state — updated by monitor events, read by will-navigate + overlay
+// --------------------------------------------------------------------------
+let cloudOnline    = false;
+let internetOnline = false;
+let currentMode    = 'offline'; // 'cloud' | 'local' | 'offline'
+
+function computeMode(cloud, internet) {
+  if (cloud)    return 'cloud';
+  if (internet) return 'local';
+  return 'offline';
+}
 
 // --------------------------------------------------------------------------
 // Paths for overlay / leaflet.offline scripts
@@ -36,7 +50,7 @@ const leafletOfflinePath = path.join(
 // Background sync — warm the SQLite cache from /desktop/cache-warmup
 // --------------------------------------------------------------------------
 async function runBackgroundSync() {
-  if (!connectivityMonitor || !connectivityMonitor.isOnline) return;
+  if (!internetOnline) return; // no point if we have no internet
   try {
     const url = `http://127.0.0.1:${config.backendPort}/desktop/cache-warmup`;
     const resp = await fetch(url, { signal: AbortSignal.timeout(30_000) });
@@ -45,7 +59,6 @@ async function runBackgroundSync() {
 
     if (data.snapshot) {
       cacheLayer.set(config.cacheKeys.snapshot, data.snapshot, config.cacheTtl.snapshot);
-      // Build analytics data from the snapshot and cache it too
       const analyticsData = buildAnalyticsFromSnapshot(data.snapshot);
       cacheLayer.set(config.cacheKeys.analytics, analyticsData, config.cacheTtl.analytics);
     }
@@ -94,7 +107,6 @@ function buildAnalyticsFromSnapshot(snapshot) {
 // Inject overlay into every page after load
 // --------------------------------------------------------------------------
 function injectOverlay(webContents) {
-  // Inject leaflet.offline if available (for map tile caching)
   if (fs.existsSync(leafletOfflinePath)) {
     try {
       const leafletOfflineCode = fs.readFileSync(leafletOfflinePath, 'utf8');
@@ -104,7 +116,6 @@ function injectOverlay(webContents) {
     }
   }
 
-  // Inject the desktop overlay (offline banner, fetch intercept, tile swap)
   if (fs.existsSync(overlayPath)) {
     try {
       const overlayCode = fs.readFileSync(overlayPath, 'utf8');
@@ -112,6 +123,22 @@ function injectOverlay(webContents) {
     } catch (err) {
       log.warn('Could not inject desktop overlay:', err.message);
     }
+  }
+}
+
+// --------------------------------------------------------------------------
+// Broadcast current mode to the loaded page
+// --------------------------------------------------------------------------
+function sendModeToPage() {
+  if (!win) return;
+  if (currentMode === 'offline') {
+    win.webContents.send('connectivity:change', {
+      online: false,
+      mode: 'offline',
+      cachedAt: internetMonitor ? internetMonitor._cachedAt : null,
+    });
+  } else {
+    win.webContents.send('connectivity:change', { online: true, mode: currentMode });
   }
 }
 
@@ -135,17 +162,9 @@ function createWindow() {
 
   win.webContents.on('did-finish-load', () => {
     injectOverlay(win.webContents);
-    // If we're currently offline, tell the freshly-loaded page immediately.
-    // Without this, a page navigated to while offline starts with _offline=false
-    // and its fetch calls hit the real network instead of the cache.
-    if (connectivityMonitor && !connectivityMonitor.isOnline) {
-      setTimeout(() => {
-        if (win) win.webContents.send('connectivity:change', {
-          online: false,
-          cachedAt: connectivityMonitor._cachedAt,
-        });
-      }, 300);
-    }
+    // Re-send current mode so the freshly-loaded page's overlay is up to date.
+    // Without this a page navigated to while offline starts with _offline=false.
+    setTimeout(() => { sendModeToPage(); }, 300);
   });
 
   win.on('closed', () => { win = null; });
@@ -169,6 +188,27 @@ async function probeUrl(url, timeoutMs = 5000) {
 }
 
 // --------------------------------------------------------------------------
+// Shared mode-change handler — called whenever either monitor fires
+// --------------------------------------------------------------------------
+function onMonitorChange() {
+  const newMode = computeMode(cloudOnline, internetOnline);
+  if (newMode === currentMode) return;
+
+  const prevMode = currentMode;
+  currentMode = newMode;
+  log.info(`Mode transition: ${prevMode} → ${currentMode}`);
+
+  sendModeToPage();
+
+  if (currentMode === 'offline') {
+    if (trayManager) trayManager.setStatus('offline');
+  } else {
+    if (trayManager) trayManager.setStatus('online');
+    runBackgroundSync(); // refresh cache immediately when connectivity restored
+  }
+}
+
+// --------------------------------------------------------------------------
 // App lifecycle
 // --------------------------------------------------------------------------
 app.whenReady().then(async () => {
@@ -179,139 +219,127 @@ app.whenReady().then(async () => {
   cacheLayer = await CacheLayer.create(dbPath);
   log.info('Cache database opened at', dbPath);
 
-  // Initialise and register IPC handlers
   registerIpcHandlers(ipcMain, cacheLayer);
 
   processManager = new ProcessManager(config);
 
-  const cloudReachable = config.cloudUrl && await probeUrl(config.cloudUrl, 10_000);
+  // Probe cloud and internet in parallel
+  const [cloudReachable, internetReachable] = await Promise.all([
+    config.cloudUrl ? probeUrl(config.cloudUrl, 10_000) : Promise.resolve(false),
+    probeUrl(config.internetProbeUrl, 5_000),
+  ]);
+
+  cloudOnline    = cloudReachable;
+  internetOnline = internetReachable;
+  currentMode    = computeMode(cloudOnline, internetOnline);
+  log.info(`Initial mode: ${currentMode} (cloud=${cloudOnline}, internet=${internetOnline})`);
+
   const localFrontendUrl = `http://127.0.0.1:${config.frontendPort}`;
 
   win = createWindow();
 
-  if (cloudReachable) {
-    // -----------------------------------------------------------------------
-    // CLOUD MODE — load cloud URL instantly, start local processes in background
-    // for cache warming and mid-session offline fallback.
-    // -----------------------------------------------------------------------
-    log.info('Cloud reachable — loading cloud frontend');
-    win.loadURL(config.cloudUrl);
+  // -------------------------------------------------------------------------
+  // Navigation intercept — redirect cloud-origin links to local frontend once
+  // it's ready, and block cloud navigation entirely when offline.
+  // -------------------------------------------------------------------------
+  let localFrontendReady = false;
 
-    let localFrontendReady = false;
-    let _currentlyOffline = false;
-
-    // Intercept tab-link navigations:
-    //  - When offline: block cloud navigations (prevent ERR_NAME_NOT_RESOLVED),
-    //    redirect to local frontend if it's ready.
-    //  - When online + local ready: redirect to local for faster tab switching.
-    win.webContents.on('will-navigate', (event, url) => {
-      try {
-        const cloudOrigin = new URL(config.cloudUrl).origin;
-        const target = new URL(url);
-        if (target.origin !== cloudOrigin) return; // not a cloud link, allow
-
-        if (_currentlyOffline) {
-          event.preventDefault();
-          if (localFrontendReady) {
-            win.loadURL(localFrontendUrl + target.pathname + target.search);
-          }
-          // else: block silently — overlay banner is already visible
-        } else if (localFrontendReady && target.pathname !== '/' && target.pathname !== '') {
-          event.preventDefault();
-          win.loadURL(localFrontendUrl + target.pathname + target.search);
-        }
-      } catch (_) {}
-    });
-
-    // Start local backend then frontend in background.
-    processManager.startBackend()
-      .then(() => {
-        runBackgroundSync();
-        syncTimer = setInterval(runBackgroundSync, config.backgroundSyncIntervalMs);
-        log.info('Local backend ready — cache warming active');
-        return processManager.startFrontend();
-      })
-      .then(() => {
-        localFrontendReady = true;
-        log.info('Local frontend ready — tab navigation using local server');
-      })
-      .catch(err => log.warn('Local processes unavailable (offline tab switching limited):', err.message));
-
-    connectivityMonitor = new ConnectivityMonitor(
-      `${config.cloudUrl}/health`,
-      config.connectivityPollIntervalMs
-    );
-    connectivityMonitor.on('offline', ({ cachedAt }) => {
-      _currentlyOffline = true;
-      log.warn('Cloud unreachable — entering offline mode');
-      if (trayManager) trayManager.setStatus('offline');
-      if (win) win.webContents.send('connectivity:change', { online: false, cachedAt });
-    });
-    connectivityMonitor.on('online', () => {
-      _currentlyOffline = false;
-      log.info('Cloud reachable again — returning to online mode');
-      if (trayManager) trayManager.setStatus('online');
-      if (win) win.webContents.send('connectivity:change', { online: true });
-      runBackgroundSync();
-    });
-
-  } else {
-    // -----------------------------------------------------------------------
-    // LOCAL MODE — start Flask processes then load local frontend
-    // -----------------------------------------------------------------------
-    log.info('Cloud unreachable — starting local Flask processes');
+  win.webContents.on('will-navigate', (event, url) => {
+    if (!config.cloudUrl) return;
     try {
-      await processManager.startBackend();
-      log.info('Backend process ready on port', config.backendPort);
-      await processManager.startFrontend();
-      log.info('Frontend process ready on port', config.frontendPort);
-    } catch (err) {
-      log.error('Failed to start Flask processes:', err.message);
+      const cloudOrigin = new URL(config.cloudUrl).origin;
+      const target = new URL(url);
+      if (target.origin !== cloudOrigin) return; // not a cloud link
+
+      if (currentMode === 'offline') {
+        event.preventDefault(); // stay on current page; overlay serves cache
+      } else if (localFrontendReady && target.pathname !== '/' && target.pathname !== '') {
+        event.preventDefault();
+        win.loadURL(localFrontendUrl + target.pathname + target.search);
+      }
+    } catch (_) {}
+  });
+
+  // -------------------------------------------------------------------------
+  // Initial page load
+  // -------------------------------------------------------------------------
+  if (currentMode === 'cloud') {
+    // Load cloud URL instantly — local processes start in background
+    log.info('Loading cloud frontend');
+    win.loadURL(config.cloudUrl);
+  }
+  // For 'local' and 'offline' modes we wait for local processes before loading
+
+  // -------------------------------------------------------------------------
+  // Always start local processes (background for cloud mode, foreground otherwise)
+  // -------------------------------------------------------------------------
+  const localStartPromise = processManager.startBackend()
+    .then(() => {
+      log.info('Local backend ready on port', config.backendPort);
+      runBackgroundSync();
+      syncTimer = setInterval(runBackgroundSync, config.backgroundSyncIntervalMs);
+      return processManager.startFrontend();
+    })
+    .then(() => {
+      localFrontendReady = true;
+      log.info('Local frontend ready on port', config.frontendPort);
+    })
+    .catch(err => log.warn('Local processes unavailable:', err.message));
+
+  if (currentMode !== 'cloud') {
+    // Must wait for local frontend before loading it
+    try {
+      await localStartPromise;
+    } catch (_) {}
+    if (localFrontendReady) {
+      win.loadURL(localFrontendUrl);
+    } else {
       dialog.showErrorBox(
         'Startup Error',
-        `Could not start the application server:\n\n${err.message}\n\nPlease check the logs at ${log.transports.file.getFile().path}`
+        'Could not start the local application server.\n\nPlease check the logs at ' +
+        log.transports.file.getFile().path
       );
       app.quit();
       return;
     }
-
-    win.loadURL(localFrontendUrl);
-
-    connectivityMonitor = new ConnectivityMonitor(
-      `http://127.0.0.1:${config.backendPort}/health`,
-      config.connectivityPollIntervalMs
-    );
-    connectivityMonitor.on('offline', ({ cachedAt }) => {
-      log.warn('Backend unreachable — entering offline mode');
-      if (win) win.webContents.send('connectivity:change', { online: false, cachedAt });
-      if (trayManager) trayManager.setStatus('offline');
-    });
-    connectivityMonitor.on('online', () => {
-      log.info('Backend reachable — returning to online mode');
-      if (win) win.webContents.send('connectivity:change', { online: true });
-      if (trayManager) trayManager.setStatus('online');
-      runBackgroundSync();
-    });
-
-    await runBackgroundSync();
-    syncTimer = setInterval(runBackgroundSync, config.backgroundSyncIntervalMs);
   }
 
-  connectivityMonitor.start();
+  // -------------------------------------------------------------------------
+  // Connectivity monitors
+  // -------------------------------------------------------------------------
+  cloudMonitor = new ConnectivityMonitor(
+    `${config.cloudUrl}/health`,
+    config.connectivityPollIntervalMs
+  );
+  internetMonitor = new ConnectivityMonitor(
+    config.internetProbeUrl,
+    config.connectivityPollIntervalMs
+  );
 
-  // Tray icon (optional — silently skipped if no display or icon is missing)
+  cloudMonitor.on('online',  () => { cloudOnline    = true;  onMonitorChange(); });
+  cloudMonitor.on('offline', () => { cloudOnline    = false; onMonitorChange(); });
+  internetMonitor.on('online',  () => { internetOnline = true;  onMonitorChange(); });
+  internetMonitor.on('offline', () => { internetOnline = false; onMonitorChange(); });
+
+  cloudMonitor.start();
+  internetMonitor.start();
+
+  // -------------------------------------------------------------------------
+  // Tray icon
+  // -------------------------------------------------------------------------
   try {
     trayManager = new TrayManager(config, win, () => runBackgroundSync());
     trayManager.create();
+    if (currentMode === 'offline') trayManager.setStatus('offline');
   } catch (err) {
-    log.warn('Tray icon unavailable (this is non-fatal):', err.message);
+    log.warn('Tray icon unavailable (non-fatal):', err.message);
     trayManager = null;
   }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       win = createWindow();
-      const url = (cloudReachable && connectivityMonitor.isOnline)
+      const url = (currentMode === 'cloud' && cloudOnline)
         ? config.cloudUrl
         : localFrontendUrl;
       win.loadURL(url);
@@ -326,7 +354,8 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   log.info('App shutting down');
   if (syncTimer) clearInterval(syncTimer);
-  if (connectivityMonitor) connectivityMonitor.stop();
+  if (cloudMonitor) cloudMonitor.stop();
+  if (internetMonitor) internetMonitor.stop();
   if (trayManager) trayManager.destroy();
   if (processManager) processManager.stopAll();
   if (cacheLayer) cacheLayer.close();

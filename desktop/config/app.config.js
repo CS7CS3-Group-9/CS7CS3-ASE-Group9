@@ -9,6 +9,10 @@ module.exports = {
   // Set via CLOUD_URL env var or hardcode below.
   cloudUrl: process.env.CLOUD_URL || 'http://ase-citydash-board.duckdns.org',
 
+  // Reliable external endpoint used to distinguish "cloud down" from "no internet".
+  // Cloudflare DNS-over-HTTPS — no API key, no CORS issues in Electron main process.
+  internetProbeUrl: 'https://1.1.1.1',
+
   // Ports used by the embedded Flask processes (local / offline fallback)
   backendPort: 5001,
   frontendPort: 5002,

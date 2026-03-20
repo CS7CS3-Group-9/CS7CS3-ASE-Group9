@@ -366,7 +366,8 @@
   // --------------------------------------------------------------------------
   function _onConnectivityChange(status) {
     var wasOffline = _offline;
-    _offline = !status.online;
+    // Only Mode 3 (no internet) is truly offline — Mode 2 (local) has live data
+    _offline = status.mode === 'offline' || (!status.online && status.mode === undefined);
     _cachedAt = status.cachedAt || _cachedAt;
 
     if (_offline) {
