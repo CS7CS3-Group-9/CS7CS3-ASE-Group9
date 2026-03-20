@@ -456,11 +456,13 @@
     if (onDashboard) {
       fetchDashboardData(true);
       setInterval(fetchDashboardData, REFRESH_INTERVAL);
+      window._dashboardRefresh = function () { fetchDashboardData(false); };
     }
 
     if (onAnalytics) {
       fetchAndUpdateCharts();
       setInterval(fetchAndUpdateCharts, REFRESH_INTERVAL);
+      window._analyticsRefresh = fetchAndUpdateCharts;
       wireAnalyticsFilters();
     }
 

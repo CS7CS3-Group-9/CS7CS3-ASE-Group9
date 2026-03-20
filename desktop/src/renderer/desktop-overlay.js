@@ -365,6 +365,7 @@
   // Connectivity change handler
   // --------------------------------------------------------------------------
   function _onConnectivityChange(status) {
+    var wasOffline = _offline;
     _offline = !status.online;
     _cachedAt = status.cachedAt || _cachedAt;
 
@@ -372,6 +373,11 @@
       _showBanner(_cachedAt);
     } else {
       _hideBanner();
+      if (wasOffline) {
+        // Reconnected — immediately refresh data instead of waiting for next interval
+        if (typeof window._dashboardRefresh === 'function') window._dashboardRefresh();
+        if (typeof window._analyticsRefresh === 'function') window._analyticsRefresh();
+      }
     }
   }
 

@@ -34,7 +34,7 @@
   <div class="kpi-card {% if bikes %}{% if bikes.available_bikes > 50 %}kpi-ok{% elif bikes.available_bikes > 10 %}kpi-warning{% else %}kpi-critical{% endif %}{% else %}kpi-unknown{% endif %}">
     <div class="kpi-icon">&#128690;</div>
     <div class="kpi-body">
-      <div class="kpi-value" id="kpi-bikes">{{ bikes.available_bikes if bikes else '&#8212;' }}</div>
+      <div class="kpi-value" id="kpi-bikes">{{ bikes.available_bikes if bikes else '—' }}</div>
       <div class="kpi-label">Bikes Available</div>
     </div>
   </div>
@@ -42,7 +42,7 @@
   <div class="kpi-card {% if traffic %}{% if traffic.congestion_level == 'low' %}kpi-ok{% elif traffic.congestion_level == 'medium' %}kpi-warning{% else %}kpi-critical{% endif %}{% else %}kpi-unknown{% endif %}">
     <div class="kpi-icon">&#128652;</div>
     <div class="kpi-body">
-      <div class="kpi-value" id="kpi-traffic">{{ traffic.congestion_level | capitalize if traffic else '&#8212;' }}</div>
+      <div class="kpi-value" id="kpi-traffic">{{ traffic.congestion_level | capitalize if traffic else '—' }}</div>
       <div class="kpi-label">Congestion</div>
     </div>
   </div>
@@ -50,7 +50,7 @@
   <div class="kpi-card {% if traffic %}{% if traffic.total_incidents == 0 %}kpi-ok{% elif traffic.total_incidents < 5 %}kpi-warning{% else %}kpi-critical{% endif %}{% else %}kpi-unknown{% endif %}">
     <div class="kpi-icon">&#9888;</div>
     <div class="kpi-body">
-      <div class="kpi-value" id="kpi-incidents">{{ traffic.total_incidents if traffic else '&#8212;' }}</div>
+      <div class="kpi-value" id="kpi-incidents">{{ traffic.total_incidents if traffic else '—' }}</div>
       <div class="kpi-label">Incidents</div>
     </div>
   </div>
@@ -67,7 +67,7 @@
     <div class="kpi-icon">&#127807;</div>
     <div class="kpi-body">
       <div class="kpi-value" id="kpi-aqi">
-        {% if airquality and airquality.aqi_value is not none %}{{ airquality.aqi_value | round(1) }}{% else %}&#8212;{% endif %}
+        {% if airquality and airquality.aqi_value is not none %}{{ airquality.aqi_value | round(1) }}{% else %}—{% endif %}
       </div>
       <div class="kpi-label">AQI</div>
     </div>
@@ -76,7 +76,7 @@
   <div class="kpi-card kpi-ok">
     <div class="kpi-icon">&#127963;</div>
     <div class="kpi-body">
-      <div class="kpi-value" id="kpi-tours">{{ tours.total_attractions if tours else '&#8212;' }}</div>
+      <div class="kpi-value" id="kpi-tours">{{ tours.total_attractions if tours else '—' }}</div>
       <div class="kpi-label">Attractions</div>
     </div>
   </div>
