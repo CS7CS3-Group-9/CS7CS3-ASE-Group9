@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 from flask import Flask, redirect, url_for
 
 from frontend.config import Config
@@ -6,6 +7,8 @@ from frontend.dashboard.overview import overview_bp
 from frontend.dashboard.analytics import analytics_bp
 from frontend.dashboard.recommendations import recommendations_bp
 from frontend.dashboard.routing import routing_bp
+
+load_dotenv()
 
 
 def create_app(config_class=Config):
