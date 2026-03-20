@@ -23,6 +23,7 @@
   // State
   // --------------------------------------------------------------------------
   var _offline = false;
+  var _currentMode = null;
   var _cachedAt = null;
   var _origFetch = window.fetch.bind(window);
   var _unsubscribe = null;
@@ -365,17 +366,19 @@
   // Connectivity change handler
   // --------------------------------------------------------------------------
   function _onConnectivityChange(status) {
-    var wasOffline = _offline;
-    // Only Mode 3 (no internet) is truly offline — Mode 2 (local) has live data
-    _offline = status.mode === 'offline' || (!status.online && status.mode === undefined);
-    _cachedAt = status.cachedAt || _cachedAt;
+    var wasOffline  = _offline;
+    var newMode     = status.mode || (status.online ? 'cloud' : 'offline');
+    _offline        = newMode === 'offline';
+    _cachedAt       = status.cachedAt || _cachedAt;
+    var modeChanged = _currentMode !== null && _currentMode !== newMode;
+    _currentMode    = newMode;
 
     if (_offline) {
       _showBanner(_cachedAt);
     } else {
       _hideBanner();
-      if (wasOffline) {
-        // Reconnected — immediately refresh data instead of waiting for next interval
+      // Refresh when recovering from offline OR when mode changes between online states
+      if (wasOffline || modeChanged) {
         if (typeof window._dashboardRefresh === 'function') window._dashboardRefresh();
         if (typeof window._analyticsRefresh === 'function') window._analyticsRefresh();
       }

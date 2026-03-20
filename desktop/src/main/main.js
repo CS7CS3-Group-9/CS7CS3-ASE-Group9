@@ -31,6 +31,9 @@ let cloudOnline    = false;
 let internetOnline = false;
 let currentMode    = 'offline'; // 'cloud' | 'local' | 'offline'
 
+let localFrontendReady = false;
+let localFrontendUrl   = '';
+
 function computeMode(cloud, internet) {
   if (cloud)    return 'cloud';
   if (internet) return 'local';
@@ -198,6 +201,25 @@ function onMonitorChange() {
   currentMode = newMode;
   log.info(`Mode transition: ${prevMode} → ${currentMode}`);
 
+  // When cloud goes offline, immediately navigate to local frontend so the
+  // user sees live data from local backend rather than the stale cloud page.
+  if (prevMode === 'cloud' && newMode === 'local' && localFrontendReady && win) {
+    let targetPath = '';
+    try {
+      const currentUrl  = win.webContents.getURL();
+      const cloudOrigin = new URL(config.cloudUrl).origin;
+      const parsed      = new URL(currentUrl);
+      if (parsed.origin === cloudOrigin && parsed.pathname !== '/') {
+        targetPath = parsed.pathname + parsed.search;
+      }
+    } catch (_) {}
+    win.loadURL(localFrontendUrl + targetPath);
+    // did-finish-load → sendModeToPage will fire after the new page loads
+    if (trayManager) trayManager.setStatus('online');
+    runBackgroundSync();
+    return;
+  }
+
   sendModeToPage();
 
   if (currentMode === 'offline') {
@@ -234,7 +256,7 @@ app.whenReady().then(async () => {
   currentMode    = computeMode(cloudOnline, internetOnline);
   log.info(`Initial mode: ${currentMode} (cloud=${cloudOnline}, internet=${internetOnline})`);
 
-  const localFrontendUrl = `http://127.0.0.1:${config.frontendPort}`;
+  localFrontendUrl = `http://127.0.0.1:${config.frontendPort}`;
 
   win = createWindow();
 
@@ -242,8 +264,6 @@ app.whenReady().then(async () => {
   // Navigation intercept — redirect cloud-origin links to local frontend once
   // it's ready, and block cloud navigation entirely when offline.
   // -------------------------------------------------------------------------
-  let localFrontendReady = false;
-
   win.webContents.on('will-navigate', (event, url) => {
     if (!config.cloudUrl) return;
     try {
@@ -283,6 +303,10 @@ app.whenReady().then(async () => {
     .then(() => {
       localFrontendReady = true;
       log.info('Local frontend ready on port', config.frontendPort);
+      // If mode already switched to 'local' before processes finished, navigate now
+      if (currentMode === 'local' && win) {
+        win.loadURL(localFrontendUrl);
+      }
     })
     .catch(err => log.warn('Local processes unavailable:', err.message));
 
