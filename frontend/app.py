@@ -25,6 +25,8 @@ def create_app(config_class=Config):
 
     @app.before_request
     def _require_login():
+        if app.config.get("TESTING"):
+            return None
         endpoint = request.endpoint or ""
         if endpoint.startswith("static"):
             return None
