@@ -1,6 +1,6 @@
 import requests
 from flask import Blueprint, render_template, jsonify, current_app
-from .overview import _fetch_snapshot
+from .overview import _fetch_snapshot, _fetch_bike_stations
 
 analytics_bp = Blueprint("analytics", __name__, url_prefix="/dashboard/analytics")
 
@@ -79,35 +79,6 @@ def _build_chart_data(snapshot):
     wait_best_chart = {"labels": best_labels, "values": best_values}
     wait_worst_chart = {"labels": worst_labels, "values": worst_values}
 
-    exposure_by_stop = buses.get("wait_exposure_by_stop") or {}
-    exposure_metric = buses.get("wait_exposure_metric") or {}
-    stop_waits = buses.get("stop_avg_wait_min") or {}
-    stops = buses.get("stops") or []
-    stop_names = {s.get("stop_id"): s.get("name") for s in stops}
-    stop_coords = {s.get("stop_id"): (s.get("lat"), s.get("longitude") or s.get("lon")) for s in stops}
-    exposure_points = []
-    for stop_id, exposure in exposure_by_stop.items():
-        wait_min = stop_waits.get(stop_id)
-        coords = stop_coords.get(stop_id) or (None, None)
-        if wait_min is None or coords[0] is None or coords[1] is None:
-            continue
-        exposure_points.append(
-            {
-                "stop_id": stop_id,
-                "name": stop_names.get(stop_id, stop_id),
-                "lat": round(coords[0], 6),
-                "lon": round(coords[1], 6),
-                "avg_wait_min": round(wait_min, 2),
-                "exposure": round(exposure, 2),
-            }
-        )
-    exposure_points.sort(key=lambda p: p["exposure"], reverse=True)
-    exposure_points = exposure_points[:20]
-    bus_wait_exposure_points = {
-        "points": exposure_points,
-        "metric": exposure_metric,
-    }
-
     # Importance distribution (all stops)
     scores = list((buses.get("stop_importance_scores") or {}).values())
     if scores:
@@ -155,10 +126,39 @@ def _build_chart_data(snapshot):
         "bus_wait_chart": wait_chart,
         "bus_wait_best_chart": wait_best_chart,
         "bus_wait_worst_chart": wait_worst_chart,
-        "bus_wait_exposure_points": bus_wait_exposure_points,
         "bus_importance_hist_chart": importance_hist_chart,
         "bus_heatmap": heat_points,
     }
+
+
+def _build_bike_heatmap_points(stations, limit=400):
+    points = []
+    for s in stations or []:
+        lat = s.get("lat")
+        lon = s.get("lon")
+        if lat is None or lon is None:
+            continue
+        total = s.get("total") or s.get("capacity")
+        try:
+            total = float(total)
+            free = float(s.get("free_bikes", 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        if total <= 0:
+            continue
+        availability = free / total if total else 0.0
+        points.append(
+            {
+                "name": s.get("name") or s.get("station_id"),
+                "lat": lat,
+                "lon": lon,
+                "free_bikes": free,
+                "total": total,
+                "availability": availability,
+            }
+        )
+    points.sort(key=lambda x: x["availability"])
+    return points[:limit]
 
 
 @analytics_bp.get("")
@@ -167,7 +167,9 @@ def analytics():
     backend_url = current_app.config["BACKEND_API_URL"]
     radius_km = current_app.config.get("RADIUS_KM", 5)
     snapshot, error = _fetch_snapshot(backend_url, radius_km)
+    stations = _fetch_bike_stations(backend_url, radius_km)
     chart_data = _build_chart_data(snapshot)
+    chart_data["bike_heatmap"] = _build_bike_heatmap_points(stations)
     return render_template(
         "dashboard/analytics.html",
         chart_data=chart_data,
@@ -181,7 +183,9 @@ def analytics_data():
     backend_url = current_app.config["BACKEND_API_URL"]
     radius_km = current_app.config.get("RADIUS_KM", 5)
     snapshot, error = _fetch_snapshot(backend_url, radius_km)
+    stations = _fetch_bike_stations(backend_url, radius_km)
     chart_data = _build_chart_data(snapshot)
+    chart_data["bike_heatmap"] = _build_bike_heatmap_points(stations)
     chart_data["timestamp"] = snapshot.get("timestamp")
     chart_data["error"] = error
     return jsonify(chart_data)

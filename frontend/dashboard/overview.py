@@ -197,6 +197,60 @@ def _build_bike_metrics(stations):
     }
 
 
+def _station_total(station):
+    total = station.get("total")
+    if total is None:
+        total = station.get("capacity")
+    try:
+        return float(total)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _station_value(station, key):
+    try:
+        return float(station.get(key, 0) or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _top_used_bike_stations(stations, limit=10):
+    scored = []
+    for s in stations or []:
+        total = _station_total(s)
+        if total <= 0:
+            continue
+        free = _station_value(s, "free_bikes")
+        availability = free / total if total else 0.0
+        score = (1 - availability) * total
+        scored.append((score, availability, s, total, free))
+
+    scored.sort(key=lambda x: (x[0], -x[1]), reverse=True)
+    items = []
+    for _, availability, station, total, free in scored[:limit]:
+        name = station.get("name") or station.get("station_id") or "Station"
+        items.append(f"{name} — {int(round(free))}/{int(round(total))} bikes " f"({availability * 100:.0f}% available)")
+    return items
+
+
+def _stations_needing_more_docks(stations, limit=6):
+    scored = []
+    for s in stations or []:
+        total = _station_total(s)
+        if total <= 0:
+            continue
+        empty = _station_value(s, "empty_slots")
+        empty_ratio = empty / total if total else 0.0
+        scored.append((empty_ratio, -total, s, total, empty))
+
+    scored.sort(key=lambda x: (x[0], x[1]))
+    items = []
+    for empty_ratio, _, station, total, empty in scored[:limit]:
+        name = station.get("name") or station.get("station_id") or "Station"
+        items.append(f"{name} — {int(round(empty))}/{int(round(total))} docks free " f"({empty_ratio * 100:.0f}% free)")
+    return items
+
+
 def _nearest_distance_km(target_lat, target_lon, points):
     nearest = None
     for p in points or []:
@@ -461,6 +515,31 @@ def _build_recommendations(
                     "title": "Good Bike Availability",
                     "description": f"{available} bikes available across the city. Great conditions for cycling!",
                     "priority": "Low",
+                    "source": "bikes",
+                }
+            )
+
+    if bike_stations:
+        top_used = _top_used_bike_stations(bike_stations, limit=10)
+        if top_used:
+            recs.append(
+                {
+                    "title": "Top 10 Most Used Bike Stations (Current Demand)",
+                    "description": "Stations with the lowest current availability.",
+                    "items": top_used,
+                    "priority": "Medium",
+                    "source": "bikes",
+                }
+            )
+
+        dock_pressure = _stations_needing_more_docks(bike_stations, limit=6)
+        if dock_pressure:
+            recs.append(
+                {
+                    "title": "Stations That Could Benefit From More Docks",
+                    "description": "Stations with the fewest free docks right now.",
+                    "items": dock_pressure,
+                    "priority": "Medium",
                     "source": "bikes",
                 }
             )

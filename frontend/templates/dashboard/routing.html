@@ -8,6 +8,12 @@
   <p class="page-subtitle">Plan your journey across Dublin. Add multiple stops and the optimal order is found automatically.</p>
 </div>
 
+<!-- Top-level tab switcher: Journey vs Fleet -->
+<div class="routing-top-tabs">
+  <button class="routing-top-tab active" id="tab-journey-btn">&#128205; Journey</button>
+  <button class="routing-top-tab"        id="tab-fleet-btn">&#128666; Fleet Efficiency</button>
+</div>
+
 <div class="routing-layout">
 
   <!-- ===== Sidebar ===== -->
@@ -122,6 +128,132 @@
 
       </div><!-- end #search-panel -->
     </div>
+
+    <!-- ===== Fleet Efficiency Panel (hidden until Fleet tab selected) ===== -->
+    <div id="fleet-panel" style="display:none">
+
+      <!-- Sub-tab switcher -->
+      <div class="fleet-sub-tabs">
+        <button class="fleet-sub-tab active" id="fleet-sub-build-btn">&#128296; Build Routes</button>
+        <button class="fleet-sub-tab"        id="fleet-sub-analyse-btn">&#128200; Analyse Routes</button>
+      </div>
+
+      <!-- ===== BUILD SECTION ===== -->
+      <div id="fleet-build-section" class="panel-card">
+        <div class="panel-header"><h3>&#128296; Build Fleet Routes</h3></div>
+        <p class="page-subtitle" style="margin:0 0 .8rem">Enter all your stops and how many vehicles you have. The system assigns stops to vehicles and finds the optimal order.</p>
+
+        <!-- Config row -->
+        <div class="fleet-config-row">
+          <div>
+            <label class="form-label">Vehicles</label>
+            <div style="display:flex;gap:.4rem;align-items:center">
+              <input type="number" id="fleet-n-vehicles" class="form-input" min="1" max="10" value="2" style="width:60px">
+            </div>
+          </div>
+          <div>
+            <label class="form-label">Mode</label>
+            <div class="seg-control" id="fleet-build-mode">
+              <button class="seg-btn active" data-value="driving">&#128664;</button>
+              <button class="seg-btn"        data-value="cycling">&#128690;</button>
+              <button class="seg-btn"        data-value="walking">&#128694;</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Universal start / end -->
+        <div class="fleet-depot-section">
+          <div class="fleet-depot-row">
+            <span class="fleet-depot-label">&#9654; Universal start</span>
+            <input type="text" id="fleet-start-input" class="form-input" placeholder="Depot / start address (optional)">
+            <button class="fleet-pin-depot-btn" id="fleet-pin-start-btn" title="Click map to set start">&#128205;</button>
+          </div>
+          <div class="fleet-depot-row">
+            <span class="fleet-depot-label">&#9726; Universal end</span>
+            <input type="text" id="fleet-end-input"   class="form-input" placeholder="Return address (optional)">
+            <button class="fleet-pin-depot-btn" id="fleet-pin-end-btn"   title="Click map to set end">&#128205;</button>
+          </div>
+          <p class="fleet-depot-hint" id="fleet-depot-hint" style="display:none"></p>
+        </div>
+
+        <!-- Flat stop list (computer assigns stops to vehicles) -->
+        <div style="margin:.4rem 0 .2rem">
+          <label class="form-label">Stops</label>
+          <div class="input-mode-row" style="margin-bottom:.4rem">
+            <button class="input-mode-btn active" id="fleet-build-type-btn">&#128269; Type</button>
+            <button class="input-mode-btn" id="fleet-build-pin-btn">&#128205; Pin</button>
+          </div>
+          <div id="fleet-build-stops-container"></div>
+          <button class="btn-add-stop" id="fleet-build-add-stop-btn" style="margin-top:.4rem">+ Add Stop</button>
+        </div>
+
+        <button id="fleet-get-routes-btn" class="btn-primary" style="margin-top:.8rem">Get Routes</button>
+        <p id="fleet-build-error" class="route-error" style="display:none"></p>
+      </div>
+
+      <!-- ===== ANALYSE SECTION ===== -->
+      <div id="fleet-analyse-section" class="panel-card" style="display:none">
+        <div class="panel-header"><h3>&#128200; Analyse Existing Routes</h3></div>
+        <p class="page-subtitle" style="margin:0 0 .8rem">Enter your current routes exactly as they run. Get an efficiency score and improvement suggestions.</p>
+
+        <div class="fleet-config-row">
+          <div>
+            <label class="form-label">Vehicles</label>
+            <div style="display:flex;gap:.4rem;align-items:center">
+              <input type="number" id="fleet-n-analyse" class="form-input" min="1" max="10" value="2" style="width:60px">
+              <button class="btn-secondary" id="fleet-set-analyse-btn">Set</button>
+            </div>
+          </div>
+          <div>
+            <label class="form-label">Mode</label>
+            <div class="seg-control" id="fleet-analyse-mode">
+              <button class="seg-btn active" data-value="driving">&#128664;</button>
+              <button class="seg-btn"        data-value="cycling">&#128690;</button>
+              <button class="seg-btn"        data-value="walking">&#128694;</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Universal start / end for analyse -->
+        <div class="fleet-depot-section">
+          <div class="fleet-depot-row">
+            <span class="fleet-depot-label">&#9654; Universal start</span>
+            <input type="text" id="fleet-analyse-start-input" class="form-input" placeholder="Depot / start address (optional)">
+            <button class="fleet-pin-depot-btn" id="fleet-analyse-pin-start-btn" title="Click map to set start">&#128205;</button>
+          </div>
+          <div class="fleet-depot-row">
+            <span class="fleet-depot-label">&#9726; Universal end</span>
+            <input type="text" id="fleet-analyse-end-input" class="form-input" placeholder="Return address (optional)">
+            <button class="fleet-pin-depot-btn" id="fleet-analyse-pin-end-btn" title="Click map to set end">&#128205;</button>
+          </div>
+          <p class="fleet-depot-hint" id="fleet-analyse-depot-hint" style="display:none"></p>
+        </div>
+
+        <!-- Vehicle cards for analyse -->
+        <div id="fleet-analyse-cards"></div>
+
+        <button id="fleet-analyse-submit-btn" class="btn-primary" style="margin-top:.8rem">Analyse Routes</button>
+        <p id="fleet-analyse-error" class="route-error" style="display:none"></p>
+      </div>
+
+      <!-- Results (shared between both sections) -->
+      <div class="panel-card" id="fleet-results" style="display:none">
+        <div class="panel-header">
+          <h3>&#128200; Results</h3>
+          <span id="fleet-result-mode-badge" class="route-mode-badge"></span>
+        </div>
+        <div class="fleet-score-row">
+          <div class="fleet-score-badge" id="fleet-score-badge">—</div>
+          <div>
+            <div class="fleet-score-label">Efficiency Score</div>
+            <div class="fleet-meta" id="fleet-meta"></div>
+          </div>
+        </div>
+        <div class="fleet-suggestions" id="fleet-suggestions"></div>
+        <div id="fleet-routes-summary"></div>
+      </div>
+
+    </div><!-- end #fleet-panel -->
 
     <!-- Route summary (shown after calculation) -->
     <div class="panel-card" id="route-summary" style="display:none">

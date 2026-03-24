@@ -134,7 +134,7 @@
 
   function initCharts(data) {
     initBusHeatMap(data);
-    initExposureMap(data);
+    initBikeHeatMap(data);
     if (typeof Chart === "undefined") return;
 
     var PALETTE = [
@@ -161,7 +161,7 @@
         options: {
           responsive: true,
           plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, title: { display: true, text: "µg/m³" } } }
+          scales: { y: { beginAtZero: true, title: { display: true, text: "Âµg/mÂ³" } } }
         }
       });
     }
@@ -378,8 +378,8 @@
   /* ---- Analytics bus heat map ---- */
   var analyticsMap = null;
   var analyticsLayer = null;
-  var exposureMap = null;
-  var exposureLayer = null;
+  var analyticsBikeMap = null;
+  var analyticsBikeLayer = null;
 
   function initBusHeatMap(data) {
     if (typeof L === "undefined") return;
@@ -397,63 +397,73 @@
 
     var points = (data && data.bus_heatmap) ? data.bus_heatmap : [];
     analyticsLayer.clearLayers();
-    if (points.length) {
-      var max = points.reduce(function (m, p) { return p.count > m ? p.count : m; }, 0);
-      points.forEach(function (p) {
-        if (p.lat == null || p.lon == null) return;
-        var ratio = max ? Math.sqrt(p.count / max) : 0;
-        var radius = 4 + ratio * 12;
-        var color = ratio >= 0.66 ? "#dc2626" : ratio >= 0.33 ? "#d97706" : "#16a34a";
-        L.circleMarker([p.lat, p.lon], {
-          radius: radius,
-          color: color,
-          fillColor: color,
-          fillOpacity: 0.6,
-          weight: 1,
-        })
-          .bindPopup("<strong>" + (p.name || "Bus Stop") + "</strong><br>Trips: <b>" + p.count + "</b>")
-          .addTo(analyticsLayer);
-      });
-    }
+    if (!points.length) return;
 
+    var max = points.reduce(function (m, p) { return p.count > m ? p.count : m; }, 0);
+    points.forEach(function (p) {
+      if (p.lat == null || p.lon == null) return;
+      var ratio = max ? Math.sqrt(p.count / max) : 0;
+      var radius = 4 + ratio * 12;
+      var color = ratio >= 0.66 ? "#dc2626" : ratio >= 0.33 ? "#d97706" : "#16a34a";
+      L.circleMarker([p.lat, p.lon], {
+        radius: radius,
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.6,
+        weight: 1,
+      })
+        .bindPopup("<strong>" + (p.name || "Bus Stop") + "</strong><br>Trips: <b>" + p.count + "</b>")
+        .addTo(analyticsLayer);
+    });
   }
 
-  function initExposureMap(data) {
+  /* ---- Analytics bike availability heat map ---- */
+  function initBikeHeatMap(data) {
     if (typeof L === "undefined") return;
-    var el = document.getElementById("analytics-exposure-map");
+    var el = document.getElementById("analytics-bike-map");
     if (!el) return;
 
-    if (!exposureMap) {
-      exposureMap = L.map("analytics-exposure-map").setView([53.3498, -6.2603], 12);
+    if (!analyticsBikeMap) {
+      analyticsBikeMap = L.map("analytics-bike-map").setView([53.3498, -6.2603], 13);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
-      }).addTo(exposureMap);
-      exposureLayer = L.layerGroup().addTo(exposureMap);
+      }).addTo(analyticsBikeMap);
+      analyticsBikeLayer = L.layerGroup().addTo(analyticsBikeMap);
     }
 
-    var exposurePayload = (data && data.bus_wait_exposure_points) ? data.bus_wait_exposure_points : {};
-    var exposurePoints = exposurePayload.points || [];
-    if (exposureLayer) exposureLayer.clearLayers();
-    if (!exposurePoints.length || !exposureLayer) return;
+    var points = (data && data.bike_heatmap) ? data.bike_heatmap : [];
+    analyticsBikeLayer.clearLayers();
+    if (!points.length) return;
 
-    exposurePoints.forEach(function (p) {
+    points.forEach(function (p) {
       if (p.lat == null || p.lon == null) return;
-      var icon = L.divIcon({
-        className: "exposure-marker",
-        html: "<span class=\"exposure-emoji\">\ud83d\udca9</span>",
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-      });
-      L.marker([p.lat, p.lon], { icon: icon })
+      var availability = Number(p.availability);
+      if (!Number.isFinite(availability)) return;
+      var intensity = Math.max(0, Math.min(1, 1 - availability));
+      var radius = 60 + intensity * 200;
+      var opacity = 0.12 + intensity * 0.45;
+      var color = "#16a34a";
+      if (availability <= 0.2) {
+        color = "#dc2626";
+      } else if (availability <= 0.6) {
+        color = "#f97316";
+      }
+      L.circle([p.lat, p.lon], {
+        radius: radius,
+        color: color,
+        weight: 1,
+        fillColor: color,
+        fillOpacity: opacity,
+      })
         .bindPopup(
-          "<strong>" + (p.name || "Bus Stop") + "</strong><br>" +
-          "Avg wait: <b>" + p.avg_wait_min + " min</b><br>" +
-          "Exposure: <b>" + p.exposure + "</b>"
+          "<strong>" + (p.name || "Station") + "</strong><br>" +
+          "Bikes: <b>" + Math.round(p.free_bikes || 0) + "</b> / " + Math.round(p.total || 0)
         )
-        .addTo(exposureLayer);
+        .addTo(analyticsBikeLayer);
     });
   }
+
 
   /* ---- Analytics filters ---- */
   function wireAnalyticsFilters() {
@@ -476,8 +486,8 @@
       if (analyticsMap) {
         setTimeout(function () { analyticsMap.invalidateSize(); }, 50);
       }
-      if (exposureMap) {
-        setTimeout(function () { exposureMap.invalidateSize(); }, 50);
+      if (analyticsBikeMap) {
+        setTimeout(function () { analyticsBikeMap.invalidateSize(); }, 50);
       }
     }
 
