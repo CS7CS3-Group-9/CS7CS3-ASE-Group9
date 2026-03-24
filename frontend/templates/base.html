@@ -20,16 +20,23 @@
       <span class="navbar-logo">&#127961;</span>
       Dublin City Dashboard
     </div>
-    <ul class="navbar-links">
-      <li><a href="{{ url_for('overview.dashboard') }}"
-             class="{{ 'active' if request.endpoint == 'overview.dashboard' else '' }}">Dashboard</a></li>
-      <li><a href="{{ url_for('analytics.analytics') }}"
-             class="{{ 'active' if request.endpoint == 'analytics.analytics' else '' }}">Analytics</a></li>
-      <li><a href="{{ url_for('recommendations.recommendations') }}"
-             class="{{ 'active' if request.endpoint == 'recommendations.recommendations' else '' }}">Recommendations</a></li>
-      <li><a href="{{ url_for('routing.routing') }}"
-             class="{{ 'active' if request.endpoint == 'routing.routing' else '' }}">&#128205; Route Planner</a></li>
-    </ul>
+    {% if session.get('auth_ok') %}
+      <ul class="navbar-links">
+        <li><a href="{{ url_for('overview.dashboard') }}"
+               class="{{ 'active' if request.endpoint == 'overview.dashboard' else '' }}">Dashboard</a></li>
+        <li><a href="{{ url_for('analytics.analytics') }}"
+               class="{{ 'active' if request.endpoint == 'analytics.analytics' else '' }}">Analytics</a></li>
+        <li><a href="{{ url_for('recommendations.recommendations') }}"
+               class="{{ 'active' if request.endpoint == 'recommendations.recommendations' else '' }}">Recommendations</a></li>
+        <li><a href="{{ url_for('routing.routing') }}"
+               class="{{ 'active' if request.endpoint == 'routing.routing' else '' }}">&#128205; Route Planner</a></li>
+        {% if session.get('auth_role', 'admin') == 'admin' %}
+          <li><a href="{{ url_for('auth.manage_users') }}"
+                 class="{{ 'active' if request.endpoint == 'auth.manage_users' else '' }}">Users</a></li>
+        {% endif %}
+        <li><a href="{{ url_for('auth.logout') }}">Logout</a></li>
+      </ul>
+    {% endif %}
   </nav>
 
   <main class="main-content">
