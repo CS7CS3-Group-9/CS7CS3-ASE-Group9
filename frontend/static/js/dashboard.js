@@ -212,6 +212,19 @@
       });
     }
 
+    function formatMinutesWithHours(value) {
+      var minutes = Number(value);
+      if (!Number.isFinite(minutes)) return value;
+      if (minutes < 60) return minutes.toFixed(1) + " min";
+      var hours = Math.floor(minutes / 60);
+      var mins = Math.round(minutes % 60);
+      if (mins === 60) {
+        hours += 1;
+        mins = 0;
+      }
+      return hours + "h " + mins + "m (" + minutes.toFixed(1) + " min)";
+    }
+
     /* Buses per stop bar chart */
     var busEl = document.getElementById("busChart");
     if (busEl && data.bus_chart) {
@@ -231,7 +244,10 @@
         options: {
           responsive: true,
           plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, title: { display: true, text: "Buses" } } }
+          scales: {
+            x: { display: false },
+            y: { beginAtZero: true, title: { display: true, text: "Buses" } }
+          }
         }
       });
     }
@@ -254,8 +270,24 @@
         },
         options: {
           responsive: true,
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, title: { display: true, text: "Minutes" } } }
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) { return formatMinutesWithHours(ctx.parsed.y); }
+              }
+            }
+          },
+          scales: {
+            x: { display: false },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: "Minutes" },
+              ticks: {
+                callback: function (value) { return formatMinutesWithHours(value); }
+              }
+            }
+          }
         }
       });
     }
@@ -278,8 +310,24 @@
         },
         options: {
           responsive: true,
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, title: { display: true, text: "Minutes" } } }
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) { return formatMinutesWithHours(ctx.parsed.y); }
+              }
+            }
+          },
+          scales: {
+            x: { display: false },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: "Minutes" },
+              ticks: {
+                callback: function (value) { return formatMinutesWithHours(value); }
+              }
+            }
+          }
         }
       });
     }
@@ -409,17 +457,21 @@
 
   /* ---- Analytics filters ---- */
   function wireAnalyticsFilters() {
-    var filters = Array.prototype.slice.call(document.querySelectorAll("[data-analytics-filter]"));
+    var filters = Array.prototype.slice.call(document.querySelectorAll(".filter-btn[data-analytics-filter]"));
     if (!filters.length) return;
 
     function applyFilters() {
-      var enabled = {};
-      filters.forEach(function (f) { enabled[f.dataset.analyticsFilter] = f.checked; });
+      var active = document.querySelector(".filter-btn[data-analytics-filter].active");
+      var selected = active ? active.dataset.analyticsFilter : "all";
       var cards = document.querySelectorAll("[data-analytics-group]");
       cards.forEach(function (card) {
         var group = card.dataset.analyticsGroup;
-        var show = enabled[group] !== false;
-        card.style.display = show ? "" : "none";
+        var show = selected === "all" || group === selected;
+        if (show) {
+          card.classList.remove("is-hidden");
+        } else {
+          card.classList.add("is-hidden");
+        }
       });
       if (analyticsMap) {
         setTimeout(function () { analyticsMap.invalidateSize(); }, 50);
@@ -429,7 +481,13 @@
       }
     }
 
-    filters.forEach(function (f) { f.addEventListener("change", applyFilters); });
+    filters.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        filters.forEach(function (b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        applyFilters();
+      });
+    });
     applyFilters();
   }
 
