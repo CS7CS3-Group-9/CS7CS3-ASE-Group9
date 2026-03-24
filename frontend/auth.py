@@ -67,6 +67,30 @@ def _is_admin() -> bool:
     return session.get("auth_ok") and session.get("auth_role", "admin") == "admin"
 
 
+def _user_role(raw: object) -> str:
+    normalised = _normalise_user_record(raw)
+    if normalised is None:
+        return "user"
+    return str(normalised.get("role") or "admin")
+
+
+def _build_user_rows(users: dict) -> list[dict]:
+    current_user = session.get("auth_user")
+    rows = []
+    for name, record in users.items():
+        role = _user_role(record)
+        rows.append(
+            {
+                "username": name,
+                "role": role,
+                "is_self": name == current_user,
+                "is_admin": role == "admin",
+            }
+        )
+    rows.sort(key=lambda x: (x["role"] != "admin", x["username"]))
+    return rows
+
+
 @auth_bp.get("/login")
 def login():
     if session.get("auth_ok"):
@@ -147,7 +171,7 @@ def manage_users():
     users = _load_users_from_file(path)
     return render_template(
         "users.html",
-        users=sorted(users.keys()),
+        users=_build_user_rows(users),
         error=None,
         message=request.args.get("message"),
     )
@@ -183,28 +207,76 @@ def manage_users_post():
     if not username:
         return render_template(
             "users.html",
-            users=sorted(users.keys()),
+            users=_build_user_rows(users),
             error="Username is required.",
             message=None,
         )
     if not password:
         return render_template(
             "users.html",
-            users=sorted(users.keys()),
+            users=_build_user_rows(users),
             error="Password is required.",
             message=None,
         )
     if password != confirm:
         return render_template(
             "users.html",
-            users=sorted(users.keys()),
+            users=_build_user_rows(users),
             error="Passwords do not match.",
             message=None,
         )
 
     users[username] = {
         "password_hash": generate_password_hash(password),
-        "role": "admin",
+        "role": "user",
     }
     _save_users_to_file(path, users)
     return redirect(url_for("auth.manage_users", message=f"Saved user: {username}"))
+
+
+@auth_bp.post("/users/delete")
+def delete_user():
+    if not _is_admin():
+        return (
+            render_template(
+                "users.html",
+                users=[],
+                error="Admin access required.",
+                message=None,
+            ),
+            403,
+        )
+
+    path = _resolve_users_file()
+    if path is None:
+        return render_template(
+            "users.html",
+            users=[],
+            error="DASHBOARD_USERS_FILE is not set. Configure it to manage users.",
+            message=None,
+        )
+
+    username = (request.form.get("username") or "").strip()
+    users = _load_users_from_file(path)
+    if not username or username not in users:
+        return (
+            render_template(
+                "users.html",
+                users=_build_user_rows(users),
+                error="User not found.",
+                message=None,
+            ),
+            404,
+        )
+
+    current_user = session.get("auth_user")
+    if username == current_user:
+        return redirect(url_for("auth.manage_users", message="Cannot remove your own account."))
+
+    target_role = _user_role(users.get(username))
+    if target_role == "admin":
+        return redirect(url_for("auth.manage_users", message="Admin accounts cannot be removed."))
+
+    users.pop(username, None)
+    _save_users_to_file(path, users)
+    return redirect(url_for("auth.manage_users", message=f"Removed user: {username}"))

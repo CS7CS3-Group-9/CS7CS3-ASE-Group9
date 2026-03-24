@@ -22,13 +22,25 @@
     {% if users %}
       <ul class="user-list">
         {% for u in users %}
-          <li>{{ u }}</li>
+          <li class="user-row">
+            <div class="user-meta">
+              <span class="user-name">{{ u.username }}</span>
+              <span class="user-role">{{ u.role }}</span>
+            </div>
+            <form method="post" action="{{ url_for('auth.delete_user') }}">
+              <input type="hidden" name="username" value="{{ u.username }}">
+              <button class="btn-danger" type="submit" {% if u.is_self or u.is_admin %}disabled{% endif %}>
+                Remove
+              </button>
+            </form>
+          </li>
         {% endfor %}
       </ul>
     {% else %}
       <p class="no-data">No users configured yet.</p>
     {% endif %}
     <p class="panel-note">Passwords are stored as hashes in the users file.</p>
+    <p class="panel-note">New users are added as non-admin by default.</p>
   </div>
 
   <div class="panel-card">
