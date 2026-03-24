@@ -56,8 +56,8 @@ def _load_gtfs_stops():
     if _GTFS_STOPS_CACHE is not None and _GTFS_STOP_IDS_CACHE is not None:
         return _GTFS_STOPS_CACHE, _GTFS_STOP_IDS_CACHE
 
-    stops_file = _GTFS_ROOT / "GTFS" / "stops.txt"
     adapter = BusAdapter(gtfs_path=_GTFS_ROOT)
+    stops_file = adapter._resolve_stops_file()
     stops = []
     stop_ids = set()
     if not stops_file.exists():
@@ -108,6 +108,16 @@ def _get_arrivals_next_hour(stop_ids):
             return _ARRIVALS_CACHE
 
     adapter = BusAdapter(gtfs_path=_GTFS_ROOT)
+    stops_file = adapter._resolve_stops_file()
+    stop_times_file = adapter._resolve_stop_times_file()
+
+    # Prefer precomputed metrics if available to avoid scanning stop_times.txt.
+    precomputed = adapter._load_precomputed_metrics(stops_file, stop_times_file)
+    if precomputed is not None and precomputed.buses is not None:
+        _ARRIVALS_CACHE = precomputed.buses.stop_arrivals_next_hour or {}
+        _ARRIVALS_CACHE_TS = now_local
+        return _ARRIVALS_CACHE
+
     _ARRIVALS_CACHE = adapter._count_arrivals_within_hour(stop_ids, now_local=now_local)
     _ARRIVALS_CACHE_TS = now_local
     return _ARRIVALS_CACHE
@@ -134,7 +144,8 @@ def bus_stops():
         center_lat = _DUBLIN_LAT
         center_lon = _DUBLIN_LON
 
-    gtfs_stops = _GTFS_ROOT / "GTFS" / "stops.txt"
+    adapter = BusAdapter(gtfs_path=_GTFS_ROOT)
+    gtfs_stops = adapter._resolve_stops_file()
     if gtfs_stops.exists():
         try:
             stops, stop_ids = _load_gtfs_stops()
