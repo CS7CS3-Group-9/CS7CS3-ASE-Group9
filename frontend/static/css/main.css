@@ -836,6 +836,42 @@ a:hover { text-decoration: underline; }
 .btn-primary:hover { background: #1d4ed8; }
 .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
 
+.login-card {
+  max-width: 420px;
+  margin: 3rem auto;
+}
+
+.alert-success {
+  background: #dcfce7;
+  border: 1px solid #16a34a;
+  color: #166534;
+}
+
+.users-grid {
+  grid-template-columns: 1fr 420px;
+  align-items: start;
+}
+
+.user-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  font-size: .9rem;
+  color: var(--text);
+}
+
+.user-list li {
+  padding: .4rem .6rem;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 900px) {
+  .users-grid { grid-template-columns: 1fr; }
+}
+
 .btn-secondary {
   width: 100%;
   padding: .55rem 1rem;

@@ -1,0 +1,22 @@
+{
+  "aoife": {
+    "password_hash": "scrypt:32768:8:1$RneYHlNshnhVY2sm$241b98d6816dd0f29902e648e6391d6e0adb96ee2f92ecf19000c596f4024ea9b47878e4c0a6804c3609607849263d5fc97d30124659b10c9afbc0a1d310270b",
+    "role": "admin"
+  },
+  "charlie": {
+    "password_hash": "scrypt:32768:8:1$qDIWCfiixrpi85Af$92117d77419a8123bb8f524d2059d6b69c79b7742621ecfc29ba66ac334e3a9784a06925c7586ba931a69953db30781af97e9feaf01d5985e39198270461dc32",
+    "role": "admin"
+  },
+  "darragh": {
+    "password_hash": "scrypt:32768:8:1$SJolXQBJKPQvMkAm$750d36866326c19b132cd10017eb7112ddd76386085a20f82fdb7f1a78ed9623b35cae4668783ee1a5bae3a110e532c639d5fa5108561af69da0bea19465e9dd",
+    "role": "admin"
+  },
+  "oisin": {
+    "password_hash": "scrypt:32768:8:1$QMqxLfAZ3xWNGDmD$c1315f31a16e09b086d8cba1c4324f846ad8b4fd6034533a7e12e170304543ca60fc7808cb3a7161f1795e08f9c5aebdfadd235c7e2aa6087b4fe4f6a2fcc1d3",
+    "role": "admin"
+  },
+  "parker": {
+    "password_hash": "scrypt:32768:8:1$lXaDM9dTGBl7KE8j$4c235241df504df18c773227e5cabd8a197c7feadaa10c95c136dd493109dd33b3388726f7a9052e106cfea1af644086bac28a72ecf3e091833731230d500521",
+    "role": "admin"
+  }
+}
