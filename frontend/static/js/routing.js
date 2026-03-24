@@ -819,4 +819,529 @@
     btn.textContent = on ? "Calculating\u2026" : "Calculate Route";
   }
 
+  /* ====================================================
+     TOP-LEVEL TAB SWITCHER  (Journey vs Fleet)
+     ==================================================== */
+
+  var fleetLayer = L.layerGroup().addTo(map);
+  var journeyTabEl = document.getElementById("tab-journey-btn");
+  var fleetTabEl   = document.getElementById("tab-fleet-btn");
+  var fleetPanelEl = document.getElementById("fleet-panel");
+  var journeySidebar = document.querySelector(".routing-sidebar > .panel-card");
+  // All panels that belong to the Journey tab
+  var journeyPanels = [
+    document.getElementById("route-summary"),
+  ];
+
+  function _switchTab(tab) {
+    var isFleet = (tab === "fleet");
+    journeyTabEl.classList.toggle("active", !isFleet);
+    fleetTabEl.classList.toggle("active", isFleet);
+
+    // Hide/show the journey panel-card (Plan Journey)
+    if (journeySidebar) journeySidebar.style.display = isFleet ? "none" : "";
+    journeyPanels.forEach(function (el) { if (el) el.style.display = "none"; });
+    fleetPanelEl.style.display = isFleet ? "" : "none";
+
+    if (!isFleet) {
+      // Clear fleet routes from map when switching back
+      fleetLayer.clearLayers();
+    }
+  }
+
+  journeyTabEl.addEventListener("click", function () { _switchTab("journey"); });
+  fleetTabEl.addEventListener("click",   function () { _switchTab("fleet"); });
+
+  /* ====================================================
+     FLEET — sub-tab switcher
+     ==================================================== */
+
+  document.getElementById("fleet-sub-build-btn").addEventListener("click", function () {
+    document.getElementById("fleet-sub-build-btn").classList.add("active");
+    document.getElementById("fleet-sub-analyse-btn").classList.remove("active");
+    document.getElementById("fleet-build-section").style.display   = "";
+    document.getElementById("fleet-analyse-section").style.display = "none";
+    document.getElementById("fleet-results").style.display         = "none";
+    _cancelFleetPin();
+  });
+  document.getElementById("fleet-sub-analyse-btn").addEventListener("click", function () {
+    document.getElementById("fleet-sub-analyse-btn").classList.add("active");
+    document.getElementById("fleet-sub-build-btn").classList.remove("active");
+    document.getElementById("fleet-analyse-section").style.display = "";
+    document.getElementById("fleet-build-section").style.display   = "none";
+    document.getElementById("fleet-results").style.display         = "none";
+    _cancelFleetPin();
+  });
+
+  /* ====================================================
+     FLEET — shared state & helpers
+     ==================================================== */
+
+  var FLEET_COLOURS = ["#2563eb","#16a34a","#dc2626","#d97706","#7c3aed","#0891b2","#c2410c","#65a30d","#9333ea","#0284c7"];
+
+  // Pin mode state
+  var _fleetPinTarget  = null;   // { type: "vehicle", section, vIdx } | { type: "depot", field: "start"|"end" }
+  var _fleetPinMarkers = {};     // "section-vIdx-stopIdx" -> Leaflet marker
+
+  // Mode per section
+  var _fleetBuildMode   = "driving";
+  var _fleetAnalyseMode = "driving";
+
+  // ---- Mode controls ----
+  document.getElementById("fleet-build-mode").addEventListener("click", function (e) {
+    var btn = e.target.closest(".seg-btn");
+    if (!btn) return;
+    this.querySelectorAll(".seg-btn").forEach(function (b) { b.classList.remove("active"); });
+    btn.classList.add("active");
+    _fleetBuildMode = btn.dataset.value;
+  });
+  document.getElementById("fleet-analyse-mode").addEventListener("click", function (e) {
+    var btn = e.target.closest(".seg-btn");
+    if (!btn) return;
+    this.querySelectorAll(".seg-btn").forEach(function (b) { b.classList.remove("active"); });
+    btn.classList.add("active");
+    _fleetAnalyseMode = btn.dataset.value;
+  });
+
+  // ---- Map click handler (shared) ----
+  map.on("click", function (e) {
+    if (!_fleetPinTarget) return;
+    var lat = e.latlng.lat, lon = e.latlng.lng;
+    var t = _fleetPinTarget;
+
+    if (t.type === "depot") {
+      var inp = document.getElementById(t.inputId);
+      inp.value = lat.toFixed(5) + ", " + lon.toFixed(5);
+      inp.dataset.lat = lat; inp.dataset.lon = lon;
+      var hint = document.getElementById(t.hintId);
+      hint.textContent = (t.field.indexOf("start") !== -1 ? "Start" : "End") + " set to " + lat.toFixed(4) + ", " + lon.toFixed(4);
+      hint.style.display = "";
+      _cancelFleetPin();
+      return;
+    }
+
+    if (t.type === "flat-build") {
+      _addFlatBuildPinRow(lat, lon);
+      // stay in pin mode for more stops
+      return;
+    }
+
+    // vehicle stop (analyse section)
+    _addFleetPinStopToCard(t.section, t.vIdx, lat, lon);
+    // stay in pin mode for the same vehicle
+  });
+
+  function _cancelFleetPin() {
+    _fleetPinTarget = null;
+    map._container.style.cursor = "";
+    document.querySelectorAll(".fleet-vc-pin-btn.pinning").forEach(function (b) { b.classList.remove("pinning"); b.textContent = "\uD83D\uDCCD Pin"; });
+    document.querySelectorAll(".fleet-pin-depot-btn.pinning").forEach(function (b) { b.classList.remove("pinning"); });
+    // Reset flat-build pin toggle
+    var pinBtn  = document.getElementById("fleet-build-pin-btn");
+    var typeBtn = document.getElementById("fleet-build-type-btn");
+    if (pinBtn && typeBtn) { pinBtn.classList.remove("active"); typeBtn.classList.add("active"); }
+  }
+
+  // ---- Depot pin buttons ----
+  document.getElementById("fleet-pin-start-btn").addEventListener("click", function () {
+    _toggleDepotPin("start", this, "fleet-start-input", "fleet-depot-hint");
+  });
+  document.getElementById("fleet-pin-end-btn").addEventListener("click", function () {
+    _toggleDepotPin("end", this, "fleet-end-input", "fleet-depot-hint");
+  });
+  document.getElementById("fleet-analyse-pin-start-btn").addEventListener("click", function () {
+    _toggleDepotPin("analyse-start", this, "fleet-analyse-start-input", "fleet-analyse-depot-hint");
+  });
+  document.getElementById("fleet-analyse-pin-end-btn").addEventListener("click", function () {
+    _toggleDepotPin("analyse-end", this, "fleet-analyse-end-input", "fleet-analyse-depot-hint");
+  });
+
+  function _toggleDepotPin(field, btn, inputId, hintId) {
+    var alreadyActive = _fleetPinTarget && _fleetPinTarget.type === "depot" && _fleetPinTarget.field === field;
+    _cancelFleetPin();
+    if (!alreadyActive) {
+      _fleetPinTarget = { type: "depot", field: field, inputId: inputId, hintId: hintId };
+      btn.classList.add("pinning");
+      map._container.style.cursor = "crosshair";
+      document.getElementById(hintId).textContent = "Click the map to set the " + (field.indexOf("start") !== -1 ? "start" : "end") + " point.";
+      document.getElementById(hintId).style.display = "";
+    }
+  }
+
+  /* ====================================================
+     FLEET — vehicle card builder (shared by both sections)
+     ==================================================== */
+
+  function _buildVehicleCards(containerId, n, section) {
+    var container = document.getElementById(containerId);
+    container.innerHTML = "";
+    for (var i = 0; i < n; i++) {
+      container.appendChild(_makeVehicleCard(i, section));
+    }
+  }
+
+  function _makeVehicleCard(vIdx, section) {
+    var colour = FLEET_COLOURS[vIdx % FLEET_COLOURS.length];
+    var card   = document.createElement("div");
+    card.className = "fleet-vc";
+    card.dataset.vIdx    = vIdx;
+    card.dataset.section = section;
+    card.style.borderLeftColor = colour;
+
+    var title = document.createElement("div");
+    title.className = "fleet-vc-header";
+    title.innerHTML =
+      '<span class="fleet-vc-title" style="color:' + colour + '">Vehicle ' + (vIdx + 1) + '</span>' +
+      '<button class="btn-secondary fleet-vc-add-btn" style="font-size:.78rem;padding:.2rem .6rem">+ Address</button>' +
+      '<button class="fleet-vc-pin-btn" title="Click map to add a stop to this vehicle">\uD83D\uDCCD Pin</button>';
+
+    var stopList = document.createElement("div");
+    stopList.className = "fleet-vc-stops";
+
+    card.appendChild(title);
+    card.appendChild(stopList);
+
+    title.querySelector(".fleet-vc-add-btn").addEventListener("click", function () {
+      _addFleetAddressRow(stopList, section, vIdx);
+    });
+    title.querySelector(".fleet-vc-pin-btn").addEventListener("click", function () {
+      var alreadyActive = _fleetPinTarget && _fleetPinTarget.type === "vehicle" &&
+                          _fleetPinTarget.section === section && _fleetPinTarget.vIdx === vIdx;
+      _cancelFleetPin();
+      if (!alreadyActive) {
+        _fleetPinTarget = { type: "vehicle", section: section, vIdx: vIdx };
+        this.classList.add("pinning");
+        this.textContent = "\uD83D\uDCCD Pinning\u2026";
+        map._container.style.cursor = "crosshair";
+      }
+    });
+
+    // Seed two address rows for the first section load
+    _addFleetAddressRow(stopList, section, vIdx);
+    return card;
+  }
+
+  function _addFleetAddressRow(stopList, section, vIdx) {
+    var row = document.createElement("div");
+    row.className = "fleet-stop-row";
+    var n = stopList.querySelectorAll(".fleet-stop-row").length + 1;
+    row.innerHTML =
+      '<input type="text" class="form-input fleet-stop-input" placeholder="Stop ' + n + '">' +
+      '<button class="fleet-stop-remove" title="Remove">\u00d7</button>';
+    row.querySelector(".fleet-stop-remove").addEventListener("click", function () {
+      stopList.removeChild(row);
+    });
+    stopList.appendChild(row);
+  }
+
+  function _addFleetPinStopToCard(section, vIdx, lat, lon) {
+    var containerId = section === "build" ? "fleet-vehicle-cards" : "fleet-analyse-cards";
+    var cards = document.getElementById(containerId).querySelectorAll(".fleet-vc");
+    var card  = cards[vIdx];
+    if (!card) return;
+    var stopList = card.querySelector(".fleet-vc-stops");
+
+    var row = document.createElement("div");
+    row.className = "fleet-stop-row fleet-pin-row";
+    row.dataset.lat = lat; row.dataset.lon = lon;
+    row.innerHTML =
+      '<span class="fleet-pin-label">\uD83D\uDCCD ' + lat.toFixed(4) + ', ' + lon.toFixed(4) + '</span>' +
+      '<button class="fleet-stop-remove" title="Remove">\u00d7</button>';
+
+    // Temporary preview marker
+    var colour = FLEET_COLOURS[vIdx % FLEET_COLOURS.length];
+    var n = stopList.querySelectorAll(".fleet-stop-row").length + 1;
+    var marker = L.marker([lat, lon], {
+      icon: L.divIcon({
+        className: "",
+        html: '<div style="background:' + colour + ';color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)">' + n + '</div>',
+        iconSize: [22, 22], iconAnchor: [11, 11],
+      }),
+    }).addTo(fleetLayer);
+
+    row.querySelector(".fleet-stop-remove").addEventListener("click", function () {
+      fleetLayer.removeLayer(marker);
+      stopList.removeChild(row);
+    });
+    stopList.appendChild(row);
+  }
+
+  /* ====================================================
+     FLEET — flat Build stop list
+     ==================================================== */
+
+  function _initFlatBuildStops() {
+    var container = document.getElementById("fleet-build-stops-container");
+    container.innerHTML = "";
+    _addFlatBuildAddressRow();
+    _addFlatBuildAddressRow();
+  }
+
+  function _addFlatBuildAddressRow() {
+    var container = document.getElementById("fleet-build-stops-container");
+    var row = document.createElement("div");
+    row.className = "fleet-stop-row";
+    var n = container.querySelectorAll(".fleet-stop-row").length + 1;
+    row.innerHTML =
+      '<input type="text" class="form-input fleet-stop-input" placeholder="Stop ' + n + '">' +
+      '<button class="fleet-stop-remove" title="Remove">\u00d7</button>';
+    row.querySelector(".fleet-stop-remove").addEventListener("click", function () {
+      container.removeChild(row);
+    });
+    container.appendChild(row);
+  }
+
+  function _addFlatBuildPinRow(lat, lon) {
+    var container = document.getElementById("fleet-build-stops-container");
+    var n = container.querySelectorAll(".fleet-stop-row").length + 1;
+    var row = document.createElement("div");
+    row.className = "fleet-stop-row fleet-pin-row";
+    row.dataset.lat = lat; row.dataset.lon = lon;
+    row.innerHTML =
+      '<span class="fleet-pin-label">\uD83D\uDCCD ' + lat.toFixed(4) + ', ' + lon.toFixed(4) + '</span>' +
+      '<button class="fleet-stop-remove" title="Remove">\u00d7</button>';
+    var marker = L.marker([lat, lon], {
+      icon: L.divIcon({
+        className: "",
+        html: '<div style="background:#2563eb;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)">' + n + '</div>',
+        iconSize: [22, 22], iconAnchor: [11, 11],
+      }),
+    }).addTo(fleetLayer);
+    row.querySelector(".fleet-stop-remove").addEventListener("click", function () {
+      fleetLayer.removeLayer(marker);
+      container.removeChild(row);
+    });
+    container.appendChild(row);
+  }
+
+  function _collectFlatBuildStops() {
+    var stops = [];
+    document.getElementById("fleet-build-stops-container").querySelectorAll(".fleet-stop-row").forEach(function (row) {
+      if (row.dataset.lat && row.dataset.lon) {
+        stops.push({ lat: parseFloat(row.dataset.lat), lon: parseFloat(row.dataset.lon),
+                     name: parseFloat(row.dataset.lat).toFixed(4) + ", " + parseFloat(row.dataset.lon).toFixed(4) });
+      } else {
+        var inp = row.querySelector(".fleet-stop-input");
+        if (inp && inp.value.trim()) stops.push(inp.value.trim());
+      }
+    });
+    return stops;
+  }
+
+  // ---- Flat build stop pin toggle ----
+  document.getElementById("fleet-build-type-btn").addEventListener("click", function () {
+    if (_fleetPinTarget && _fleetPinTarget.type === "flat-build") _cancelFleetPin();
+    this.classList.add("active");
+    document.getElementById("fleet-build-pin-btn").classList.remove("active");
+  });
+  document.getElementById("fleet-build-pin-btn").addEventListener("click", function () {
+    var alreadyActive = _fleetPinTarget && _fleetPinTarget.type === "flat-build";
+    _cancelFleetPin();
+    if (!alreadyActive) {
+      _fleetPinTarget = { type: "flat-build" };
+      this.classList.add("active");
+      document.getElementById("fleet-build-type-btn").classList.remove("active");
+      map._container.style.cursor = "crosshair";
+    }
+  });
+  document.getElementById("fleet-build-add-stop-btn").addEventListener("click", function () {
+    _addFlatBuildAddressRow();
+  });
+
+  /* ====================================================
+     FLEET — initialise on load
+     ==================================================== */
+
+  _initFlatBuildStops();
+  _buildVehicleCards("fleet-analyse-cards",  2, "analyse");
+
+  document.getElementById("fleet-set-analyse-btn").addEventListener("click", function () {
+    var n = Math.max(1, Math.min(10, parseInt(document.getElementById("fleet-n-analyse").value, 10) || 2));
+    _cancelFleetPin();
+    fleetLayer.clearLayers();
+    _buildVehicleCards("fleet-analyse-cards", n, "analyse");
+    document.getElementById("fleet-results").style.display = "none";
+  });
+
+  /* ====================================================
+     FLEET — collect stops from cards
+     ==================================================== */
+
+  function _collectVehicleStops(containerId) {
+    var vehicles = [];
+    var cards = document.getElementById(containerId).querySelectorAll(".fleet-vc");
+    cards.forEach(function (card) {
+      var stops = [];
+      card.querySelectorAll(".fleet-stop-row").forEach(function (row) {
+        if (row.dataset.lat && row.dataset.lon) {
+          stops.push({ lat: parseFloat(row.dataset.lat), lon: parseFloat(row.dataset.lon),
+                       name: parseFloat(row.dataset.lat).toFixed(4) + ", " + parseFloat(row.dataset.lon).toFixed(4) });
+        } else {
+          var inp = row.querySelector(".fleet-stop-input");
+          if (inp && inp.value.trim()) stops.push(inp.value.trim());
+        }
+      });
+      vehicles.push({ stops: stops });
+    });
+    return vehicles;
+  }
+
+  function _depotStop(inputId) {
+    var inp = document.getElementById(inputId);
+    var v   = inp.value.trim();
+    if (!v) return null;
+    if (inp.dataset.lat && inp.dataset.lon) {
+      return { lat: parseFloat(inp.dataset.lat), lon: parseFloat(inp.dataset.lon), name: v };
+    }
+    return v;
+  }
+
+  /* ====================================================
+     FLEET — Build Routes submit
+     ==================================================== */
+
+  document.getElementById("fleet-get-routes-btn").addEventListener("click", function () {
+    _cancelFleetPin();
+    var stops = _collectFlatBuildStops();
+    if (!stops.length) { _fleetShowError("fleet-build-error", "Please add at least one stop."); return; }
+    var nVehicles = Math.max(1, Math.min(10, parseInt(document.getElementById("fleet-n-vehicles").value, 10) || 2));
+
+    var payload = {
+      action:    "build",
+      stops:     stops,
+      vehicles:  nVehicles,
+      transport: _fleetBuildMode,
+      start:     _depotStop("fleet-start-input"),
+      end:       _depotStop("fleet-end-input"),
+    };
+    _fleetSubmit(payload, "fleet-build-error", this, "Getting Routes\u2026", "Get Routes");
+  });
+
+  /* ====================================================
+     FLEET — Analyse Routes submit
+     ==================================================== */
+
+  document.getElementById("fleet-analyse-submit-btn").addEventListener("click", function () {
+    _cancelFleetPin();
+    var vehicles = _collectVehicleStops("fleet-analyse-cards");
+    var hasStops = vehicles.some(function (v) { return v.stops.length > 0; });
+    if (!hasStops) { _fleetShowError("fleet-analyse-error", "Please add at least one stop per vehicle."); return; }
+
+    var payload = {
+      action:          "analyse",
+      existing_routes: vehicles.map(function (v) { return v.stops; }),
+      transport:       _fleetAnalyseMode,
+      start:           _depotStop("fleet-analyse-start-input"),
+      end:             _depotStop("fleet-analyse-end-input"),
+    };
+    _fleetSubmit(payload, "fleet-analyse-error", this, "Analysing\u2026", "Analyse Routes");
+  });
+
+  /* ====================================================
+     FLEET — shared fetch + render
+     ==================================================== */
+
+  function _fleetSubmit(payload, errorId, btn, loadingText, defaultText) {
+    _fleetShowError(errorId, null);
+    btn.disabled    = true;
+    btn.textContent = loadingText;
+
+    fetch("/routing/efficiency", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        btn.disabled    = false;
+        btn.textContent = defaultText;
+        if (data.error) {
+          var msg = data.error;
+          if (msg.indexOf("Could not find") !== -1) msg += " \u2014 try using the \uD83D\uDCCD Pin button to click the map instead.";
+          _fleetShowError(errorId, msg);
+          return;
+        }
+        _renderFleetResults(data, payload.action || "analyse");
+      })
+      .catch(function (err) {
+        btn.disabled    = false;
+        btn.textContent = defaultText;
+        _fleetShowError(errorId, "Request failed: " + err.message);
+      });
+  }
+
+  function _renderFleetResults(data, action) {
+    var resultsEl = document.getElementById("fleet-results");
+    resultsEl.style.display = "";
+
+    document.getElementById("fleet-result-mode-badge").textContent = action === "build" ? "BUILT" : "ANALYSED";
+
+    var badge = document.getElementById("fleet-score-badge");
+    badge.textContent = data.score;
+    badge.className   = "fleet-score-badge " + (data.score >= 75 ? "score-high" : data.score >= 50 ? "score-mid" : "score-low");
+
+    document.getElementById("fleet-meta").innerHTML =
+      data.n_vehicles + " vehicle" + (data.n_vehicles !== 1 ? "s" : "") +
+      " &bull; " + data.n_stops + " stops &bull; " + data.total_distance_km + " km total";
+
+    document.getElementById("fleet-suggestions").innerHTML =
+      "<strong>Suggestions</strong><ul>" +
+      data.suggestions.map(function (s) { return "<li>" + s + "</li>"; }).join("") + "</ul>";
+
+    var summaryEl = document.getElementById("fleet-routes-summary");
+    summaryEl.innerHTML = "";
+    fleetLayer.clearLayers();
+    var bounds = [];
+
+    data.routes.forEach(function (route) {
+      var colour = route.colour;
+      var dur    = route.duration_min != null ? route.duration_min + " min" : "\u2014";
+
+      // Sidebar card
+      var card = document.createElement("div");
+      card.className = "fleet-vehicle-card";
+      card.style.borderLeftColor = colour;
+      card.innerHTML =
+        '<div class="fleet-vehicle-title" style="color:' + colour + '">Vehicle ' + route.vehicle + '</div>' +
+        '<div class="fleet-vehicle-stats">' + route.distance_km + ' km &middot; ' + dur + '</div>' +
+        '<ol class="fleet-vehicle-stops">' +
+        route.stops.map(function (s) { return "<li>" + s.name + "</li>"; }).join("") + '</ol>';
+      summaryEl.appendChild(card);
+
+      // Map geometry
+      if (route.geometry && route.geometry.coordinates && route.geometry.coordinates.length > 1) {
+        var latlngs = route.geometry.coordinates.map(function (c) { return [c[1], c[0]]; });
+        L.polyline(latlngs, { color: colour, weight: 5, opacity: 0.85 }).addTo(fleetLayer);
+        latlngs.forEach(function (ll) { bounds.push(ll); });
+      } else {
+        // Fallback: straight lines between stops
+        var pts = route.stops.map(function (s) { return [s.lat, s.lon]; });
+        if (pts.length > 1) {
+          L.polyline(pts, { color: colour, weight: 3, opacity: 0.6, dashArray: "6 4" }).addTo(fleetLayer);
+          pts.forEach(function (ll) { bounds.push(ll); });
+        }
+      }
+
+      // Stop markers
+      route.stops.forEach(function (stop, idx) {
+        var ll = [stop.lat, stop.lon];
+        L.circleMarker(ll, { radius: 8, color: "#fff", fillColor: colour, fillOpacity: 1, weight: 2 })
+          .bindTooltip("V" + route.vehicle + " stop " + (idx + 1) + ": " + stop.name, { sticky: true })
+          .addTo(fleetLayer);
+        bounds.push(ll);
+      });
+    });
+
+    if (bounds.length) map.fitBounds(L.latLngBounds(bounds).pad(0.1));
+  }
+
+  function _fleetShowError(id, msg) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (msg) { el.textContent = msg; el.style.display = ""; }
+    else     { el.textContent = ""; el.style.display = "none"; }
+  }
+
+  // legacy no-op (was referenced before refactor)
+  function _fleetError(msg) { _fleetShowError("fleet-build-error", msg); }
+
 })();
