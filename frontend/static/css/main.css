@@ -339,7 +339,6 @@ a:hover { text-decoration: underline; }
   width: 100%;
 }
 
-
 /* ============================================================
    Status Badges
    ============================================================ */
@@ -646,6 +645,15 @@ a:hover { text-decoration: underline; }
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
   gap: 1rem;
+  align-items: start;
+}
+
+.chart-card.chart-fixed {
+  min-height: 320px;
+}
+
+.chart-card.is-hidden {
+  display: none;
 }
 
 .chart-card canvas { display: block; max-width: 100%; }

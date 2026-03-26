@@ -194,15 +194,16 @@ class SnapshotService:
             try:
                 # Attach derived analytics for frontend consumption
                 snapshot.buses.top_served_stops = get_top_served_stops(snapshot.buses, top_n=10)
-                summary, counts = get_wait_time_summary(snapshot.buses, top_n=10)
+                summary, counts = get_wait_time_summary(snapshot.buses, top_n=15)
                 snapshot.buses.wait_time_summary = summary
                 snapshot.buses.wait_time_counts = counts
-                best, worst = get_wait_time_extremes(snapshot.buses, n=5)
+                best, worst = get_wait_time_extremes(snapshot.buses, n=15)
                 snapshot.buses.wait_time_best = best
                 snapshot.buses.wait_time_worst = worst
                 scores, top_scores = get_importance_scores(snapshot.buses, weight_wait=0.6, weight_trips=0.4)
                 snapshot.buses.stop_importance_scores = scores
                 snapshot.buses.top_importance_stops = top_scores
+
             except Exception:
                 pass
 
