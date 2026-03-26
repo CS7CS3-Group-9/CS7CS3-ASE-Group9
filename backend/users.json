@@ -11,12 +11,16 @@
     "password_hash": "scrypt:32768:8:1$SJolXQBJKPQvMkAm$750d36866326c19b132cd10017eb7112ddd76386085a20f82fdb7f1a78ed9623b35cae4668783ee1a5bae3a110e532c639d5fa5108561af69da0bea19465e9dd",
     "role": "admin"
   },
+  "lol": {
+    "password_hash": "scrypt:32768:8:1$H00145ycMPTjjL6s$28f574928ce602b767ea64892d53a99c635f4e71705cffe8f68ff27c01b4e8dd38998c2a184e88218345ffd93ac4faa4504fefda6e18e8e274b64989b29c80b6",
+    "role": "user"
+  },
   "oisin": {
     "password_hash": "scrypt:32768:8:1$QMqxLfAZ3xWNGDmD$c1315f31a16e09b086d8cba1c4324f846ad8b4fd6034533a7e12e170304543ca60fc7808cb3a7161f1795e08f9c5aebdfadd235c7e2aa6087b4fe4f6a2fcc1d3",
     "role": "admin"
   },
   "parker": {
-    "password_hash": "scrypt:32768:8:1$L953TZ0OoMinDOtW$3ebd5a5a06ff660a693fe4d8c3aed1fc8b1a31572602d810d8757d7f82141f49dc48962880683c906f0c96394630dd4faa5d803a131b59fd74c103130bfa601c",
-    "role": "user"
+    "password_hash": "scrypt:32768:8:1$8fGwpirTmlp0kcx9$21435fc76c6eca01ec27a78a5b273e12f38175469af61389124e649d535121686b8a2e40cf4dee3c2343de8fb455bea00233a6c552cb1f74acd59f905d04a19d",
+    "role": "admin"
   }
 }
