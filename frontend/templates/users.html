@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}User Management — Dublin City{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1>User Management</h1>
+  <p class="page-subtitle">Add or update dashboard login credentials.</p>
+</div>
+
+{% if error %}
+  <div class="alert alert-warning">{{ error }}</div>
+{% endif %}
+
+{% if message %}
+  <div class="alert alert-success">{{ message }}</div>
+{% endif %}
+
+<div class="dashboard-grid users-grid">
+  <div class="panel-card">
+    <div class="panel-header"><h3>Existing Users</h3></div>
+    {% if users %}
+      <ul class="user-list">
+        {% for u in users %}
+          <li class="user-row">
+            <div class="user-meta">
+              <span class="user-name">{{ u.username }}</span>
+              <span class="user-role">{{ u.role }}</span>
+            </div>
+            <form method="post" action="{{ url_for('auth.delete_user') }}">
+              <input type="hidden" name="username" value="{{ u.username }}">
+              <button class="btn-danger" type="submit" {% if u.is_self or u.is_admin %}disabled{% endif %}>
+                Remove
+              </button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="no-data">No users configured yet.</p>
+    {% endif %}
+    <p class="panel-note">Passwords are stored as hashes in the users file.</p>
+    <p class="panel-note">New users are added as non-admin by default.</p>
+  </div>
+
+  <div class="panel-card">
+    <div class="panel-header"><h3>Add / Update User</h3></div>
+    <form method="post" action="{{ url_for('auth.manage_users_post') }}">
+      <div class="form-group">
+        <label class="form-label" for="username">Username</label>
+        <input class="form-input" id="username" name="username" type="text" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input class="form-input" id="password" name="password" type="password" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="confirm">Confirm Password</label>
+        <input class="form-input" id="confirm" name="confirm" type="password" required>
+      </div>
+      <button class="btn-primary" type="submit">Save User</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
