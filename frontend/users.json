@@ -16,7 +16,7 @@
     "role": "admin"
   },
   "parker": {
-    "password_hash": "scrypt:32768:8:1$L953TZ0OoMinDOtW$3ebd5a5a06ff660a693fe4d8c3aed1fc8b1a31572602d810d8757d7f82141f49dc48962880683c906f0c96394630dd4faa5d803a131b59fd74c103130bfa601c",
+    "password_hash": "scrypt:32768:8:1$rOGYEiATXNK6FS1A$089162313de0aee2a8c7d0ea88294eaaac3975bcb602308fcc6fcd2d5c0bf5daf4ffc2fbb1c8f2553e00e6ce6ba3eafd16952ba7a51fef16e7ddda3e86ab0502",
     "role": "user"
   }
 }
