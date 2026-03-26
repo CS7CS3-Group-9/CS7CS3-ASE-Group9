@@ -55,6 +55,7 @@ def test_predict_bike_stations_from_ml(monkeypatch, tmp_path):
     model_path = _write_dummy_model(tmp_path)
     monkeypatch.setenv("BIKES_MODEL_PATH", str(model_path))
     monkeypatch.setenv("WEATHER_AUTO_REFRESH", "false")
+    monkeypatch.setenv("BIKES_WEATHER_ADJUSTMENT", "false")
 
     now = datetime(2026, 3, 9, 8, 15, tzinfo=timezone.utc)
     result = predict_bike_stations(now=now)
