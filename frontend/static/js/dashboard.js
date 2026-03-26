@@ -400,20 +400,37 @@
     if (!points.length) return;
 
     var max = points.reduce(function (m, p) { return p.count > m ? p.count : m; }, 0);
-    points.forEach(function (p) {
+    var topSet = null;
+    if (points.length && typeof points[0].is_top === "undefined") {
+      var sorted = points.slice().sort(function (a, b) { return (b.count || 0) - (a.count || 0); });
+      topSet = new Set(sorted.slice(0, 500).map(function (p) { return p.stop_id; }));
+    }
+    function addPoint(p) {
       if (p.lat == null || p.lon == null) return;
       var ratio = max ? Math.sqrt(p.count / max) : 0;
       var radius = 4 + ratio * 12;
-      var color = ratio >= 0.66 ? "#dc2626" : ratio >= 0.33 ? "#d97706" : "#16a34a";
+      var isTop = p.is_top === true || (topSet && topSet.has(p.stop_id));
+      var color = isTop ? "#dc2626" : "#16a34a";
+      var opacity = isTop ? 0.65 : 0.25;
       L.circleMarker([p.lat, p.lon], {
         radius: radius,
         color: color,
         fillColor: color,
-        fillOpacity: 0.6,
+        fillOpacity: opacity,
         weight: 1,
       })
         .bindPopup("<strong>" + (p.name || "Bus Stop") + "</strong><br>Trips: <b>" + p.count + "</b>")
         .addTo(analyticsLayer);
+    }
+
+    // Draw non-top stops first, then top stops so red sits on top.
+    points.forEach(function (p) {
+      var isTop = p.is_top === true || (topSet && topSet.has(p.stop_id));
+      if (!isTop) addPoint(p);
+    });
+    points.forEach(function (p) {
+      var isTop = p.is_top === true || (topSet && topSet.has(p.stop_id));
+      if (isTop) addPoint(p);
     });
   }
 
