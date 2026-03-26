@@ -33,6 +33,7 @@ def recommendations():
         snapshot.get("airquality"),
         bike_stations=bike_stations,
         bus_stops=bus_stops,
+        buses=snapshot.get("buses"),
         radius_km=radius_km,
     )
     return render_template(

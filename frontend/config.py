@@ -3,6 +3,14 @@ import json
 from pathlib import Path
 
 
+def _default_users_file() -> str:
+    repo_root = Path(__file__).resolve().parents[1]
+    candidate = repo_root / "frontend" / "users.json"
+    if candidate.exists():
+        return str(candidate)
+    return ""
+
+
 def _load_users():
     raw = os.getenv("DASHBOARD_USERS_JSON", "").strip()
     if not raw:
@@ -15,7 +23,7 @@ def _load_users():
     except json.JSONDecodeError:
         data = None
     if data is None:
-        file_path = os.getenv("DASHBOARD_USERS_FILE", "").strip()
+        file_path = os.getenv("DASHBOARD_USERS_FILE", "").strip() or _default_users_file()
         if file_path:
             path = Path(file_path)
             if not path.is_absolute():
@@ -40,4 +48,4 @@ class Config:
     DASHBOARD_USER = os.getenv("DASHBOARD_USER", "admin")
     DASHBOARD_PASS = os.getenv("DASHBOARD_PASS", "admin")
     DASHBOARD_USERS = _load_users()
-    DASHBOARD_USERS_FILE = os.getenv("DASHBOARD_USERS_FILE", "")
+    DASHBOARD_USERS_FILE = os.getenv("DASHBOARD_USERS_FILE", _default_users_file())

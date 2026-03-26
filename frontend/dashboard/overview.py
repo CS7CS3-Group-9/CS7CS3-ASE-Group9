@@ -187,6 +187,55 @@ def _filter_points_within_radius(points, radius_km):
     return filtered
 
 
+def _filter_traffic_within_radius(traffic, radius_km):
+    if not traffic or radius_km is None:
+        return traffic
+    incidents = traffic.get("incidents") or []
+    filtered = []
+    for inc in incidents:
+        lat = inc.get("latitude")
+        lon = inc.get("longitude")
+        if lat is None or lon is None:
+            continue
+        if _within_radius_km(lat, lon, radius_km):
+            filtered.append(inc)
+
+    by_category = {}
+    by_severity = {}
+    total_delay = 0
+    for inc in filtered:
+        cat = inc.get("category")
+        sev = inc.get("severity")
+        if cat is not None:
+            by_category[cat] = by_category.get(cat, 0) + 1
+        if sev is not None:
+            by_severity[sev] = by_severity.get(sev, 0) + 1
+        total_delay += inc.get("delay_minutes") or 0
+
+    total = len(filtered)
+    avg_delay = total_delay / total if total else 0
+    incidents_per_km = total / radius_km if radius_km > 0 else 0
+    if incidents_per_km > 5:
+        congestion = "high"
+    elif incidents_per_km > 2:
+        congestion = "medium"
+    else:
+        congestion = "low"
+    avg_speed = 15 if congestion == "high" else 30 if congestion == "medium" else 50
+
+    return {
+        **traffic,
+        "congestion_level": congestion,
+        "average_speed": avg_speed,
+        "total_incidents": total,
+        "incidents_by_category": by_category,
+        "incidents_by_severity": by_severity,
+        "total_delay_minutes": total_delay,
+        "average_delay_minutes": avg_delay,
+        "incidents": filtered,
+    }
+
+
 def _build_bike_metrics(stations):
     if not stations:
         return None
@@ -462,6 +511,7 @@ def _build_recommendations(
     airquality,
     bike_stations=None,
     bus_stops=None,
+    buses=None,
     radius_km=None,
 ):
     recs = []
@@ -547,24 +597,68 @@ def _build_recommendations(
     if airquality:
         aqi = airquality.get("aqi_value")
         if aqi is not None:
-            if aqi > 100:
+            if aqi >= 101:
                 recs.append(
                     {
-                        "title": "Poor Air Quality",
-                        "description": f"Air Quality Index is {aqi}."
-                        "Sensitive groups should avoid prolonged outdoor activity.",
+                        "title": "High Air Quality Risk",
+                        "description": (
+                            f"Air Quality Index is {aqi}. "
+                            "Elderly people, children, and those with respiratory conditions"
+                            "should limit time outdoors and consider a mask."
+                        ),
                         "priority": "High",
                         "source": "air_quality",
                     }
                 )
-            elif aqi > 50:
+            elif aqi >= 51:
                 recs.append(
                     {
                         "title": "Moderate Air Quality",
-                        "description": f"Air Quality Index is {aqi}. "
-                        "Generally acceptable but may cause issues for very sensitive people.",
+                        "description": (
+                            f"Air Quality Index is {aqi}. "
+                            "Generally acceptable, but very sensitive people should limit prolonged exertion outdoors."
+                        ),
                         "priority": "Medium",
                         "source": "air_quality",
+                    }
+                )
+            else:
+                recs.append(
+                    {
+                        "title": "Good Air Quality",
+                        "description": f"Air Quality Index is {aqi}. Great conditions for outdoor activity.",
+                        "priority": "Low",
+                        "source": "air_quality",
+                    }
+                )
+
+    if buses:
+        wait_worst = buses.get("wait_time_worst") or []
+        threshold_min = 45
+        hotspots = [w for w in wait_worst if (w.get("avg_wait_min") or 0) >= threshold_min]
+        if hotspots:
+            items = []
+            for w in hotspots[:6]:
+                name = w.get("name") or w.get("stop_id") or "Stop"
+                avg_wait = w.get("avg_wait_min")
+                if avg_wait is None:
+                    continue
+                if avg_wait >= 60:
+                    hours = avg_wait / 60.0
+                    items.append(f"{name} — {hours:.1f} hrs avg wait")
+                else:
+                    items.append(f"{name} — {avg_wait:.1f} min avg wait")
+            if items:
+                recs.append(
+                    {
+                        "title": "Long Wait Time Hotspots",
+                        "description": (
+                            f"Several stops are averaging {threshold_min}+ minute waits. "
+                            "Consider adding peak service or adjusting headways."
+                        ),
+                        "items": items,
+                        "priority": "High",
+                        "source": "bus",
                     }
                 )
 
@@ -579,7 +673,7 @@ def _build_recommendations(
                     f"Prioritise a new bus stop or route extension in this area."
                 ),
                 "priority": "High",
-                "source": "planning",
+                "source": "bus",
             }
         )
         if len(needs_bus) > 1:
@@ -592,7 +686,7 @@ def _build_recommendations(
                         f"(nearest bus stop {second['bus_km']:.1f} km)."
                     ),
                     "priority": "Medium",
-                    "source": "planning",
+                    "source": "bus",
                 }
             )
 
@@ -665,8 +759,11 @@ def dashboard():
         bike_stations = f_bike_stations.result()
         bus_stops = f_bus_stops.result()
 
+    bike_stations = _filter_points_within_radius(bike_stations, radius_km)
+    bus_stops = _filter_points_within_radius(bus_stops, radius_km)
+
+    traffic = _filter_traffic_within_radius(snapshot.get("traffic"), radius_km)
     bikes = _build_bike_metrics(bike_stations) or snapshot.get("bikes")
-    traffic = snapshot.get("traffic")
     airquality = snapshot.get("airquality")
     tours = snapshot.get("tours")
     timestamp = snapshot.get("timestamp")
@@ -677,6 +774,7 @@ def dashboard():
         airquality,
         bike_stations=bike_stations,
         bus_stops=bus_stops,
+        buses=snapshot.get("buses"),
         radius_km=radius_km,
     )
 
@@ -710,6 +808,10 @@ def dashboard_data():
         bike_stations = f_bike_stations.result()
         bus_stops = f_bus_stops.result()
 
+    bike_stations = _filter_points_within_radius(bike_stations, radius_km)
+    bus_stops = _filter_points_within_radius(bus_stops, radius_km)
+
+    traffic = _filter_traffic_within_radius(snapshot.get("traffic"), radius_km)
     bikes = _build_bike_metrics(bike_stations) or snapshot.get("bikes")
 
     needs_bus_areas, needs_bike_areas = _get_needs_cached(bus_stops, bike_stations, radius_km)
@@ -718,7 +820,7 @@ def dashboard_data():
             "timestamp": snapshot.get("timestamp"),
             "source_status": snapshot.get("source_status", {}),
             "bikes": bikes,
-            "traffic": snapshot.get("traffic"),
+            "traffic": traffic,
             "airquality": snapshot.get("airquality"),
             "tours": snapshot.get("tours"),
             "bike_stations": bike_stations,

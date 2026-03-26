@@ -255,6 +255,8 @@ a:hover { text-decoration: underline; }
 .legend-heat-high { background: #dc2626; border-color: #dc2626; }
 .legend-heat-mid { background: #f97316; border-color: #f97316; }
 .legend-heat-low { background: #16a34a; border-color: #16a34a; }
+.legend-bus-top { background: #dc2626; border-color: #dc2626; }
+.legend-bus-other { background: #16a34a; border-color: #16a34a; }
 
 .debug-toggle-label {
   font-size: .8rem;
