@@ -89,9 +89,6 @@ class BusAdapter(DataAdapter):
         if not isinstance(meta, dict):
             return None
 
-        # NOTE: We intentionally skip mtime validation so precomputed metrics
-        # are always used when present. This avoids expensive recomputation.
-
         metrics = payload.get("metrics")
         if not isinstance(metrics, dict):
             return None
