@@ -89,13 +89,6 @@ class BusAdapter(DataAdapter):
         if not isinstance(meta, dict):
             return None
 
-        stops_mtime = self._safe_mtime(stops_file)
-        stop_times_mtime = self._safe_mtime(stop_times_file)
-        if not self._mtime_matches(float(meta.get("stops_mtime", 0.0)), stops_mtime):
-            return None
-        if not self._mtime_matches(float(meta.get("stop_times_mtime", 0.0)), stop_times_mtime):
-            return None
-
         metrics = payload.get("metrics")
         if not isinstance(metrics, dict):
             return None
