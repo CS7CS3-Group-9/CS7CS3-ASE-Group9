@@ -291,37 +291,57 @@
   // --------------------------------------------------------------------------
   // Fetch interceptor
   // --------------------------------------------------------------------------
-  window.fetch = async function (url, options) {
-    if (!_offline) return _origFetch(url, options);
 
+  async function _serveFromCache(urlType) {
+    if (urlType === 'dashboard') {
+      return await _buildDashboardData();
+    } else if (urlType === 'analytics') {
+      return await _buildAnalyticsData();
+    } else if (urlType === 'busStops') {
+      var entry = await window.electronAPI.getCachedData(CACHE_KEYS.busStops);
+      return entry ? JSON.parse(entry.data_json) : [];
+    } else if (urlType === 'bikeStations') {
+      var entry2 = await window.electronAPI.getCachedData(CACHE_KEYS.bikeStations);
+      return entry2 ? JSON.parse(entry2.data_json) : [];
+    }
+    return null;
+  }
+
+  window.fetch = async function (url, options) {
     var urlType = _getUrlType(url);
+
+    if (_offline) {
+      // Offline mode: always serve from cache for known URLs
+      if (!urlType) return _origFetch(url, options);
+      var data = null;
+      try { data = await _serveFromCache(urlType); } catch (_) {}
+      if (data !== null) {
+        return new Response(JSON.stringify(data), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return _origFetch(url, options);
+    }
+
+    // Online mode: attempt real fetch, but catch network errors for known URLs
+    // and silently serve cached data. This covers the transition window between
+    // cloud dropping and the offline IPC signal arriving (up to ~30s).
     if (!urlType) return _origFetch(url, options);
 
-    var data = null;
     try {
-      if (urlType === 'dashboard') {
-        data = await _buildDashboardData();
-      } else if (urlType === 'analytics') {
-        data = await _buildAnalyticsData();
-      } else if (urlType === 'busStops') {
-        var entry = await window.electronAPI.getCachedData(CACHE_KEYS.busStops);
-        data = entry ? JSON.parse(entry.data_json) : [];
-      } else if (urlType === 'bikeStations') {
-        var entry = await window.electronAPI.getCachedData(CACHE_KEYS.bikeStations);
-        data = entry ? JSON.parse(entry.data_json) : [];
+      return await _origFetch(url, options);
+    } catch (networkErr) {
+      var fallback = null;
+      try { fallback = await _serveFromCache(urlType); } catch (_) {}
+      if (fallback !== null) {
+        return new Response(JSON.stringify(fallback), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
-    } catch (_) {
-      // If cache lookup fails, fall through to the real fetch
+      throw networkErr;
     }
-
-    if (data !== null) {
-      return new Response(JSON.stringify(data), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
-    return _origFetch(url, options);
   };
 
   // --------------------------------------------------------------------------

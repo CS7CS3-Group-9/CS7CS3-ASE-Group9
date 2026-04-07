@@ -176,17 +176,24 @@ class ProcessManager {
   // --------------------------------------------------------------------------
   // Public API
   // --------------------------------------------------------------------------
+  // Merge process.env with dotenv fallbacks.
+  // System env takes priority, but only when non-empty — an empty string in
+  // the system env must not shadow a real value from the .env file.
+  _mergeEnv(dotenvVars) {
+    const env = { ...process.env };
+    for (const [key, val] of Object.entries(dotenvVars)) {
+      if (!env[key]) env[key] = val;
+    }
+    return env;
+  }
+
   async startBackend() {
     this.config.backendPort = await this._findFreePort(this.config.backendPort);
     const { cmd, args, cwd } = this._resolveBackendCommand();
-    const dotenvVars = this._loadDotenv();
-    const env = {
-      ...dotenvVars,          // .env file provides defaults
-      ...process.env,         // system env takes priority
-      ENABLE_FIRESTORE: 'false',
-      PORT: String(this.config.backendPort),
-      FLASK_APP: 'backend.app:create_app',
-    };
+    const env = this._mergeEnv(this._loadDotenv());
+    env.ENABLE_FIRESTORE = 'false';
+    env.PORT = String(this.config.backendPort);
+    env.FLASK_APP = 'backend.app:create_app';
     this.backendProcess = this._spawn('backend', cmd, args, cwd, env);
     await this._waitForReady(this.config.backendPort, this.config.processReadyTimeoutMs);
   }
@@ -194,13 +201,11 @@ class ProcessManager {
   async startFrontend() {
     this.config.frontendPort = await this._findFreePort(this.config.frontendPort);
     const { cmd, args, cwd } = this._resolveFrontendCommand();
-    const env = {
-      ...process.env,
-      BACKEND_API_URL: `http://127.0.0.1:${this.config.backendPort}`,
-      PORT: String(this.config.frontendPort),
-      FLASK_APP: 'app:create_app',
-      SECRET_KEY: `desktop-${Date.now()}`,
-    };
+    const env = this._mergeEnv(this._loadDotenv());
+    env.BACKEND_API_URL = `http://127.0.0.1:${this.config.backendPort}`;
+    env.PORT = String(this.config.frontendPort);
+    env.FLASK_APP = 'app:create_app';
+    env.SECRET_KEY = `desktop-${Date.now()}`;
     this.frontendProcess = this._spawn('frontend', cmd, args, cwd, env);
     await this._waitForReady(this.config.frontendPort, this.config.processReadyTimeoutMs);
   }

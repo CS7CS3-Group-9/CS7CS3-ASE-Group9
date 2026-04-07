@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const log = require('electron-log');
@@ -29,14 +29,10 @@ let syncTimer = null;
 // --------------------------------------------------------------------------
 let cloudOnline    = false;
 let internetOnline = false;
-let currentMode    = 'offline'; // 'cloud' | 'local' | 'offline'
+let currentMode    = 'offline'; // 'cloud' | 'offline'
 
-let localFrontendReady = false;
-let localFrontendUrl   = '';
-
-function computeMode(cloud, internet) {
-  if (cloud)    return 'cloud';
-  if (internet) return 'local';
+function computeMode(cloud) {
+  if (cloud) return 'cloud';
   return 'offline';
 }
 
@@ -53,7 +49,7 @@ const leafletOfflinePath = path.join(
 // Background sync — warm the SQLite cache from /desktop/cache-warmup
 // --------------------------------------------------------------------------
 async function runBackgroundSync() {
-  if (!internetOnline) return; // no point if we have no internet
+  if (!cloudOnline) return; // no point if cloud (and therefore data sources) are unreachable
   try {
     const url = `http://127.0.0.1:${config.backendPort}/desktop/cache-warmup`;
     const resp = await fetch(url, { signal: AbortSignal.timeout(30_000) });
@@ -170,6 +166,18 @@ function createWindow() {
     setTimeout(() => { sendModeToPage(); }, 300);
   });
 
+  // When the cloud page fails to load (e.g. offline at startup), load a minimal
+  // shell so the overlay can inject and serve cached data instead of showing
+  // Electron's generic network error page.
+  const offlinePagePath = path.join(__dirname, '..', 'renderer', 'offline.html');
+
+  win.webContents.on('did-fail-load', (_event, errorCode, _errorDescription, validatedURL) => {
+    if (errorCode === -3) return; // ERR_ABORTED — user-initiated navigation, ignore
+    if (config.cloudUrl && validatedURL && validatedURL.startsWith(new URL(config.cloudUrl).origin)) {
+      win.loadFile(offlinePagePath);
+    }
+  });
+
   win.on('closed', () => { win = null; });
 
   return win;
@@ -194,32 +202,23 @@ async function probeUrl(url, timeoutMs = 5000) {
 // Shared mode-change handler — called whenever either monitor fires
 // --------------------------------------------------------------------------
 function onMonitorChange() {
-  const newMode = computeMode(cloudOnline, internetOnline);
+  const newMode = computeMode(cloudOnline);
   if (newMode === currentMode) return;
 
   const prevMode = currentMode;
   currentMode = newMode;
   log.info(`Mode transition: ${prevMode} → ${currentMode}`);
 
-  // When cloud goes offline, immediately navigate to local frontend so the
-  // user sees live data from local backend rather than the stale cloud page.
-  if (prevMode === 'cloud' && newMode === 'local' && localFrontendReady && win) {
-    let targetPath = '';
-    try {
-      const currentUrl  = win.webContents.getURL();
-      const cloudOrigin = new URL(config.cloudUrl).origin;
-      const parsed      = new URL(currentUrl);
-      if (parsed.origin === cloudOrigin && parsed.pathname !== '/') {
-        targetPath = parsed.pathname + parsed.search;
-      }
-    } catch (_) {}
-    win.loadURL(localFrontendUrl + targetPath);
-    // did-finish-load → sendModeToPage will fire after the new page loads
+  // When cloud comes back online, return to the cloud frontend.
+  if (newMode === 'cloud' && win) {
+    win.loadURL(config.cloudUrl);
     if (trayManager) trayManager.setStatus('online');
     runBackgroundSync();
     return;
   }
 
+  // Cloud went offline — stay on current page; overlay will intercept fetches
+  // and serve cached data. No local fallback.
   sendModeToPage();
 
   if (currentMode === 'offline') {
@@ -253,80 +252,38 @@ app.whenReady().then(async () => {
 
   cloudOnline    = cloudReachable;
   internetOnline = internetReachable;
-  currentMode    = computeMode(cloudOnline, internetOnline);
+  currentMode    = computeMode(cloudOnline);
   log.info(`Initial mode: ${currentMode} (cloud=${cloudOnline}, internet=${internetOnline})`);
-
-  localFrontendUrl = `http://127.0.0.1:${config.frontendPort}`;
 
   win = createWindow();
 
-  // -------------------------------------------------------------------------
-  // Navigation intercept — redirect cloud-origin links to local frontend once
-  // it's ready, and block cloud navigation entirely when offline.
-  // -------------------------------------------------------------------------
-  win.webContents.on('will-navigate', (event, url) => {
-    if (!config.cloudUrl) return;
-    try {
-      const cloudOrigin = new URL(config.cloudUrl).origin;
-      const target = new URL(url);
-      if (target.origin !== cloudOrigin) return; // not a cloud link
-
-      if (currentMode === 'offline') {
-        event.preventDefault(); // stay on current page; overlay serves cache
-      } else if (localFrontendReady && target.pathname !== '/' && target.pathname !== '') {
-        event.preventDefault();
-        win.loadURL(localFrontendUrl + target.pathname + target.search);
-      }
-    } catch (_) {}
-  });
 
   // -------------------------------------------------------------------------
   // Initial page load
+  // If cloud is reachable, load it directly.
+  // If already offline, load the offline shell immediately — don't attempt the
+  // cloud URL and wait for a network timeout before showing something.
+  // did-fail-load still handles runtime navigation failures (e.g. tab clicks
+  // while offline, or cloud dropping mid-session).
   // -------------------------------------------------------------------------
   if (currentMode === 'cloud') {
-    // Load cloud URL instantly — local processes start in background
-    log.info('Loading cloud frontend');
+    log.info('Loading cloud URL');
     win.loadURL(config.cloudUrl);
+  } else {
+    log.info('Starting offline — loading offline shell');
+    win.loadFile(path.join(__dirname, '..', 'renderer', 'offline.html'));
   }
-  // For 'local' and 'offline' modes we wait for local processes before loading
 
   // -------------------------------------------------------------------------
-  // Always start local processes (background for cloud mode, foreground otherwise)
+  // Start local backend in background for cache-warmup endpoint.
   // -------------------------------------------------------------------------
-  const localStartPromise = processManager.startBackend()
+  processManager.startBackend()
     .then(() => {
       log.info('Local backend ready on port', config.backendPort);
       runBackgroundSync();
       syncTimer = setInterval(runBackgroundSync, config.backgroundSyncIntervalMs);
-      return processManager.startFrontend();
     })
-    .then(() => {
-      localFrontendReady = true;
-      log.info('Local frontend ready on port', config.frontendPort);
-      // If mode already switched to 'local' before processes finished, navigate now
-      if (currentMode === 'local' && win) {
-        win.loadURL(localFrontendUrl);
-      }
-    })
-    .catch(err => log.warn('Local processes unavailable:', err.message));
-
-  if (currentMode !== 'cloud') {
-    // Must wait for local frontend before loading it
-    try {
-      await localStartPromise;
-    } catch (_) {}
-    if (localFrontendReady) {
-      win.loadURL(localFrontendUrl);
-    } else {
-      dialog.showErrorBox(
-        'Startup Error',
-        'Could not start the local application server.\n\nPlease check the logs at ' +
-        log.transports.file.getFile().path
-      );
-      app.quit();
-      return;
-    }
-  }
+    .catch(err => log.warn('Local backend unavailable (cache warmup disabled):', err.message));
 
   // -------------------------------------------------------------------------
   // Connectivity monitors
@@ -363,10 +320,7 @@ app.whenReady().then(async () => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       win = createWindow();
-      const url = (currentMode === 'cloud' && cloudOnline)
-        ? config.cloudUrl
-        : localFrontendUrl;
-      win.loadURL(url);
+      win.loadURL(config.cloudUrl);
     }
   });
 });

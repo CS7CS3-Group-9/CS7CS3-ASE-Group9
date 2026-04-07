@@ -457,6 +457,9 @@
       fetchDashboardData(true);
       setInterval(fetchDashboardData, REFRESH_INTERVAL);
       window._dashboardRefresh = function () { fetchDashboardData(false); };
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "visible") fetchDashboardData(false);
+      });
     }
 
     if (onAnalytics) {
