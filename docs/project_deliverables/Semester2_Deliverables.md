@@ -2,7 +2,7 @@
 
 **Module:** CS7CS3 Advanced Software Engineering  
 **Team:** Group 9  
-**Contributors:** Oisin Power, Darragh Hassett, Ciarán O'Malley, Parker Kavanagh, Aoife Walshe
+**Contributors:** Oisin Power, Daragh Hardiman Smyth, Charlie O'Malley, Parker Kavanagh, Aoife Walshe
 
 ---
 
@@ -787,56 +787,115 @@ stateDiagram-v2
 
 ## 5. Project Diary
 
+> **Note on time data:** The project did not use time-tracking tools. Cycle times in the timeline below are derived from git history — specifically the date of the first commit on a feature branch to the date the PR was merged into `main`. These reflect elapsed calendar time per feature, not individual hours worked. All dates are taken directly from `git log`.
+
 ### 5.1 Project Approach
 
-The project followed a **Kanban-style agile workflow** tracked on a JIRA board (`KAN-*` ticket numbering). Development was organised into feature branches (one branch per JIRA ticket), with squash-merge pull requests into `main`. All PRs required at least one code review before merging.
+The project followed a **Kanban-style agile workflow** tracked on a JIRA board (`KAN-*` ticket numbering). Development was organised into feature branches named after JIRA tickets (e.g. `KAN-71`), with squash-merge pull requests into `main`. All PRs required at least one code review before merging.
 
-Code quality was enforced automatically via pre-commit hooks (Black autoformatter + pycodestyle PEP8 checks), GitHub Actions CI on every PR, and a smoke test suite (`smoke_test.ps1`).
+Code quality was enforced automatically via pre-commit hooks (Black autoformatter + pycodestyle PEP8 checks), GitHub Actions CI on every PR, and a smoke test suite (`smoke_test.ps1`). These were set up in Semester 1 (KAN-33/34, KAN-35/36) and remained in place throughout.
 
-The architecture was designed around the **Adapter Pattern**: each external data source is encapsulated behind a `DataAdapter` interface, allowing independent development, mocking, and testing of each integration. A unified `MobilitySnapshot` model allowed all domain teams to work in parallel without blocking each other.
+The architecture was designed around the **Adapter Pattern**: each external data source is encapsulated behind a `DataAdapter` interface, allowing parallel development and independent testing across team members. A unified `MobilitySnapshot` model was defined early in Semester 2 (KAN-41, 23 Jan) to prevent blocking dependencies between team members working on different domains.
 
 ### 5.2 Labour Division
 
-| Team Member | Primary Responsibilities |
-|---|---|
-| **Darragh Hassett** | GTFS bus adapter, bus analytics, cloud deployment (GKE, Cloud Build, Kubernetes), snapshot service wiring, auth |
-| **Oisin Power** | Dublin Network module (SUMO routing, traffic prediction), ML bike model, frontend overview/analytics, bug fixes |
-| **Ciarán O'Malley** | Traffic adapter, air quality adapter, analytics layer, API contract validation |
-| **Parker Kavanagh** | Routes adapter (Google Maps, TSP optimisation), routing frontend, efficiency endpoint |
-| **Aoife Walshe** | Tour adapter, bike adapter & analytics, recommendations, fallback caching, ML integration |
+The table below is derived from git author attribution across all commits.
 
-### 5.3 Time Estimates vs Actual Time
+| Team Member | Git Username | Key Tickets | Primary Contributions |
+|---|---|---|---|
+| **Daragh Hardiman Smyth** | `darraghhs` | KAN-15, KAN-22/23, KAN-30, KAN-45, KAN-53, KAN-55, KAN-62 | Cloud deployment (Docker, Cloud Build, GKE, Kubernetes), bus adapter script, import standardisation, CD pipeline |
+| **Oisin Power** | `opower14` | KAN-16, KAN-21, KAN-33/34, KAN-42/43/46, KAN-56, KAN-59, KAN-61, KAN-66, KAN-71, KAN-78, KAN-82 | pytest framework, CI/CD pipeline, air quality adapter, health endpoint, Flask migration, caching, frontend structure, SUMO offline routing, efficiency endpoint |
+| **Charlie O'Malley** | `omallech` | KAN-14, KAN-18, KAN-44, KAN-52, KAN-76, KAN-85 | DB latency testing, security tests, population model, tour analytics, traffic analytics, recommendations, test coverage (84% to 91%) |
+| **Parker Kavanagh** | `Parker` | KAN-18, KAN-35/36, KAN-37, KAN-41, KAN-46, KAN-52, KAN-54, KAN-57, KAN-73, KAN-84 | Code standards/pre-commit, repo restructure, core models, bike/tour/routes adapters, snapshot service, bike ML model, user login |
+| **Aoife Walshe** | `Aoife` | KAN-13, KAN-25, KAN-58, KAN-67, KAN-69, KAN-75, KAN-83 | Bus live times (Semester 1), Flask API endpoints, frontend dashboard, bike + air quality analytics tests, bus analytics, bug fixes |
 
-| Ticket | Feature | Estimated | Actual | Notes |
+### 5.3 Project Timeline
+
+> Cycle times below are the elapsed calendar days from first commit on a branch to merge into `main`, derived from `git log`. They reflect how long a feature was open, not hours of active work.
+
+#### Phase 1 — Project Initialisation (3 Oct 2025)
+
+Repository created. README, use cases, and requirements placeholders added by Daragh, Oisin, and Aoife.
+
+#### Phase 2 — Semester 1: Thin Slice (12 Nov – 5 Dec 2025)
+
+| Dates | Ticket | Feature | Lead | Cycle Time |
 |---|---|---|---|---|
-| KAN-41/43/46 | Core adapters (bikes, traffic, airquality, tour) | 3 days | 4 days | External API shape differences required model rework |
-| KAN-52/53/54 | SnapshotService + GKE cluster deployment | 2 days | 4 days | Cloud Build + Kubernetes config took significant iteration |
-| KAN-55/58 | Flask blueprint wiring, health endpoint | 1 day | 1 day | On target |
-| KAN-59/61 | FastAPI → Flask migration, caching layer | 1.5 days | 2 days | Framework change required re-testing all endpoints |
-| KAN-62 | Module path standardisation (import fixes) | 0.5 days | 1 day | Cloud Run import resolution was non-trivial |
-| KAN-66/67 | Frontend Flask app + Jinja2 dashboard | 3 days | 5 days | Leaflet map integration and Jinja2 data wiring more complex than expected |
-| KAN-71 | SUMO offline routing (Dublin Network module) | 3 days | 4 days | DCC.net.xml coordinate conversion and Dijkstra tuning |
-| KAN-73 | Bikes ML model (RandomForest + weather) | 2 days | 2.5 days | Feature engineering for weather slightly underestimated |
-| KAN-75 | Bus analytics (GTFS wait times, importance) | 2 days | 3 days | GTFS file filtering and cache invalidation took extra time |
-| KAN-76 | Recommendations + optimisations | 1.5 days | 1.5 days | On target |
-| KAN-78 | Efficiency routing mechanism | 1.5 days | 2 days | Integration with Google Routes required extra auth handling |
-| KAN-82/83/84 | Bug fixes, test coverage 84% → 91%, executable | 2 days | 2.5 days | Edge cases in SUMO coordinate conversion |
-| User Login (KAN) | Auth module (login, user management) | 1 day | 1.5 days | Session management + admin role checking |
+| 12–28 Nov | KAN-13 | Bus live stop times (real-time RTPI integration) | Aoife | 16 days |
+| 14–17 Nov | KAN-14 | Firestore/DB latency testing script | Charlie | 3 days |
+| 14 Nov | KAN-15 | Example route app (Google Routes + Firebase demo) | Daragh | 1 day |
+| 14 Nov | KAN-16 | pytest framework set up | Oisin | 1 day |
+| 14 Nov | KAN-18 | Security features compatibility tests | Parker/Charlie | 1 day |
+| 14–17 Nov | KAN-21 | Core implementation spike | Oisin | 3 days |
+| 14 Nov | KAN-22 | PR guidelines added to README | Daragh | 1 day |
+| 21–24 Nov | KAN-23 | Docker container + Google Cloud Run deployment | Daragh | 3 days |
+| 24 Nov | KAN-25 | Code reformatted to PEP8 standards | Aoife | 1 day |
+| 24–28 Nov | KAN-30 | Cloud CD pipeline (Cloud Build), deployment scripts | Daragh/Oisin | 4 days |
+| 25 Nov | KAN-33/34 | GitHub Actions merge test / CI pipeline | Oisin | 1 day |
+| 25 Nov – 5 Dec | KAN-35/36 | Black + pycodestyle pre-commit hooks | Parker | 10 days |
 
-**Total estimated:** ~25 days (team-aggregate)  
-**Total actual:** ~34 days (team-aggregate)
+**Christmas Break: 5 Dec 2025 to 20 Jan 2026 (~6.5 weeks)**
+
+#### Phase 3 — Semester 2: Full System Build (20 Jan – 7 Apr 2026)
+
+| Dates | Ticket | Feature | Lead | Cycle Time |
+|---|---|---|---|---|
+| 20–21 Jan | KAN-37 | Repository restructure into backend/frontend/data layout | Parker | 2 days |
+| 22–23 Jan | KAN-41 | Core domain models defined (MobilitySnapshot, all sub-models) | Parker | 2 days |
+| 21–23 Jan | KAN-13 (cont.) | Bus live times completed, dummy adapters, mobility components | Aoife | 2 days |
+| 27–28 Jan | KAN-44 | Population model extended with coordinate data + CSV | Charlie | 2 days |
+| 28–29 Jan | KAN-43/46 | Air quality adapter + bike/tour/routes adapter tests; CI updated | Oisin | 2 days |
+| 29 Jan | KAN-46 | Bike, tour, routes adapters implemented; models aligned repo-wide | Parker | 1 day |
+| 29–30 Jan | KAN-69 | Bike + air quality analytics tests | Aoife | 2 days |
+| 3–6 Feb | KAN-52 | Traffic model refactor, analytics (traffic + tour + bike) | Parker/Charlie | 4 days |
+| 4–6 Feb | KAN-53 | GKE cluster deployment — image names, gunicorn, K8s manifests | Daragh | 3 days |
+| 3 Feb | KAN-45 | Example API endpoint + Dockerfiles to validate GKE cluster | Daragh | 1 day |
+| 10 Feb | KAN-54 | SnapshotService implemented + tested | Parker | 1 day |
+| 10 Feb | KAN-55 | GKE cluster set to zonal; prod branch created as build target | Daragh | 1 day |
+| 10 Feb | KAN-56 | /health endpoint | Oisin | 1 day |
+| 11 Feb | KAN-57 | Backend wiring | Parker | 1 day |
+| 11–12 Feb | KAN-59 | FastAPI to Flask migration (backend + cloud config) | Oisin/Daragh | 2 days |
+| 12 Feb | KAN-58 | Flask API endpoints + tests | Aoife | 1 day |
+| 12 Feb | KAN-61 | In-memory caching layer (AdapterCache) | Oisin | 1 day |
+| 17 Feb | KAN-62 | Module import path standardisation (3 PRs merged same day) | Daragh | 1 day |
+| 17 Feb | KAN-46 | Bus adapter GTFS file replacement script | Daragh | 1 day |
+| 17 Feb | — | Snapshot wiring throughout app + smoke test created | Parker | 1 day |
+| 17 Feb | — | API contract validation (JSON schema) + README update | Parker | 1 day |
+| 17 Feb | — | Bus analytics file and tests created | Charlie | 1 day |
+| 18 Feb | KAN-66 | Frontend Flask app file structure scaffolded | Oisin | 1 day |
+| 18–24 Feb | KAN-67 | Frontend dashboard (Leaflet, Chart.js, Jinja2 templates) | Aoife | 6 days |
+| 11 Mar | KAN-76 | Recommendations + optimisations endpoint | Charlie | 1 day |
+| ~Feb–12 Mar | KAN-71 | SUMO offline routing + traffic prediction (Dublin Network) | Oisin | merged 12 Mar* |
+| ~Feb–13 Mar | KAN-73 | Bike availability ML model (RandomForest + weather) | Parker | merged 13 Mar* |
+| 13 Mar – 24 Mar | KAN-75 | Bus analytics (GTFS wait times, top stops, importance scores) | Aoife | 11 days |
+| 18 Mar | KAN-78 | Efficiency routing mechanism | Oisin | 1 day |
+| 18 Mar | — | Bike analytics + recommendations integrated into dashboard | Parker | 1 day |
+| 24 Mar | KAN-84 | User login + role-based access (admin/user) | Parker | 1 day |
+| 26 Mar | KAN-82 | Executable / run script added | Oisin | 1 day |
+| 26 Mar – 7 Apr | KAN-83 | Bug fixes and improvements | Aoife | 12 days |
+| 7 Apr | — | Test coverage increased from 84% to 91% | Charlie | 1 day |
+
+*\* KAN-71 and KAN-73 were developed during the 24 Feb – 11 Mar gap where no commits were pushed to main. Merge dates are 12 and 13 Mar respectively.*
 
 ### 5.4 Impact of and Response to Inaccurate Estimates
 
-**Cloud deployment complexity (KAN-52/53):** GKE deployment took twice as long as estimated. The team had underestimated the iteration cycles needed for Kubernetes manifest tuning, image naming, and Cloud Build pipeline configuration. In response, a dedicated `cloudbuild.yaml` and separate `k8s/` directory were established with clear ownership (Darragh), preventing others from being blocked.
+**KAN-53 — GKE cluster deployment (4–6 Feb, 3 separate PRs):**
+Daragh pushed three PRs in two days just to fix image names, add gunicorn, and correct K8s manifests. The deployment pipeline required significantly more iteration than expected, and this dominated the Feb 3–6 week. Response: Daragh took sole ownership of all infrastructure changes to avoid blocking the rest of the team.
 
-**Frontend (KAN-66/67):** The Jinja2 dashboard took 5 days vs 3 estimated. Leaflet.js marker rendering with live API data, template component decomposition, and session-aware navigation were each more involved than anticipated. The response was to scope the frontend to server-side rendering only (no React/SPA), which reduced complexity and allowed faster iteration, at the cost of some interactivity.
+**KAN-62 — Import standardisation (17 Feb, three PRs in one day):**
+Three pull requests were merged on the same day, all fixing module import paths. Each fix revealed another broken import, indicating the problem was systemic rather than isolated. Root cause: Cloud Run's working directory differed from local development. Response: all imports were standardised to package-relative paths, and `localStart.ps1` was added to enforce consistent local startup conditions.
 
-**SUMO routing (KAN-71):** The SUMO coordinate conversion from local SUMO space to WGS-84 required careful derivation of the linear interpolation formula from the `DCC.net.xml` `convBoundary` and `origBoundary` attributes. This was not anticipated at planning time and added roughly a day of work.
+**KAN-67 — Frontend (18–24 Feb, 6 calendar days):**
+The file structure took 1 day (KAN-66, 18 Feb), but the actual implementation — Leaflet map markers, Chart.js integration, Jinja2 data passing, session-based navigation — took 6 more days. Response: the team scoped down from a SPA to purely server-side Jinja2 rendering, which reduced complexity at the cost of some interactivity.
 
-**Module import paths (KAN-62):** Cloud Run's Python path resolution differed from local development. The fix (standardising all imports to relative package paths and ensuring correct working directory) was straightforward but took a full day of diagnosis. This led to the addition of a `localStart.ps1` script to enforce consistent startup conditions.
+**KAN-75 — Bus analytics (13–24 Mar, 11 days):**
+The longest single feature in Semester 2. GTFS parsing for realistic wait times from raw `stop_times.txt` was more involved than anticipated: filtering to Dublin stops only, computing per-stop frequency, and integrating with the caching layer all required iteration. Two PRs were needed (initial 13 Mar, improvements 24 Mar).
 
-**Estimation pattern:** Across the project, infrastructure/integration tasks were consistently underestimated by ~50%, while pure Python feature work was estimated accurately. Future iterations would allocate a 1.5× buffer for any task involving external API integration, cloud deployment, or cross-service wiring.
+**KAN-83 — Bug fixes (26 Mar – 7 Apr, 12 days):**
+A 12-day bug fix period at the end of the project indicates integration issues that only surfaced once all features were merged. This is consistent with parallel development: features that worked in isolation revealed edge cases when wired through the full MobilitySnapshot pipeline.
+
+**General pattern:**
+Infrastructure and integration tasks consistently required more calendar time than isolated feature work. Single-day tickets were almost always self-contained Python features. Multi-day tickets involved either external API uncertainty, deployment configuration, or cross-feature integration. A 1.5x buffer on any task touching deployment or cross-service wiring would have been appropriate.
 
 ---
 
