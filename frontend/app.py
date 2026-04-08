@@ -38,6 +38,8 @@ def create_app(config_class=Config):
         # Desktop app proxy sends this header to bypass browser auth.
         desktop_token = app.config.get("DESKTOP_TOKEN", "")
         if desktop_token and request.headers.get("X-Desktop-Token") == desktop_token:
+            session["auth_ok"] = True
+            session["auth_role"] = "viewer"
             return None
         if session.get("auth_ok"):
             return None
