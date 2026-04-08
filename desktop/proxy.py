@@ -177,13 +177,15 @@ def catch_all(path: str):
 
     if _cloud_online.is_set():
         try:
+            fwd_headers = {
+                k: v for k, v in request.headers
+                if k.lower() not in ("host", "accept-encoding")
+            }
+            fwd_headers["X-Desktop-Token"] = cfg.DESKTOP_TOKEN
             upstream = req_lib.request(
                 method=request.method,
                 url=cloud_url,
-                headers={
-                    k: v for k, v in request.headers
-                    if k.lower() not in ("host", "accept-encoding")
-                },
+                headers=fwd_headers,
                 data=request.get_data(),
                 timeout=15,
                 allow_redirects=True,

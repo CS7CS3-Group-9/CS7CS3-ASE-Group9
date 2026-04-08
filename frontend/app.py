@@ -35,6 +35,10 @@ def create_app(config_class=Config):
             return None
         if endpoint in ("auth.login", "auth.login_post", "auth.logout"):
             return None
+        # Desktop app proxy sends this header to bypass browser auth.
+        desktop_token = app.config.get("DESKTOP_TOKEN", "")
+        if desktop_token and request.headers.get("X-Desktop-Token") == desktop_token:
+            return None
         if session.get("auth_ok"):
             return None
         next_url = request.full_path

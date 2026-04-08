@@ -3,9 +3,12 @@ import os
 import platform
 import pathlib
 
-CLOUD_URL    = os.environ.get("CLOUD_URL", "http://ase-citydash-board.duckdns.org")
-PROXY_PORT   = int(os.environ.get("PROXY_PORT", "8080"))
-BACKEND_PORT = int(os.environ.get("BACKEND_PORT", "5001"))
+CLOUD_URL      = os.environ.get("CLOUD_URL", "http://ase-citydash-board.duckdns.org")
+PROXY_PORT     = int(os.environ.get("PROXY_PORT", "8080"))
+BACKEND_PORT   = int(os.environ.get("BACKEND_PORT", "5001"))
+# Shared secret sent on every upstream request so the cloud skips auth for the desktop app.
+# Must match DESKTOP_TOKEN env var set on the cloud deployment.
+DESKTOP_TOKEN  = os.environ.get("DESKTOP_TOKEN", "dublin-dashboard-desktop-v1")
 
 # Connectivity monitoring
 POLL_INTERVAL_S = 30

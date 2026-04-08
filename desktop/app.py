@@ -179,7 +179,8 @@ def _run_background_sync(cache: Cache):
                 raise ValueError("local backend not ready")
         except Exception:
             warmup_url = f"{cfg.CLOUD_URL.rstrip('/')}/desktop/cache-warmup"
-            r = requests.get(warmup_url, timeout=30)
+            r = requests.get(warmup_url, timeout=30,
+                             headers={"X-Desktop-Token": cfg.DESKTOP_TOKEN})
         if not r.ok:
             return
         data = r.json()
