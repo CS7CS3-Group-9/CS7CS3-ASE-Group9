@@ -164,7 +164,7 @@
         options: {
           responsive: true,
           plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, title: { display: true, text: "µg/m³" } } }
+          scales: { y: { beginAtZero: true, title: { display: true, text: "Âµg/mÂ³" } } }
         }
       });
     }
@@ -215,6 +215,19 @@
       });
     }
 
+    function formatMinutesWithHours(value) {
+      var minutes = Number(value);
+      if (!Number.isFinite(minutes)) return value;
+      if (minutes < 60) return minutes.toFixed(1) + " min";
+      var hours = Math.floor(minutes / 60);
+      var mins = Math.round(minutes % 60);
+      if (mins === 60) {
+        hours += 1;
+        mins = 0;
+      }
+      return hours + "h " + mins + "m (" + minutes.toFixed(1) + " min)";
+    }
+
     /* Buses per stop bar chart */
     var busEl = document.getElementById("busChart");
     if (busEl && data.bus_chart) {
@@ -234,7 +247,10 @@
         options: {
           responsive: true,
           plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, title: { display: true, text: "Buses" } } }
+          scales: {
+            x: { display: false },
+            y: { beginAtZero: true, title: { display: true, text: "Buses" } }
+          }
         }
       });
     }
@@ -257,8 +273,24 @@
         },
         options: {
           responsive: true,
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, title: { display: true, text: "Minutes" } } }
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) { return formatMinutesWithHours(ctx.parsed.y); }
+              }
+            }
+          },
+          scales: {
+            x: { display: false },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: "Minutes" },
+              ticks: {
+                callback: function (value) { return formatMinutesWithHours(value); }
+              }
+            }
+          }
         }
       });
     }
@@ -281,8 +313,24 @@
         },
         options: {
           responsive: true,
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, title: { display: true, text: "Minutes" } } }
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) { return formatMinutesWithHours(ctx.parsed.y); }
+              }
+            }
+          },
+          scales: {
+            x: { display: false },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: "Minutes" },
+              ticks: {
+                callback: function (value) { return formatMinutesWithHours(value); }
+              }
+            }
+          }
         }
       });
     }
@@ -355,20 +403,37 @@
     if (!points.length) return;
 
     var max = points.reduce(function (m, p) { return p.count > m ? p.count : m; }, 0);
-    points.forEach(function (p) {
+    var topSet = null;
+    if (points.length && typeof points[0].is_top === "undefined") {
+      var sorted = points.slice().sort(function (a, b) { return (b.count || 0) - (a.count || 0); });
+      topSet = new Set(sorted.slice(0, 500).map(function (p) { return p.stop_id; }));
+    }
+    function addPoint(p) {
       if (p.lat == null || p.lon == null) return;
       var ratio = max ? Math.sqrt(p.count / max) : 0;
       var radius = 4 + ratio * 12;
-      var color = ratio >= 0.66 ? "#dc2626" : ratio >= 0.33 ? "#d97706" : "#16a34a";
+      var isTop = p.is_top === true || (topSet && topSet.has(p.stop_id));
+      var color = isTop ? "#dc2626" : "#16a34a";
+      var opacity = isTop ? 0.65 : 0.25;
       L.circleMarker([p.lat, p.lon], {
         radius: radius,
         color: color,
         fillColor: color,
-        fillOpacity: 0.6,
+        fillOpacity: opacity,
         weight: 1,
       })
         .bindPopup("<strong>" + (p.name || "Bus Stop") + "</strong><br>Trips: <b>" + p.count + "</b>")
         .addTo(analyticsLayer);
+    }
+
+    // Draw non-top stops first, then top stops so red sits on top.
+    points.forEach(function (p) {
+      var isTop = p.is_top === true || (topSet && topSet.has(p.stop_id));
+      if (!isTop) addPoint(p);
+    });
+    points.forEach(function (p) {
+      var isTop = p.is_top === true || (topSet && topSet.has(p.stop_id));
+      if (isTop) addPoint(p);
     });
   }
 
@@ -419,19 +484,24 @@
     });
   }
 
+
   /* ---- Analytics filters ---- */
   function wireAnalyticsFilters() {
-    var filters = Array.prototype.slice.call(document.querySelectorAll("[data-analytics-filter]"));
+    var filters = Array.prototype.slice.call(document.querySelectorAll(".filter-btn[data-analytics-filter]"));
     if (!filters.length) return;
 
     function applyFilters() {
-      var enabled = {};
-      filters.forEach(function (f) { enabled[f.dataset.analyticsFilter] = f.checked; });
+      var active = document.querySelector(".filter-btn[data-analytics-filter].active");
+      var selected = active ? active.dataset.analyticsFilter : "all";
       var cards = document.querySelectorAll("[data-analytics-group]");
       cards.forEach(function (card) {
         var group = card.dataset.analyticsGroup;
-        var show = enabled[group] !== false;
-        card.style.display = show ? "" : "none";
+        var show = selected === "all" || group === selected;
+        if (show) {
+          card.classList.remove("is-hidden");
+        } else {
+          card.classList.add("is-hidden");
+        }
       });
       if (analyticsMap) {
         setTimeout(function () { analyticsMap.invalidateSize(); }, 50);
@@ -441,7 +511,13 @@
       }
     }
 
-    filters.forEach(function (f) { f.addEventListener("change", applyFilters); });
+    filters.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        filters.forEach(function (b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        applyFilters();
+      });
+    });
     applyFilters();
   }
 

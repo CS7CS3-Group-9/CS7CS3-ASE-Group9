@@ -255,6 +255,8 @@ a:hover { text-decoration: underline; }
 .legend-heat-high { background: #dc2626; border-color: #dc2626; }
 .legend-heat-mid { background: #f97316; border-color: #f97316; }
 .legend-heat-low { background: #16a34a; border-color: #16a34a; }
+.legend-bus-top { background: #dc2626; border-color: #dc2626; }
+.legend-bus-other { background: #16a34a; border-color: #16a34a; }
 
 .debug-toggle-label {
   font-size: .8rem;
@@ -338,7 +340,6 @@ a:hover { text-decoration: underline; }
   height: 480px;
   width: 100%;
 }
-
 
 /* ============================================================
    Status Badges
@@ -646,6 +647,15 @@ a:hover { text-decoration: underline; }
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
   gap: 1rem;
+  align-items: start;
+}
+
+.chart-card.chart-fixed {
+  min-height: 320px;
+}
+
+.chart-card.is-hidden {
+  display: none;
 }
 
 .chart-card canvas { display: block; max-width: 100%; }
@@ -835,6 +845,82 @@ a:hover { text-decoration: underline; }
 
 .btn-primary:hover { background: #1d4ed8; }
 .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+
+.login-card {
+  max-width: 420px;
+  margin: 3rem auto;
+}
+
+.alert-success {
+  background: #dcfce7;
+  border: 1px solid #16a34a;
+  color: #166534;
+}
+
+.users-grid {
+  grid-template-columns: 1fr 420px;
+  align-items: start;
+}
+
+.user-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  font-size: .9rem;
+  color: var(--text);
+}
+
+.user-list li {
+  padding: .4rem .6rem;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.user-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.user-meta {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+
+.user-name { font-weight: 600; }
+.user-role {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding: .15rem .5rem;
+  border-radius: 999px;
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.btn-danger {
+  padding: .3rem .7rem;
+  border-radius: 6px;
+  border: 1px solid #fecaca;
+  background: #fee2e2;
+  color: #b91c1c;
+  cursor: pointer;
+  font-size: .82rem;
+  font-weight: 600;
+}
+
+.btn-danger:hover { background: #fecaca; }
+.btn-danger:disabled { opacity: .5; cursor: not-allowed; }
+
+@media (max-width: 900px) {
+  .users-grid { grid-template-columns: 1fr; }
+}
 
 .btn-secondary {
   width: 100%;

@@ -1,12 +1,13 @@
 import os
 from dotenv import load_dotenv
-from flask import Flask, redirect, url_for
+from flask import Flask, redirect, url_for, request, session
 
 from frontend.config import Config
 from frontend.dashboard.overview import overview_bp
 from frontend.dashboard.analytics import analytics_bp
 from frontend.dashboard.recommendations import recommendations_bp
 from frontend.dashboard.routing import routing_bp
+from frontend.auth import auth_bp
 
 load_dotenv()
 
@@ -23,6 +24,23 @@ def create_app(config_class=Config):
     app.register_blueprint(analytics_bp)
     app.register_blueprint(recommendations_bp)
     app.register_blueprint(routing_bp)
+    app.register_blueprint(auth_bp)
+
+    @app.before_request
+    def _require_login():
+        if app.config.get("TESTING"):
+            return None
+        endpoint = request.endpoint or ""
+        if endpoint.startswith("static"):
+            return None
+        if endpoint in ("auth.login", "auth.login_post", "auth.logout"):
+            return None
+        if session.get("auth_ok"):
+            return None
+        next_url = request.full_path
+        if next_url.endswith("?"):
+            next_url = next_url[:-1]
+        return redirect(url_for("auth.login", next=next_url))
 
     @app.route("/")
     def index():

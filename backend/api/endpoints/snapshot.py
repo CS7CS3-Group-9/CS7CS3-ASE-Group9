@@ -25,6 +25,7 @@ _CACHE_TTLS = {
     "traffic": 120.0,
     "airquality": 300.0,
     "tours": 600.0,
+    "buses": 600.0,
 }
 
 
@@ -81,7 +82,13 @@ def build_adapter_specs(
         )
 
     if "buses" in include:
-        specs.append(AdapterCallSpec(adapter=BusAdapter(gtfs_path=_GTFS_ROOT), kwargs={}))
+        specs.append(
+            AdapterCallSpec(
+                adapter=BusAdapter(gtfs_path=_GTFS_ROOT),
+                kwargs={},
+                cache_ttl_seconds=_CACHE_TTLS["buses"],
+            )
+        )
 
     return specs
 

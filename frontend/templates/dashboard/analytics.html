@@ -16,18 +16,19 @@
   {% endif %}
 </div>
 
-<div class="analytics-filter">
+<div class="filter-bar analytics-filter">
   <span class="filter-label">Filter:</span>
-  <label class="filter-toggle"><input type="checkbox" data-analytics-filter="air" checked> Air Quality</label>
-  <label class="filter-toggle"><input type="checkbox" data-analytics-filter="bike" checked> Bikes</label>
-  <label class="filter-toggle"><input type="checkbox" data-analytics-filter="traffic" checked> Traffic</label>
-  <label class="filter-toggle"><input type="checkbox" data-analytics-filter="bus" checked> Buses</label>
+  <button class="filter-btn active" data-analytics-filter="all">All</button>
+  <button class="filter-btn" data-analytics-filter="air">Air Quality</button>
+  <button class="filter-btn" data-analytics-filter="bike">Bikes</button>
+  <button class="filter-btn" data-analytics-filter="traffic">Traffic</button>
+  <button class="filter-btn" data-analytics-filter="bus">Buses</button>
 </div>
 
 <div class="charts-grid">
 
   <!-- Air Quality Chart -->
-  <div class="panel-card chart-card" data-analytics-group="air">
+  <div class="panel-card chart-card chart-fixed" data-analytics-group="air">
     <div class="panel-header">
       <h3>&#127807; Air Quality — Pollutant Levels</h3>
     </div>
@@ -59,7 +60,7 @@
   </div>
 
   <!-- Traffic Chart -->
-  <div class="panel-card chart-card" data-analytics-group="traffic">
+  <div class="panel-card chart-card chart-fixed" data-analytics-group="traffic">
     <div class="panel-header">
       <h3>&#128652; Traffic Incidents by Category</h3>
     </div>
@@ -71,23 +72,23 @@
     <div class="panel-header">
       <h3>&#128652; Buses Serving Each Stop (Top 10)</h3>
     </div>
-    <canvas id="busChart" height="200"></canvas>
+    <canvas id="busChart" height="260"></canvas>
   </div>
 
   <!-- Best Wait Times Chart -->
   <div class="panel-card chart-card" data-analytics-group="bus">
     <div class="panel-header">
-      <h3>&#9989; Best Average Wait Times (Top 5)</h3>
+      <h3>&#9989; Best Average Wait Times (Top 15)</h3>
     </div>
-    <canvas id="busWaitBestChart" height="200"></canvas>
+    <canvas id="busWaitBestChart" height="260"></canvas>
   </div>
 
   <!-- Worst Wait Times Chart -->
   <div class="panel-card chart-card" data-analytics-group="bus">
     <div class="panel-header">
-      <h3>&#9888; Worst Average Wait Times (Top 5)</h3>
+      <h3>&#9888; Worst Average Wait Times (Top 15)</h3>
     </div>
-    <canvas id="busWaitWorstChart" height="200"></canvas>
+    <canvas id="busWaitWorstChart" height="260"></canvas>
   </div>
 
   <!-- Importance Histogram -->
@@ -95,7 +96,7 @@
     <div class="panel-header">
       <h3>&#128202; Importance Score Histogram</h3>
     </div>
-    <canvas id="busImportanceHistChart" height="200"></canvas>
+    <canvas id="busImportanceHistChart" height="240"></canvas>
   </div>
 
   <!-- Bus Hubs Map -->
@@ -104,7 +105,13 @@
       <h3>&#128506; Bus Hubs — Trips per Stop (Bubble Map)</h3>
     </div>
     <div id="analytics-map" style="height: 480px;"></div>
-    <div class="panel-note">Bubble size indicates trip count; top 500 stops shown.</div>
+    <div class="map-legend heatmap-legend">
+      <span class="legend-swatch legend-bus-top"></span>
+      Top 500 stops
+      <span class="legend-swatch legend-bus-other"></span>
+      Other stops
+    </div>
+    <div class="panel-note">Bubble size indicates trip count; top 500 stops highlighted in red.</div>
   </div>
 
 </div>

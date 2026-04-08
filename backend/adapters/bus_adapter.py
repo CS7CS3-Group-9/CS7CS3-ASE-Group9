@@ -1,7 +1,10 @@
 import csv
+import json
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Set, Dict, Optional
+from typing import Set, Dict, Optional, Any
+from time import time
+from threading import Lock
 from zoneinfo import ZoneInfo
 
 from backend.adapters.base_adapter import DataAdapter
@@ -13,6 +16,10 @@ from backend.models.mobility_snapshot import MobilitySnapshot
 class BusAdapter(DataAdapter):
     # Bounding box for Dublin
     DUBLIN_BBOX = {"min_lat": 53.2, "max_lat": 53.5, "min_lon": -6.5, "max_lon": -6.0}
+    _METRICS_CACHE = {}
+    _METRICS_LOCK = Lock()
+    _METRICS_TTL_SECONDS = 600.0
+    _PRECOMPUTED_FILENAME = "bus_metrics.json"
 
     def __init__(self, gtfs_path: str):
         self.gtfs_path = Path(gtfs_path)
@@ -25,12 +32,143 @@ class BusAdapter(DataAdapter):
         bbox = self.DUBLIN_BBOX
         return bbox["min_lat"] <= lat <= bbox["max_lat"] and bbox["min_lon"] <= lon <= bbox["max_lon"]
 
+    def _resolve_stops_file(self) -> Path:
+        candidates = [
+            self.gtfs_path / "stops_dublin.txt",
+            self.gtfs_path / "GTFS" / "stops_dublin.txt",
+            self.gtfs_path / "GTFS" / "stops.txt",
+        ]
+        for path in candidates:
+            if path.exists():
+                return path
+        return candidates[-1]
+
+    def _resolve_stop_times_file(self) -> Path:
+        candidates = [
+            self.gtfs_path / "stop_times_dublin.txt",
+            self.gtfs_path / "GTFS" / "stop_times_dublin.txt",
+            self.gtfs_path / "GTFS" / "stop_times.txt",
+        ]
+        for path in candidates:
+            if path.exists():
+                return path
+        return candidates[-1]
+
+    def _resolve_precomputed_file(self) -> Path:
+        candidates = [
+            self.gtfs_path / self._PRECOMPUTED_FILENAME,
+            self.gtfs_path / "GTFS" / self._PRECOMPUTED_FILENAME,
+        ]
+        for path in candidates:
+            if path.exists():
+                return path
+        return candidates[-1]
+
+    @staticmethod
+    def _safe_mtime(path: Path) -> float:
+        try:
+            return path.stat().st_mtime
+        except OSError:
+            return 0.0
+
+    @classmethod
+    def _mtime_matches(cls, a: float, b: float) -> bool:
+        return abs(a - b) <= 1.0
+
+    def _load_precomputed_metrics(self, stops_file: Path, stop_times_file: Path) -> Optional[MobilitySnapshot]:
+        precomputed_path = self._resolve_precomputed_file()
+        if not precomputed_path.exists():
+            return None
+        try:
+            with precomputed_path.open("r", encoding="utf-8") as handle:
+                payload = json.load(handle)
+        except Exception:
+            return None
+
+        meta = payload.get("meta", {})
+        if not isinstance(meta, dict):
+            return None
+
+        metrics = payload.get("metrics")
+        if not isinstance(metrics, dict):
+            return None
+
+        try:
+            stops_raw = metrics.get("stops", [])
+            stops = [
+                BusStop(
+                    stop_id=str(s.get("stop_id")),
+                    name=str(s.get("name") or "Bus Stop"),
+                    lat=float(s.get("lat")),
+                    longitude=float(s.get("lon") if s.get("lon") is not None else s.get("longitude")),
+                )
+                for s in stops_raw
+                if s.get("stop_id") is not None and s.get("lat") is not None
+            ]
+            arrivals_by_hour = metrics.get("arrivals_by_hour") or {}
+            try:
+                now_local = datetime.now(ZoneInfo("Europe/Dublin"))
+            except Exception:
+                now_local = datetime.now(timezone.utc)
+            current_hour = int(now_local.hour)
+            stop_arrivals_next_hour = {}
+            if isinstance(arrivals_by_hour, dict):
+                for stop_id, buckets in arrivals_by_hour.items():
+                    if isinstance(buckets, list) and len(buckets) == 24:
+                        try:
+                            stop_arrivals_next_hour[stop_id] = int(buckets[current_hour])
+                        except (TypeError, ValueError):
+                            stop_arrivals_next_hour[stop_id] = 0
+
+            buses = BusMetrics(
+                stops=stops,
+                stop_frequencies=metrics.get("stop_frequencies", {}) or {},
+                stop_arrivals_next_hour=stop_arrivals_next_hour or metrics.get("stop_arrivals_next_hour", {}) or {},
+                stop_avg_wait_min=metrics.get("stop_avg_wait_min", {}) or {},
+                stop_importance_scores=metrics.get("stop_importance_scores", {}) or {},
+                top_served_stops=metrics.get("top_served_stops", []) or [],
+                wait_time_summary=metrics.get("wait_time_summary", []) or [],
+                wait_time_counts=metrics.get("wait_time_counts", {}) or {},
+                wait_time_best=metrics.get("wait_time_best", []) or [],
+                wait_time_worst=metrics.get("wait_time_worst", []) or [],
+                top_importance_stops=metrics.get("top_importance_stops", []) or [],
+                total_stops=int(metrics.get("total_stops") or len(stops)),
+                total_routes=int(metrics.get("total_routes") or 0),
+            )
+            return MobilitySnapshot(buses=buses, bikes=None, location="dublin", timestamp=datetime.now(timezone.utc))
+        except Exception:
+            return None
+
+    def _metrics_cache_key(self, stops_file: Path, stop_times_file: Path) -> str:
+        try:
+            stops_mtime = stops_file.stat().st_mtime
+        except OSError:
+            stops_mtime = 0.0
+        try:
+            times_mtime = stop_times_file.stat().st_mtime
+        except OSError:
+            times_mtime = 0.0
+        return f"{stops_file}:{stops_mtime}:{stop_times_file}:{times_mtime}"
+
+    def _get_cached_metrics(self, cache_key: str):
+        with self._METRICS_LOCK:
+            entry = self._METRICS_CACHE.get(cache_key)
+            if entry is None:
+                return None
+            if time() - entry["timestamp"] > self._METRICS_TTL_SECONDS:
+                return None
+            return entry["snapshot"]
+
+    def _set_cached_metrics(self, cache_key: str, snapshot):
+        with self._METRICS_LOCK:
+            self._METRICS_CACHE[cache_key] = {"timestamp": time(), "snapshot": snapshot}
+
     def _count_stop_frequencies(self, dublin_stop_ids: Set[str]) -> Dict[str, int]:
         """
         Read stop_times.txt and count trips per stop, but only for stops
         that are in the dublin_stop_ids set.
         """
-        stop_times_file = self.gtfs_path / "GTFS" / "stop_times.txt"
+        stop_times_file = self._resolve_stop_times_file()
         frequencies = {}
         if not stop_times_file.exists():
             print(f"[Warning] {stop_times_file} not found. Cannot compute stop frequencies.")
@@ -76,7 +214,7 @@ class BusAdapter(DataAdapter):
         Count arrivals within the next hour, per stop_id, using stop_times.txt.
         Uses GTFS time format (HH:MM:SS), allowing hours > 24.
         """
-        stop_times_file = self.gtfs_path / "GTFS" / "stop_times.txt"
+        stop_times_file = self._resolve_stop_times_file()
         arrivals = {}
         if not stop_times_file.exists():
             print(f"[Warning] {stop_times_file} not found. Cannot compute arrivals within hour.")
@@ -117,8 +255,16 @@ class BusAdapter(DataAdapter):
         city = location
         print(f"--- Fetching Bus Data for {city} (bounding box filter) ---")
 
-        gtfs_dir = self.gtfs_path / "GTFS"
-        stops_file = gtfs_dir / "stops.txt"
+        stops_file = self._resolve_stops_file()
+        stop_times_file = self._resolve_stop_times_file()
+        cache_key = self._metrics_cache_key(stops_file, stop_times_file)
+        cached = self._get_cached_metrics(cache_key)
+        if cached is not None:
+            return cached
+        precomputed = self._load_precomputed_metrics(stops_file, stop_times_file)
+        if precomputed is not None:
+            self._set_cached_metrics(cache_key, precomputed)
+            return precomputed
 
         all_stops = []
         dublin_stop_ids = set()  # collect IDs of stops that pass the bbox filter
@@ -146,7 +292,6 @@ class BusAdapter(DataAdapter):
         # Compute frequencies for the filtered stops
         frequencies = self._count_stop_frequencies(dublin_stop_ids)
         arrivals_next_hour = self._count_arrivals_within_hour(dublin_stop_ids)
-        stop_times_file = self.gtfs_path / "GTFS" / "stop_times.txt"
         if stop_times_file.exists():
             print(f"[BusAdapter] Computing average waits from {stop_times_file}...")
         else:
@@ -167,4 +312,6 @@ class BusAdapter(DataAdapter):
             total_stops=len(all_stops),
         )
 
-        return MobilitySnapshot(buses=metrics, bikes=None, location=city, timestamp=datetime.now(timezone.utc))
+        snapshot = MobilitySnapshot(buses=metrics, bikes=None, location=city, timestamp=datetime.now(timezone.utc))
+        self._set_cached_metrics(cache_key, snapshot)
+        return snapshot

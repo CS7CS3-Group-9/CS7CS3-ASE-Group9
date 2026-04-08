@@ -95,7 +95,7 @@ def _build_chart_data(snapshot):
 
     importance_hist_chart = {"labels": dist_labels, "values": dist_values}
 
-    # Bus heatmap data (limit size for frontend performance)
+    # Bus heatmap data (show all stops, highlight top 500)
     heat_points = []
     stops = buses.get("stops") or []
     freqs = buses.get("stop_frequencies") or {}
@@ -116,7 +116,10 @@ def _build_chart_data(snapshot):
             }
         )
     heat_points.sort(key=lambda x: x["count"], reverse=True)
-    heat_points = heat_points[:500]
+    top_limit = 500
+    top_ids = {p["stop_id"] for p in heat_points[:top_limit]}
+    for p in heat_points:
+        p["is_top"] = p["stop_id"] in top_ids
 
     return {
         "air_quality_chart": air_quality_chart,
