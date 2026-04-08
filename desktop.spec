@@ -3,9 +3,13 @@
 
 import sys
 from pathlib import Path
+import importlib.util
 
 ROOT = Path(SPECPATH)
-VENV = ROOT / "desktop" / ".venv" / "Lib" / "site-packages"
+
+# Locate webview package regardless of whether a venv is active or not
+_webview_spec = importlib.util.find_spec("webview")
+WEBVIEW_DIR = Path(_webview_spec.origin).parent
 
 block_cipher = None
 
@@ -15,7 +19,7 @@ a = Analysis(
     binaries=[],
     datas=[
         # pywebview JS helpers
-        (str(VENV / "webview" / "js"),       "webview/js"),
+        (str(WEBVIEW_DIR / "js"),            "webview/js"),
         # bundled MarkerCluster CSS + any other local vendor files
         (str(ROOT / "desktop" / "assets"),   "desktop/assets"),
     ],
