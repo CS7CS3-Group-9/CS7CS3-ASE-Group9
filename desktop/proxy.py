@@ -190,7 +190,6 @@ def catch_all(path: str):
             )
             ct   = upstream.headers.get("Content-Type", "")
             body = upstream.content
-            log.debug("Upstream %s %s → %d  ct=%r  len=%d", request.method, cloud_url, upstream.status_code, ct, len(body))
 
             if upstream.status_code < 400 and (
                 "text/" in ct or "application/json" in ct or "javascript" in ct

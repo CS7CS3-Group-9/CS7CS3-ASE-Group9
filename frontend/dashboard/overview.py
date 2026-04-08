@@ -748,6 +748,7 @@ def _build_recommendations(
 @overview_bp.get("")
 @overview_bp.get("/")
 def dashboard():
+    backend_url = current_app.config["BACKEND_API_URL"]
     radius_km = _parse_radius_km(request.args.get("radius_km"))
     with ThreadPoolExecutor(max_workers=3) as pool:
         f_snapshot = pool.submit(_fetch_snapshot, backend_url, radius_km)

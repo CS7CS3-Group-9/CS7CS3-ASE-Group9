@@ -37,7 +37,7 @@ from desktop.proxy import init_proxy, proxy_app, warm_tiles
 from desktop.tray import TrayManager
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     datefmt="%H:%M:%S",
 )
@@ -336,7 +336,7 @@ def main():
     )
     _tray._window = _window
 
-    webview.start(debug=True)
+    webview.start()
 
     # 10. Cleanup after window closed
     _quit()
