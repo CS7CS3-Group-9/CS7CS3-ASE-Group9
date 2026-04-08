@@ -5,6 +5,7 @@ from .overview import (
     _fetch_bike_stations,
     _fetch_bus_stops,
     _filter_points_within_radius,
+    _filter_traffic_within_radius,
     _parse_radius_km,
     _SNAPSHOT_CACHE,
     _BUS_STOP_CACHE,
@@ -20,6 +21,11 @@ recommendations_bp = Blueprint("recommendations", __name__, url_prefix="/dashboa
 @recommendations_bp.get("")
 @recommendations_bp.get("/")
 def recommendations():
+    if current_app.config.get("TESTING"):
+        _SNAPSHOT_CACHE.clear()
+        _BUS_STOP_CACHE.clear()
+        _BIKE_STATION_CACHE.clear()
+        _NEEDS_CACHE.clear()
     backend_url = current_app.config["BACKEND_API_URL"]
     radius_km = _parse_radius_km(request.args.get("radius_km"))
     error = None
@@ -35,9 +41,10 @@ def recommendations():
 
     bike_stations = _filter_points_within_radius(bike_stations, radius_km)
     bus_stops = _filter_points_within_radius(bus_stops, radius_km)
+    traffic = _filter_traffic_within_radius(snapshot.get("traffic"), radius_km)
     recs = _build_recommendations(
         snapshot.get("bikes"),
-        snapshot.get("traffic"),
+        traffic,
         snapshot.get("airquality"),
         bike_stations=bike_stations,
         bus_stops=bus_stops,

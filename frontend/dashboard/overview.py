@@ -214,13 +214,18 @@ def _filter_traffic_within_radius(traffic, radius_km):
 
     total = len(filtered)
     avg_delay = total_delay / total if total else 0
-    incidents_per_km = total / radius_km if radius_km > 0 else 0
-    if incidents_per_km > 5:
-        congestion = "high"
-    elif incidents_per_km > 2:
-        congestion = "medium"
+    # Only recompute congestion when there were incidents to filter.
+    # If the original list was empty, preserve the pre-computed level from the backend.
+    if incidents:
+        incidents_per_km = total / radius_km if radius_km > 0 else 0
+        if incidents_per_km > 5:
+            congestion = "high"
+        elif incidents_per_km > 2:
+            congestion = "medium"
+        else:
+            congestion = "low"
     else:
-        congestion = "low"
+        congestion = (traffic.get("congestion_level") or "low").lower()
     avg_speed = 15 if congestion == "high" else 30 if congestion == "medium" else 50
 
     return {
