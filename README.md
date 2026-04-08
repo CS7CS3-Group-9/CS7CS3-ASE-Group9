@@ -6,7 +6,7 @@ This is the README for group 9's project on sustainable city management :)
 
 ### Prerequisites
 - Python 3.12+
-- Dependencies: `pip install -r backend/requirements.txt`
+- Dependencies (install once from repo root): `pip install -r requirements.txt`
 
 ### Start the API
 From the repo root:
