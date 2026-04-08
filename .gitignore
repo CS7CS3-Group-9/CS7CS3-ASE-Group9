@@ -11,3 +11,22 @@ backend/adapters/adapters_tests/fix_bom.py
 route_map.html
 IndividualEval-Semester1-Group9-OisinPower.doc
 .\claude
+desktop/.venv/
+
+# PyInstaller build artifacts
+build/
+dist/
+installer_output/
+*.spec.bak
+
+# PyInstaller spec work dirs (keep desktop.spec itself)
+build/desktop/
+
+# Python cache (all depths)
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# Desktop app — generated/runtime files
+desktop/assets/tray-icon.ico
+desktop/assets/tray-icon.png
