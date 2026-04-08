@@ -5,6 +5,9 @@ on:
     tags:
       - 'desktop-v*'   # trigger with: git tag desktop-v1.0.1 && git push --tags
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
