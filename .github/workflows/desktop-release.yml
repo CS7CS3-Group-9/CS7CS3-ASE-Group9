@@ -25,7 +25,7 @@ jobs:
 
       - name: Generate tray icon
         run: |
-          python - <<'EOF'
+          @"
           from PIL import Image, ImageDraw
           import pathlib
           assets = pathlib.Path("desktop/assets")
@@ -43,7 +43,8 @@ jobs:
           frames[0].save("desktop/assets/tray-icon.ico", format="ICO",
                          sizes=[(s,s) for s in sizes], append_images=frames[1:])
           frames[1].save("desktop/assets/tray-icon.png")
-          EOF
+          "@ | Out-File -FilePath gen_icon.py -Encoding utf8
+          python gen_icon.py
 
       - name: Build with PyInstaller
         run: pyinstaller desktop.spec
