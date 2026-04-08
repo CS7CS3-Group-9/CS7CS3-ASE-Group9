@@ -3,11 +3,6 @@
     <h3>&#128161; Recommendations</h3>
     <a href="{{ url_for('recommendations.recommendations') }}" class="view-all-link">View all &rarr;</a>
   </div>
-<<<<<<< HEAD
-  <div id="rec-strip-content">
-    <p class="no-data">Loading&hellip;</p>
-  </div>
-=======
 
   {% if recommendations %}
     <div class="rec-cards">
@@ -43,7 +38,6 @@
   {% else %}
     <p class="no-data">No recommendations at this time.</p>
   {% endif %}
->>>>>>> ea64ea4b9269550cb7dfbe7f39e310426d094566
 </div>
 
 <script>
