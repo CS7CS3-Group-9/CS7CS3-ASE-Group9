@@ -19,8 +19,8 @@ spec:
           ports:
             - containerPort: 8080
           env:
-            - name: TARGET_URL
-              value: "http://backend.default.svc.cluster.local/api/hello"
+            - name: BACKEND_API_URL
+              value: "http://backend.default.svc.cluster.local"
           readinessProbe:
             httpGet:
               path: /

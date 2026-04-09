@@ -1,4 +1,10 @@
 import os
+from dotenv import load_dotenv
+
+# Must be called before any import that reads env vars at module level
+# (e.g. routing.py creates a RoutesAdapter singleton on import).
+load_dotenv()
+
 from datetime import datetime, timezone
 
 from flask import Flask, jsonify, current_app
@@ -15,6 +21,7 @@ from backend.api.endpoints.health import health_bp
 from backend.api.endpoints.routing import routing_api_bp
 from backend.api.endpoints.efficiency import efficiency_bp
 from backend.api.endpoints.buses import buses_bp
+from backend.api.endpoints.desktop import desktop_bp
 from backend.api.endpoints.auth import auth_bp
 from backend.ml.weather_features import refresh_weather_if_needed
 
@@ -53,6 +60,7 @@ def create_app() -> Flask:
     app.register_blueprint(routing_api_bp)
     app.register_blueprint(efficiency_bp)
     app.register_blueprint(buses_bp)
+    app.register_blueprint(desktop_bp)
     app.register_blueprint(auth_bp)
 
     _init_firestore(app)

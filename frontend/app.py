@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 from flask import Flask, redirect, url_for, request, session
 
 from frontend.config import Config
@@ -7,6 +8,8 @@ from frontend.dashboard.analytics import analytics_bp
 from frontend.dashboard.recommendations import recommendations_bp
 from frontend.dashboard.routing import routing_bp
 from frontend.auth import auth_bp
+
+load_dotenv()
 
 
 def create_app(config_class=Config):
@@ -32,6 +35,12 @@ def create_app(config_class=Config):
             return None
         if endpoint in ("auth.login", "auth.login_post", "auth.logout"):
             return None
+        # Desktop app proxy sends this header to bypass browser auth.
+        desktop_token = app.config.get("DESKTOP_TOKEN", "")
+        if desktop_token and request.headers.get("X-Desktop-Token") == desktop_token:
+            session["auth_ok"] = True
+            session["auth_role"] = "viewer"
+            return None
         if session.get("auth_ok"):
             return None
         next_url = request.full_path
@@ -42,6 +51,12 @@ def create_app(config_class=Config):
     @app.route("/")
     def index():
         return redirect(url_for("overview.dashboard"))
+
+    @app.after_request
+    def add_cache_headers(response):
+        if response.content_type.startswith("text/html"):
+            response.headers["Cache-Control"] = "private, max-age=30"
+        return response
 
     return app
 

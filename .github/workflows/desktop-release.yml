@@ -1,0 +1,86 @@
+name: Desktop App Release
+
+on:
+  push:
+    tags:
+      - 'desktop-v*'   # trigger with: git tag desktop-v1.0.1 && git push --tags
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r desktop/requirements.txt
+          pip install pyinstaller
+
+      - name: Generate tray icon
+        run: |
+          @"
+          from PIL import Image, ImageDraw
+          import pathlib
+          assets = pathlib.Path("desktop/assets")
+          assets.mkdir(exist_ok=True)
+          sizes = [16, 32, 48, 256]
+          frames = []
+          for s in sizes:
+              img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+              d = ImageDraw.Draw(img)
+              d.ellipse([0, 0, s-1, s-1], fill=(15, 23, 42))
+              r = max(1, s // 6)
+              cx, cy = s // 2, s // 2
+              d.ellipse([cx-r, cy-r, cx+r, cy+r], fill=(255, 255, 255))
+              frames.append(img)
+          frames[0].save("desktop/assets/tray-icon.ico", format="ICO",
+                         sizes=[(s,s) for s in sizes], append_images=frames[1:])
+          frames[1].save("desktop/assets/tray-icon.png")
+          "@ | Out-File -FilePath gen_icon.py -Encoding utf8
+          python gen_icon.py
+
+      - name: Build with PyInstaller
+        run: pyinstaller desktop.spec
+
+      - name: Install Inno Setup
+        run: choco install innosetup --yes
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag -replace '^desktop-v', ''
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Update installer version
+        run: |
+          (Get-Content installer.iss) `
+            -replace '#define AppVersion\s+"[^"]+"', '#define AppVersion "${{ steps.version.outputs.VERSION }}"' |
+          Set-Content installer.iss
+
+      - name: Build installer
+        run: iscc installer.iss
+
+      - name: Upload installer as release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Dublin City Dashboard ${{ steps.version.outputs.VERSION }}"
+          body: |
+            ## Installation
+
+            1. Download `DublinCityDashboard-Setup-${{ steps.version.outputs.VERSION }}.exe`
+            2. Run it and follow the installer wizard
+            3. Launch from the Start Menu or desktop shortcut
+
+            **Requirements:** Windows 10 (version 2004+) or Windows 11. No Python needed.
+          files: installer_output/DublinCityDashboard-Setup-${{ steps.version.outputs.VERSION }}.exe

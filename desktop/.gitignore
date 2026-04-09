@@ -1,0 +1,12 @@
+node_modules/
+build/
+dist/
+desktop/build/
+desktop/dist/
+*.db
+*.db-shm
+*.db-wal
+desktop/pyinstaller/_backend_entry.py
+desktop/pyinstaller/_frontend_entry.py
+.DS_Store
+Thumbs.db
