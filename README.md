@@ -6,6 +6,9 @@ A real-time sustainable city management platform for Dublin. The system provides
 - **Frontend** — Python Flask web dashboard, deployed on GKE
 - **Desktop App** — Windows desktop client (PyWebView) with offline caching
 
+### Prerequisites
+- Python 3.12+
+- Dependencies (install once from repo root): `pip install -r requirements.txt`
 Live deployment: http://ase-citydash-board.duckdns.org
 
 ---

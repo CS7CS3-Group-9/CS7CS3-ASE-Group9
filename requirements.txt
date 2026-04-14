@@ -1,0 +1,36 @@
+# Unified development requirements (backend + frontend + thin_slice)
+# Pin to a compatible superset so new developers can install once.
+
+# Core web/runtime
+flask==3.1.2
+gunicorn==23.0.0
+requests==2.32.5
+
+# Backend data + ML
+firebase-admin==7.1.0
+numpy>=1.24
+pandas>=2.0
+scikit-learn>=1.3
+joblib>=1.3
+
+# Routing / maps utilities (thin_slice)
+folium==0.20.0
+polyline==2.0.3
+google-cloud-firestore
+google-cloud-core
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+
+# Infra + messaging (thin_slice)
+redis==7.0.1
+paho-mqtt==1.6.1
+python-dotenv==1.2.1
+
+# Security + auth (thin_slice)
+flask-login==0.6.3
+cryptography==46.0.3
+bleach==6.3.0
+
+# Testing utilities (thin_slice)
+pytest==9.0.0
