@@ -49,3 +49,6 @@ class Config:
     DASHBOARD_PASS = os.getenv("DASHBOARD_PASS", "admin")
     DASHBOARD_USERS = _load_users()
     DASHBOARD_USERS_FILE = os.getenv("DASHBOARD_USERS_FILE", _default_users_file())
+    # Shared secret used by the desktop app proxy to bypass browser auth.
+    # Set DESKTOP_TOKEN env var on the cloud deployment to a strong secret.
+    DESKTOP_TOKEN = os.getenv("DESKTOP_TOKEN", "dublin-dashboard-desktop-v1")

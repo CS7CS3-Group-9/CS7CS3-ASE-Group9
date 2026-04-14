@@ -120,6 +120,12 @@ def get_snapshot():
         include = ["bikes", "traffic", "airquality", "tours", "buses"]
 
     adapter_specs = build_adapter_specs(include, radius_km, latitude, longitude)
+    # Always attempt a live fetch for the real-time endpoint. Setting TTL to 0
+    # bypasses the cache short-circuit in resolve_with_cache so the dashboard
+    # never shows stale "cached" data. The AdapterCache is still populated on
+    # success and used as a fallback if the live call fails.
+    for spec in adapter_specs:
+        spec.cache_ttl_seconds = 0
     cache = _get_adapter_cache()
     service = SnapshotService(adapter_specs=adapter_specs, cache=cache, predictor=default_predictor)
     snapshot = service.build_snapshot(location=location)

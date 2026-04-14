@@ -121,6 +121,9 @@
         if (window._mapRefresh && typeof window._mapRefresh === "function") {
           window._mapRefresh(data);
         }
+        if (window._recStripRefresh && typeof window._recStripRefresh === "function") {
+          window._recStripRefresh(data.recommendations);
+        }
       })
       .catch(function (err) {
         showErrorBanner(err.message);
@@ -529,10 +532,16 @@
     if (onDashboard) {
       fetchDashboardData(true);
       setInterval(fetchDashboardData, REFRESH_INTERVAL);
+      window._dashboardRefresh = function () { fetchDashboardData(false); };
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "visible") fetchDashboardData(false);
+      });
     }
 
     if (onAnalytics) {
+      fetchAndUpdateCharts();
       setInterval(fetchAndUpdateCharts, REFRESH_INTERVAL);
+      window._analyticsRefresh = fetchAndUpdateCharts;
       wireAnalyticsFilters();
     }
 

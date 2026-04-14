@@ -66,10 +66,10 @@
     });
   }
 
-  var bikeLayer    = _createMarkerLayer(true, { shape: "circle", colour: "#16a34a" }).addTo(map);
+  var bikeLayer = _createMarkerLayer(true, { shape: "circle", colour: "#16a34a" }).addTo(map);
   var trafficLayer = _createMarkerLayer(false).addTo(map);
   var tourismLayer = _createMarkerLayer(true).addTo(map);
-  var busLayer     = _createMarkerLayer(true, { shape: "square", colour: "#2563eb" }).addTo(map);
+  var busLayer = _createMarkerLayer(true, { shape: "square", colour: "#2563eb" }).addTo(map);
   var needsBusLayer = _createMarkerLayer(false).addTo(map);
   var needsBikeLayer = _createMarkerLayer(false).addTo(map);
 
@@ -129,17 +129,17 @@
 
   /* ---- Traffic incident colour by severity ---- */
   var _severityColour = {
-    "major":     "#dc2626",
-    "moderate":  "#d97706",
-    "minor":     "#fbbf24",
+    "major": "#dc2626",
+    "moderate": "#d97706",
+    "minor": "#fbbf24",
     "undefined": "#9333ea",
-    "unknown":   "#6b7280",
+    "unknown": "#6b7280",
   };
 
   /* ---- Traffic incident colour by category (overrides severity for closures) ---- */
   var _categoryColour = {
     "road closed": "#7c3aed",
-    "accident":    "#dc2626",
+    "accident": "#dc2626",
   };
 
   function _incidentColour(inc) {
@@ -179,7 +179,7 @@
 
       var icon = L.divIcon({
         html: "<div style='font-size:22px;line-height:1'>"
-              + _incidentEmoji(inc) + "</div>",
+          + _incidentEmoji(inc) + "</div>",
         className: "",
         iconSize: [24, 24],
         iconAnchor: [12, 12],
@@ -194,7 +194,7 @@
           "<strong>" + (inc.category || "Incident") + "</strong>" + delayStr + "<br>" +
           (inc.road && inc.road !== "Unknown road" ? "Road: <b>" + inc.road + "</b><br>" : "") +
           (inc.from_location ? "From: " + inc.from_location + "<br>" : "") +
-          (inc.to_location   ? "To: "   + inc.to_location   + "<br>" : "") +
+          (inc.to_location ? "To: " + inc.to_location + "<br>" : "") +
           "Severity: <b>" + (inc.severity || "—") + "</b><br>" +
           (inc.description && inc.description !== "No description"
             ? "<em>" + inc.description + "</em>" : "")
@@ -210,10 +210,10 @@
       var summaryColour = cong === "high" ? "#dc2626" : cong === "medium" ? "#d97706" : "#16a34a";
       var summaryIcon = L.divIcon({
         html: "<div style='background:" + summaryColour + ";color:#fff;border-radius:6px;" +
-              "padding:3px 8px;font-size:12px;font-weight:700;white-space:nowrap;" +
-              "box-shadow:0 1px 4px rgba(0,0,0,.3)'>" +
-              cong.charAt(0).toUpperCase() + cong.slice(1) +
-              " &mdash; " + traffic.total_incidents + " incidents</div>",
+          "padding:3px 8px;font-size:12px;font-weight:700;white-space:nowrap;" +
+          "box-shadow:0 1px 4px rgba(0,0,0,.3)'>" +
+          cong.charAt(0).toUpperCase() + cong.slice(1) +
+          " &mdash; " + traffic.total_incidents + " incidents</div>",
         className: "",
         iconAnchor: [60, 12],
       });
@@ -388,10 +388,10 @@
     }
   }
 
-  wireToggle("toggle-bikes",   bikeLayer, function (data) { populateBikes(data.bike_stations || []); });
+  wireToggle("toggle-bikes", bikeLayer, function (data) { populateBikes(data.bike_stations || []); });
   wireToggle("toggle-traffic", trafficLayer, function (data) { populateTraffic(data.traffic || null); });
   wireToggle("toggle-tourism", tourismLayer, function (data) { populateTourism(data.tours || null); });
-  wireToggle("toggle-buses",   busLayer, function (data) { populateBuses(data.bus_stops || []); });
+  wireToggle("toggle-buses", busLayer, function (data) { populateBuses(data.bus_stops || []); });
   wireToggle("toggle-needs-bus", needsBusLayer, function (data) { populateNeedsBus(data.needs_bus_areas || []); });
   wireToggle("toggle-needs-bike", needsBikeLayer, function (data) { populateNeedsBike(data.needs_bike_areas || []); });
 
