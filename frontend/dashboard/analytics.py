@@ -175,9 +175,9 @@ def analytics():
     chart_data["bike_heatmap"] = _build_bike_heatmap_points(stations)
     return render_template(
         "dashboard/analytics.html",
-        chart_data=chart_data,
-        timestamp=snapshot.get("timestamp"),
-        backend_error=error,
+        chart_data={},
+        timestamp=None,
+        backend_error=None,
     )
 
 

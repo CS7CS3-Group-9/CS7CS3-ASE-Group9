@@ -1,239 +1,305 @@
-# Sustainable City Management
+# Dublin City Dashboard
 
-This is the README for group 9's project on sustainable city management :)
+A real-time sustainable city management platform for Dublin. The system provides live data on bikes, buses, traffic, air quality, tours, and route planning through three components:
 
-## Run Backend Locally
+- **Backend** — Python Flask REST API, deployed on GKE
+- **Frontend** — Python Flask web dashboard, deployed on GKE
+- **Desktop App** — Windows desktop client (PyWebView) with offline caching
+
+Live deployment: http://ase-citydash-board.duckdns.org
+
+---
+
+## Architecture
+
+```
+Browser / Desktop App
+        │
+        ▼
+Frontend (Flask, port 8080)   ←── session auth
+        │
+        ▼
+Backend (Flask, port 5000)    ←── REST API
+        │
+        ├── Dublin Bikes API
+        ├── TomTom Traffic API
+        ├── OpenAQ Air Quality
+        ├── Google Maps / TomTom Routing
+        └── Firebase Firestore (optional)
+```
+
+The desktop app adds a local caching proxy (port 8080) in front of the cloud — the PyWebView window always loads from `localhost:8080`. The proxy forwards to the cloud when online and serves SQLite-cached responses when offline.
+
+---
+
+## Quick Start (Local Development)
 
 ### Prerequisites
-- Python 3.12+
-- Dependencies: `pip install -r backend/requirements.txt`
 
-### Start the API
-From the repo root:
+- Python 3.12
+- Dependencies installed in separate venvs for backend and frontend
+
+### One-command startup (PowerShell)
+
 ```powershell
+.\localStart.ps1
+```
+
+This starts the backend on port 5000 and the frontend on port 8080.
+
+### Manual startup
+
+**Backend:**
+```powershell
+pip install -r backend/requirements.txt
 $env:ENABLE_FIRESTORE="false"
+$env:GOOGLE_MAPS_API_KEY="<your-key>"
+$env:TOMTOM_API_KEY="<your-key>"
+$env:BIKES_MODEL_PATH="backend\ml\artifacts\bikes_model.joblib"
 python -m flask --app backend.app:create_app --debug run --port 5000
 ```
 
-### (Optional) Firestore test
-Only if you have valid Firestore credentials:
+**Frontend (separate terminal):**
 ```powershell
-$env:ENABLE_FIRESTORE="true"
-python -m flask --app backend.app:create_app --debug run --port 5000
-```
-Then hit:
-```
-http://127.0.0.1:5000/test-firestore
+pip install -r frontend/requirements.txt
+$env:BACKEND_API_URL="http://localhost:5000"
+$env:DASHBOARD_USERS_FILE="frontend/users.json"
+$env:SECRET_KEY="change-me"
+python -m flask --app frontend.app:create_app --debug run --port 8080
 ```
 
-### Bikes Predictive Fallback (Optional)
-If live bikes data and cache are unavailable, the backend can use the ML model
-artifact to generate predictions for `/bikes` and `/bikes/stations`.
-Set the model path for inference:
-```powershell
-$env:BIKES_MODEL_PATH="backend\ml\artifacts\bikes_model.joblib"
-```
-To force predicted mode for testing (skip the live API):
-```powershell
-$env:FORCE_BIKES_PREDICTION="1"
-```
-Historical-average fallback is disabled.
+Then open http://localhost:8080. Default credentials are in `frontend/users.json`.
 
-### ML Model Training (Per-Station)
-Train an ML model from your historical CSV and save an artifact:
+---
+
+## Desktop App
+
+The desktop app is a Windows application that wraps the cloud dashboard with offline support.
+
+### Run from source
+
 ```powershell
-python backend\ml\train_bikes_model.py --input "path\to\march_april_2025.csv"
-```
-Example (adjust to your filename):
-```powershell
-python backend\ml\train_bikes_model.py --input "data\historical\dublin-bikes_station_status_042025.csv"
-```
-To include weather data, provide a CSV with `timestamp` plus any numeric columns:
-```powershell
-python backend\ml\train_bikes_model.py --input "path\to\march_april_2025.csv" --weather "path\to\weather.csv"
-```
-Set the model path for inference:
-```powershell
-$env:BIKES_MODEL_PATH="backend\ml\artifacts\bikes_model.joblib"
+# One-time setup
+py -3.12 -m venv desktop\.venv
+desktop\.venv\Scripts\activate
+pip install -r desktop\requirements.txt
+
+# Run
+python -m desktop.app
 ```
 
-### Weather Cache (Optional)
-At runtime, the predictor can read cached weather features to improve accuracy.
-Provide a CSV with `timestamp` and numeric weather columns (e.g. temperature, rain, wind):
-```
-timestamp,temperature,precipitation,wind_speed,weather_code
-2026-03-10T12:00:00+00:00,11.2,0.0,5.5,0
-```
-Set:
-```
-$env:WEATHER_FORECAST_PATH="data\historical\weather_forecast.csv"
-```
-Optional rain adjustment for ML predictions:
-```
-$env:BIKES_WEATHER_ADJUSTMENT="true"
-```
-Automatic forecast refresh (default on):
-```
-$env:WEATHER_AUTO_REFRESH="true"
-$env:WEATHER_REFRESH_HOURS="24"
-```
-Optional location/settings overrides:
-```
-$env:WEATHER_FORECAST_LAT="53.3498"
-$env:WEATHER_FORECAST_LON="-6.2603"
-$env:WEATHER_FORECAST_HOURLY="temperature_2m,rain"
-$env:WEATHER_FORECAST_DAYS="16"
-$env:WEATHER_FORECAST_TIMEZONE="Europe/Dublin"
+### Build the installer
+
+```powershell
+desktop\.venv\Scripts\activate
+pip install pyinstaller
+pyinstaller desktop.spec
 ```
 
-### Fetch 16-Day Forecast from Open-Meteo
-Use the script below to refresh the cached forecast:
+Output: `dist\DublinCityDashboard\DublinCityDashboard.exe`
+
+To package as a one-click installer, install [Inno Setup 6](https://jrsoftware.org/isinfo.php) then:
+
+```powershell
+iscc installer.iss
+# Output: installer_output\DublinCityDashboard-Setup-1.0.0.exe
+```
+
+### Publish a release automatically
+
+Tag the commit with `desktop-v<version>` and push — GitHub Actions builds and publishes the installer to the Releases page automatically:
+
+```bash
+git tag desktop-v1.0.1
+git push origin desktop-v1.0.1
+```
+
+End users download `DublinCityDashboard-Setup-<version>.exe` from the Releases page and run it. No Python required. Works on Windows 10 (version 2004+) and Windows 11.
+
+### How offline mode works
+
+The PyWebView window always loads from `http://localhost:8080` (the local proxy), never directly from the cloud. When the cloud is unreachable:
+
+- HTML, JSON, and static assets are served from a local SQLite cache (`%APPDATA%\DublinCityDashboard\cache.db`)
+- OpenStreetMap tiles are served from a tile cache (30-day TTL)
+- An amber banner appears at the bottom of the page within 5 seconds
+- No page navigation occurs — the app stays on the cached version seamlessly
+
+When connectivity returns the banner disappears and data refreshes within 60 seconds.
+
+---
+
+## Cloud Deployment
+
+### Trigger
+
+Push to the `prod` branch to deploy:
+
+```bash
+git push origin <your-branch>:prod
+```
+
+GitHub Actions (`.github/workflows/deploy-gke.yml`) builds and pushes Docker images then rolls out to GKE.
+
+### Infrastructure
+
+| Component | Details |
+|-----------|---------|
+| Platform | Google Kubernetes Engine |
+| Project | `ase-city-management` |
+| Cluster | `backend-test-cluster` (europe-west1-b) |
+| Registry | `europe-west1-docker.pkg.dev/ase-city-management/route-app-repo` |
+| Namespace | `default` |
+
+### Required GitHub secrets
+
+| Secret | Description |
+|--------|-------------|
+| `WIF_PROVIDER` | Workload Identity Federation provider |
+| `GCP_SA_EMAIL` | GCP service account email |
+
+### Required GKE secret
+
+Create `api-keys` in the cluster before first deploy:
+
+```bash
+kubectl create secret generic api-keys \
+  --from-literal=GOOGLE_MAPS_API_KEY=<key> \
+  --from-literal=TOMTOM_API_KEY=<key>
+```
+
+---
+
+## Environment Variables
+
+### Backend
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ENABLE_FIRESTORE` | `false` | Enable Firebase Firestore |
+| `GOOGLE_MAPS_API_KEY` | — | Google Maps API key (routing) |
+| `TOMTOM_API_KEY` | — | TomTom API key (routing fallback) |
+| `BIKES_MODEL_PATH` | — | Path to trained bikes ML model |
+| `FORCE_BIKES_PREDICTION` | — | Set `1` to skip live API and use ML model |
+| `WEATHER_FORECAST_PATH` | — | Path to cached weather CSV |
+| `BIKES_WEATHER_ADJUSTMENT` | `true` | Apply rain adjustment to bike predictions |
+| `WEATHER_AUTO_REFRESH` | `true` | Auto-refresh forecast on startup |
+| `PORT` | `8080` | Server port (production) |
+
+### Frontend
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BACKEND_API_URL` | `http://localhost:5000` | Backend base URL |
+| `SECRET_KEY` | `dev-secret-key-...` | Flask session secret — change in production |
+| `DASHBOARD_USERS_FILE` | `frontend/users.json` | Path to users credentials file |
+| `DASHBOARD_USERS_JSON` | — | Users as a JSON string (alternative to file) |
+| `DESKTOP_TOKEN` | `dublin-dashboard-desktop-v1` | Shared secret for desktop app auth bypass |
+| `REFRESH_INTERVAL` | `60` | Dashboard auto-refresh interval (seconds) |
+| `PORT` | `8080` | Server port (production) |
+
+### Desktop App
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CLOUD_URL` | `http://ase-citydash-board.duckdns.org` | Cloud deployment URL |
+| `DESKTOP_TOKEN` | `dublin-dashboard-desktop-v1` | Must match frontend `DESKTOP_TOKEN` |
+| `PROXY_PORT` | `8080` | Local caching proxy port |
+| `BACKEND_PORT` | `5001` | Local backend subprocess port |
+
+> **Security note:** Change `DESKTOP_TOKEN` to a strong random string in production. Set the same value in the cloud deployment env vars and rebuild the desktop app.
+
+---
+
+## API Reference
+
+All domain endpoints return a `MobilitySnapshot` envelope:
+
+```json
+{
+  "timestamp": "2026-04-08T12:00:00+00:00",
+  "location": "dublin",
+  "source_status": { "bikes": "live", "traffic": "cached" },
+  "bikes": { ... },
+  "buses": { ... },
+  "traffic": { ... },
+  "airquality": { ... },
+  "tours": { ... }
+}
+```
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /snapshot` | All domains combined |
+| `GET /bikes` | Dublin Bikes availability |
+| `GET /bikes/stations` | Per-station bike data |
+| `GET /buses/stops` | Bus stop locations |
+| `GET /traffic` | Traffic incidents and flow |
+| `GET /airquality` | Air quality index and pollutants |
+| `GET /tours` | Dublin tour information |
+| `GET /routing` | Route calculation |
+| `GET /efficiency` | Transportation efficiency metrics |
+| `GET /health` | Service health and adapter status |
+| `GET /desktop/cache-warmup` | Bulk data for desktop cache seeding |
+
+---
+
+## ML Model (Bike Predictions)
+
+The backend uses a scikit-learn model to predict bike availability when live data is unavailable.
+
+**Train a model:**
+```powershell
+python backend\ml\train_bikes_model.py \
+  --input "data\historical\dublin-bikes_station_status_042025.csv"
+```
+
+**With weather data:**
+```powershell
+python backend\ml\train_bikes_model.py \
+  --input "data\historical\dublin-bikes_station_status_042025.csv" \
+  --weather "data\historical\weather_forecast.csv"
+```
+
+**Refresh the 16-day weather forecast:**
 ```powershell
 python scripts\fetch_weather_forecast.py --output "data\historical\weather_forecast.csv"
 ```
-Schedule it every 16 days (e.g., Windows Task Scheduler) to keep the cache fresh.
 
-## Smoke Test
-With the API running in another terminal:
+---
+
+## Testing
+
+**Smoke test** (requires backend running on port 5000):
 ```powershell
 .\smoke_test.ps1
-```
-
-Optional custom base URL:
-```powershell
+# or with custom URL:
 .\smoke_test.ps1 -BaseUrl "http://127.0.0.1:5000"
-```
-
-If scripts are blocked:
-```powershell
+# if execution policy blocks it:
 powershell -ExecutionPolicy Bypass -File .\smoke_test.ps1
 ```
 
-## API Contracts (Response Shape)
-All endpoint responses are JSON. The domain endpoints return a unified `MobilitySnapshot` shape:
-```json
-{
-  "timestamp": "2026-02-17T12:00:00+00:00",
-  "location": "dublin",
-  "source_status": {
-    "bikes": "live",
-    "traffic": "cached",
-    "airquality": "live",
-    "tours": "failed"
-  },
-  "bikes": null,
-  "buses": null,
-  "traffic": null,
-  "airquality": null,
-  "population": null,
-  "tours": null,
-  "alerts": null,
-  "recommendations": null
-}
-```
-Endpoints:
-- `/bikes` returns `MobilitySnapshot` with `bikes` populated.
-- `/traffic` returns `MobilitySnapshot` with `traffic` populated.
-- `/airquality` returns `MobilitySnapshot` with `airquality` populated.
-- `/tours` returns `MobilitySnapshot` with `tours` populated.
-- `/snapshot` returns `MobilitySnapshot` with multiple domains populated.
+**Unit tests** run automatically on PRs via `.github/workflows/mergeTests.yml`.
 
-Other endpoints:
-- `/health`:
-```json
-{
-  "status": "ok",
-  "adapters": {
-    "bikes": "configured",
-    "routes": "configured",
-    "traffic": "configured",
-    "air_quality": "configured",
-    "tour": "configured"
-  },
-  "timestamp": "2026-02-17T12:00:00+00:00",
-  "last_snapshot": null
-}
-```
-- `/api/hello`:
-```json
-{"message": "Hello World!"}
-```
+---
 
-### Git steps for making a contribution
-1. Clone the repo to your local machine with `git clone` using either HTTPS or SSH
-2. If you already have the repo cloned checkout the main branch with `git checkout main`
-3. Make sure you have all the latest commits with `git pull`
-4. Create a branch for you feature or bug fix with named after the JIRA ticket e.g. KAN-13: `git checkout -b KAN-13`
-5. Make your changes then stage them: `git add <files to be staged>` or `git add .` for all changes files
-6. Commit your changes and add a **meaningful** commit message starting with the ticket ID e.g `git commit -m "KAN-13 This is a meaningful commit message`
-7. Push your branch to the remote repo **NOT** to the main branch: `git push origin KAN-13`
-8. On github, raise the pull request, add a description and wait for a review before merging.
+## Contributing
 
+### Branch and commit conventions
 
-### Pull request guidelines
-- Currently 1 review is required to merge.
-- The default strategy for merging a PR should be "Squash and Merge"
-- When making a PR that changes or could potentially break existing code please note that in the description box
-- If the PR is large and the description doesnt fit in the title box, write a more detailed description in the description box
-- Describe how you tested your changes, if testing was required in the description box
-- Resolve any comments before merging the PR
-- If it is a large potentially breaking change, request more than 1 reviewer
-- TODO: Create a PR template
+1. Branch names must reference the Jira ticket: `git checkout -b KAN-13`
+2. Commit messages must start with the ticket ID: `git commit -m "KAN-13 Add feature"`
+3. Push to your branch, not main: `git push origin KAN-13`
+4. Open a PR — at least 1 review required before merging
+5. Default merge strategy: **Squash and Merge**
 
+### One-time developer setup (pre-commit hooks)
 
-### One-Time Developer Setup (Pre-Commit, Black, Pycodestyle)
-Before contributing to this project, each developer must complete a one-time setup to enable automatic code formatting and PEP8 validation.
-
-This ensures that all code in the repository is:
-
-Consistently formatted (Black)
-
-PEP8-compliant (pycodestyle)
-
-Checked automatically before every commit
-
-📌 1. Install required tools
-Install pre-commit and pycodestyle into your Python environment:
-
+```powershell
 python -m pip install pre-commit pycodestyle
-(Using python -m ensures installation into the correct interpreter.)
-
-📌 2. Install the pre-commit hook
-Run this in the root of the repository:
-
 python -m pre_commit install
-This creates a Git hook at:
+```
 
-
-.git/hooks/pre-commit
-Git will now run automatic checks before every commit.
-
-📌 3. Test it
-Make a small change to any .py file, then commit:
-
-
-git add .
-git commit -m "test commit"
-Expected behavior:
-
-Black will auto-format your code
-(If formatting changes are applied, the commit will be blocked; simply stage the changes and commit again.)
-
-pycodestyle will run a PEP8 compliance check
-
-If both checks pass, the commit succeeds
-
-✔️ What the hook does automatically
-Every time you commit, it will:
-
-1. Run Black
-Auto-formats your Python code
-
-Ensures consistent style across the project
-
-If changes were made → commit is stopped → you must stage the modifications and commit again
-
-2. Run pycodestyle
-Validates PEP8 compliance
-
-Blocks commit if violations are detected
+Before every commit, the hook automatically:
+- Runs **Black** to format Python code (if changes are made, re-stage and commit again)
+- Runs **pycodestyle** to enforce PEP8 compliance

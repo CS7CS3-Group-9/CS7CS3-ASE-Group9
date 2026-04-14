@@ -214,13 +214,18 @@ def _filter_traffic_within_radius(traffic, radius_km):
 
     total = len(filtered)
     avg_delay = total_delay / total if total else 0
-    incidents_per_km = total / radius_km if radius_km > 0 else 0
-    if incidents_per_km > 5:
-        congestion = "high"
-    elif incidents_per_km > 2:
-        congestion = "medium"
+    # Only recompute congestion when there were incidents to filter.
+    # If the original list was empty, preserve the pre-computed level from the backend.
+    if incidents:
+        incidents_per_km = total / radius_km if radius_km > 0 else 0
+        if incidents_per_km > 5:
+            congestion = "high"
+        elif incidents_per_km > 2:
+            congestion = "medium"
+        else:
+            congestion = "low"
     else:
-        congestion = "low"
+        congestion = (traffic.get("congestion_level") or "low").lower()
     avg_speed = 15 if congestion == "high" else 30 if congestion == "medium" else 50
 
     return {
@@ -813,20 +818,31 @@ def dashboard_data():
 
     traffic = _filter_traffic_within_radius(snapshot.get("traffic"), radius_km)
     bikes = _build_bike_metrics(bike_stations) or snapshot.get("bikes")
+    traffic = snapshot.get("traffic")
+    airquality = snapshot.get("airquality")
 
     needs_bus_areas, needs_bike_areas = _get_needs_cached(bus_stops, bike_stations, radius_km)
+    recommendations = _build_recommendations(
+        bikes,
+        traffic,
+        airquality,
+        bike_stations=bike_stations,
+        bus_stops=bus_stops,
+        radius_km=radius_km,
+    )
     return jsonify(
         {
             "timestamp": snapshot.get("timestamp"),
             "source_status": snapshot.get("source_status", {}),
             "bikes": bikes,
             "traffic": traffic,
-            "airquality": snapshot.get("airquality"),
+            "airquality": airquality,
             "tours": snapshot.get("tours"),
             "bike_stations": bike_stations,
             "bus_stops": bus_stops,
             "needs_bus_areas": needs_bus_areas,
             "needs_bike_areas": needs_bike_areas,
+            "recommendations": recommendations,
             "error": error,
         }
     )
